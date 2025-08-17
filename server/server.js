@@ -20,19 +20,22 @@ const generateId = (prefix) => `${prefix}_${Date.now()}${Math.random().toString(
 // Safely parse JSON fields - handles both SQLite (string) and PostgreSQL (object) formats
 const safeJsonParse = (value, defaultValue = null) => {
     if (value === null || value === undefined) return defaultValue;
-    // PostgreSQL returns JSONB as objects directly
+    // PostgreSQL can return JSONB as objects directly, so if it's already an object, return it.
     if (typeof value === 'object') {
         return value;
     }
-    // SQLite returns JSON as strings
+    // SQLite returns JSON as strings, so we need to parse it.
     if (typeof value === 'string') {
         try {
             return JSON.parse(value);
         } catch (e) {
-            console.error('Failed to parse JSON:', e, 'Value:', value);
+            // If parsing fails, it might be a simple string that's not JSON.
+            // Log the error and return the original string or a default.
+            console.warn('safeJsonParse: Value is a string but not valid JSON. Value:', value);
             return defaultValue;
         }
     }
+    // Fallback for other types or if logic fails
     return defaultValue;
 };
 
@@ -593,6 +596,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             user = parseUserRoles(user);
             user = parseJsonField(user, 'address');
             user = parseJsonField(user, 'zones');
+            user = parseJsonField(user, 'priorityMultipliers');
             return user;
         });
         
