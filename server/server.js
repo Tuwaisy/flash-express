@@ -51,38 +51,6 @@ const parseJsonField = (item, field) => {
 };
 
 // Main async function to set up and start the server
-// 5. Add a database migration helper to ensure proper JSON column types
-const ensureJsonColumnsInPostgreSQL = async () => {
-    if (!process.env.DATABASE_URL) return; // Skip if not PostgreSQL
-    try {
-        // Check if columns need to be converted to JSONB
-        const columnsToCheck = [
-            { table: 'users', column: 'roles' },
-            { table: 'users', column: 'address' },
-            { table: 'users', column: 'zones' },
-            { table: 'users', column: 'priorityMultipliers' },
-            { table: 'shipments', column: 'fromAddress' },
-            { table: 'shipments', column: 'toAddress' },
-            { table: 'shipments', column: 'statusHistory' },
-            { table: 'shipments', column: 'packagingLog' },
-            { table: 'custom_roles', column: 'permissions' }
-        ];
-        for (const { table, column } of columnsToCheck) {
-            try {
-                // Try to ensure the column is JSONB type
-                await knex.schema.alterTable(table, (t) => {
-                    t.jsonb(column).alter();
-                });
-                console.log(`✅ Converted ${table}.${column} to JSONB`);
-            } catch (error) {
-                // Column might already be JSONB or might not exist
-                console.log(`ℹ️  Column ${table}.${column} conversion skipped:`, error.message);
-            }
-        }
-    } catch (error) {
-        console.error('Error ensuring JSON columns:', error);
-    }
-};
 
 // 6. Add a data validation function to check for JSON parsing issues
 const validateUserRoles = async () => {
@@ -113,8 +81,6 @@ const validateUserRoles = async () => {
 async function main() {
     // Wait for database setup to complete
     await setupDatabase();
-    await ensureJsonColumnsInPostgreSQL();
-    await validateUserRoles();
 
     // 2. Initialize Express app
     const app = express();
