@@ -112,9 +112,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [notificationStatus, setNotificationStatus] = useState<Record<string, NotificationStatus>>({});
     const [toasts, setToasts] = useState<Toast[]>([]);
-    const [rawCourierStats, setRawCourierStats] = useState<CourierStats[]>([]);
-    const [courierTransactions, setCourierTransactions] = useState<CourierTransaction[]>([]);
     const [customRoles, setCustomRoles] = useState<CustomRole[]>([]);
+    const [courierStats, setCourierStats] = useState<CourierStats[]>([]);
+    const [courierTransactions, setCourierTransactions] = useState<CourierTransaction[]>([]);
     const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
     const [assets, setAssets] = useState<Asset[]>([]);
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -124,47 +124,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [shipmentFilter, setShipmentFilter] = useState<ShipmentFilter | null>(null);
     const [theme, setThemeState] = useState<'light' | 'dark'>(() => getFromStorage('app-theme', 'dark'));
     const [isLoading, setIsLoading] = useState(false);
-    // This will hold the fully calculated user object
-    const [userWithCalculatedData, setUserWithCalculatedData] = useState<User | null>(null);
 
     const setTheme = (newTheme: 'light' | 'dark') => {
         setThemeState(newTheme);
         saveToStorage('app-theme', newTheme);
     };
-    
-    useEffect(() => {
-        const root = window.document.documentElement;
-        root.classList.remove('light', 'dark');
-        root.classList.add(theme);
-    }, [theme]);
-
-    const courierStats = useMemo(() => {
-        return rawCourierStats.map(stat => {
-            const relevantTransactions = courierTransactions.filter(t => t.courierId === stat.courierId);
-            const totalEarnings = relevantTransactions
-                .filter(t => t.type === CourierTransactionType.COMMISSION || t.type === CourierTransactionType.BONUS || t.type === CourierTransactionType.REFERRAL_BONUS)
-                .reduce((sum, t) => sum + t.amount, 0);
-
-            const totalDeductions = relevantTransactions
-                .filter(t => t.type === CourierTransactionType.PENALTY || t.type === CourierTransactionType.WITHDRAWAL_PROCESSED)
-                .reduce((sum, t) => sum + t.amount, 0); // amounts are negative
-
-            const pendingWithdrawals = relevantTransactions
-                .filter(t => t.type === CourierTransactionType.WITHDRAWAL_REQUEST && t.status === CourierTransactionStatus.PENDING)
-                .reduce((sum, t) => sum + t.amount, 0); // amounts are negative
-
-            const currentBalance = totalEarnings + totalDeductions;
-            
-            const deliveriesCompleted = shipments.filter(s => s.courierId === stat.courierId && s.status === ShipmentStatus.DELIVERED).length;
-            const deliveriesFailed = shipments.filter(s => s.courierId === stat.courierId && s.status === ShipmentStatus.DELIVERY_FAILED).length;
-
-            return { ...stat, totalEarnings, currentBalance, pendingEarnings: -pendingWithdrawals, deliveriesCompleted, deliveriesFailed };
-        });
-    }, [rawCourierStats, courierTransactions, shipments]);
 
     const addToast = useCallback((message: string, type: Toast['type'], duration?: number) => {
         const id = Date.now();
-        const toastDuration = duration || 10000; // Default 10 seconds
+        const toastDuration = duration || 10000;
         setToasts(prev => [...prev, { id, message, type, duration: toastDuration }]);
     }, []);
 
@@ -178,7 +146,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setShipments([]);
         setClientTransactions([]);
         setNotifications([]);
-        setRawCourierStats([]);
+        setCourierStats([]);
         setCourierTransactions([]);
         setCustomRoles([]);
         setInventoryItems([]);
@@ -193,144 +161,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const login = useCallback(async (email: string, password: string): Promise<boolean> => {
         setIsLoading(true);
         try {
-            // Step 1: Log in and get the user object.
-            const user: User = await apiFetch('/api/login', {
-                method: 'POST',
-                body: JSON.stringify({ email, password })
+            console.log('🔑 Starting login process...');
+            
+            // Fetch roles first, as they are needed to calculate permissions.
+            const rolesData: CustomRole[] = await apiFetch('/api/roles');
+            setCustomRoles(rolesData); // Set for global state
+            
+            console.log('👤 Attempting login...');
+            const user: User = await apiFetch('/api/login', { 
+                method: 'POST', 
+                body: JSON.stringify({ email, password }) 
             });
+            console.log('✅ Login API successful:', user.name);
 
-            // Step 2: Fetch all other application data.
-            const data = await apiFetch('/api/data');
-
-            // Step 3: Set all data states from the fetched data.
-            setCustomRoles(data.customRoles || []);
-            setUsers(data.users || []);
-            setShipments(data.shipments || []);
-            setClientTransactions(data.clientTransactions || []);
-            setNotifications(data.notifications || []);
-            setRawCourierStats(data.courierStats || []);
-            setCourierTransactions(data.courierTransactions || []);
-            setInventoryItems(data.inventoryItems || []);
-            setAssets(data.assets || []);
-            setSuppliers(data.suppliers || []);
-            setSupplierTransactions(data.supplierTransactions || []);
-            setInAppNotifications(data.inAppNotifications || []);
-            setTierSettings(data.tierSettings || []);
-
-            // Step 4: Calculate permissions and wallet balance for the user
-            // Find the full user object from the users list to ensure we have the latest data
-            const userToProcess = (data.users || []).find((u: User) => u.id === user.id) || user;
-            const safeUserRoles = Array.isArray(userToProcess.roles) ? userToProcess.roles : [];
-            // Permissions for admin and client roles
-            let allPermissions: Permission[] = [];
-            safeUserRoles.forEach((roleName: string) => {
-                const role = (data.customRoles || []).find((r: CustomRole) => r.name === roleName);
-                if (role && Array.isArray(role.permissions)) {
-                    allPermissions = [...allPermissions, ...role.permissions];
+            // Calculate permissions for the logged-in user right away.
+            const userRoleNames = Array.isArray(user.roles) ? user.roles : [];
+            const allPermissions = userRoleNames.reduce((acc, roleName) => {
+                const role = rolesData.find(r => r.name === roleName);
+                if (role?.permissions) {
+                    return [...acc, ...role.permissions];
                 }
-            });
-            // Ensure admin and client get their required permissions using Permission enum
-            // Import Permission from types
-            // Admin extra permissions
-            if (safeUserRoles.includes('Administrator')) {
-                allPermissions = [...allPermissions,
-                    Permission.VIEW_ALL_SHIPMENTS,
-                    Permission.VIEW_ADMIN_DELIVERY_MANAGEMENT,
-                    Permission.MANAGE_USERS,
-                    Permission.MANAGE_INVENTORY,
-                    Permission.VIEW_CLIENT_ANALYTICS,
-                    Permission.VIEW_ADMIN_FINANCIALS,
-                    Permission.VIEW_TOTAL_SHIPMENTS_OVERVIEW,
-                ];
-            }
-            // Client extra permissions
-            if (safeUserRoles.includes('Client')) {
-                allPermissions = [...allPermissions, Permission.VIEW_OWN_SHIPMENTS];
-            }
+                return acc;
+            }, [] as Permission[]);
             const permissions = [...new Set(allPermissions)].sort();
 
-            // Calculate wallet balance
-            const myTransactions = (data.clientTransactions || []).filter((t: ClientTransaction) => t.userId === user.id);
-            const walletBalance = myTransactions.filter((t: ClientTransaction) => t.status !== 'Pending').reduce((sum: number, t: ClientTransaction) => sum + t.amount, 0);
-
-            // Create the final user object with all data calculated
-            const finalUserObject: User = {
-                ...userToProcess,
+            // Create the complete user object with permissions.
+            const userWithPermissions = {
+                ...user,
                 permissions,
-                walletBalance,
             };
-            setCurrentUser(finalUserObject);
-            setUserWithCalculatedData(finalUserObject);
-
+            
+            // Set the complete user object.
+            setCurrentUser(userWithPermissions);
             addToast(`Welcome back, ${user.name}!`, 'success');
+            console.log('🎉 Login completed successfully with permissions');
             return true;
         } catch (error: any) {
             const errorMessage = error.message || 'Login failed - please try again';
             addToast(errorMessage, 'error');
-            logout(); // Ensure a clean state on failure
+            logout();
             return false;
         } finally {
             setIsLoading(false);
         }
     }, [addToast, logout]);
-    
-    // WebSocket integration for real-time updates
-    useEffect(() => {
-        if (!currentUser) {
-            return;
-        }
-
-        // This function will be called by the websocket
-        const refetchData = async () => {
-            try {
-                const data = await apiFetch('/api/data');
-                setUsers(data.users || []);
-                setShipments(data.shipments || []);
-                setClientTransactions(data.clientTransactions || []);
-                setNotifications(data.notifications || []);
-                setRawCourierStats(data.courierStats || []);
-                setCourierTransactions(data.courierTransactions || []);
-                setCustomRoles(data.customRoles || []);
-                setInventoryItems(data.inventoryItems || []);
-                setAssets(data.assets || []);
-                setSuppliers(data.suppliers || []);
-                setSupplierTransactions(data.supplierTransactions || []);
-                setInAppNotifications(data.inAppNotifications || []);
-                setTierSettings(data.tierSettings || []);
-            } catch (error: any) {
-                addToast(`Failed to refresh data: ${error.message}`, 'error');
-            }
-        };
-
-        const socketOptions = {
-            transports: ['websocket'],
-        };
-
-        const socket: Socket = import.meta.env.VITE_API_URL 
-            ? io(import.meta.env.VITE_API_URL, socketOptions) 
-            : io(socketOptions);
-
-        socket.on('connect', () => {
-            console.log('Connected to WebSocket server with ID:', socket.id);
-        });
-
-        socket.on('data_updated', () => {
-            console.log('Received data_updated event. Fetching new data...');
-            addToast('Data updated in real-time.', 'info', 2000);
-            refetchData();
-        });
-
-        socket.on('disconnect', () => {
-            console.log('Disconnected from WebSocket server.');
-        });
-        
-        return () => {
-            socket.disconnect();
-        };
-    }, [currentUser, addToast]);
-
-    // Removed infinite loop effect. All user calculation is now done in login.
-
 
     // --- App Functions ---
     const hasPermission = useCallback((permission: Permission) => {
@@ -339,9 +213,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, [currentUser]);
 
     const addShipment = useCallback(async (shipmentData: Omit<Shipment, 'id' | 'creationDate' | 'status'>) => {
-        if (!userWithCalculatedData) return;
+        if (!currentUser) return;
         await apiFetch('/api/shipments', { method: 'POST', body: JSON.stringify(shipmentData) });
-    }, [userWithCalculatedData]);
+    }, [currentUser]);
     
     const updateShipmentStatus = useCallback(async (shipmentId: string, status: ShipmentStatus, details: { failureReason?: string; failurePhoto?: string | null } = {}) => {
         try {
@@ -722,7 +596,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const value: AppContextType = {
-        currentUser: userWithCalculatedData,
+        currentUser,
         users,
         shipments,
         clientTransactions,
