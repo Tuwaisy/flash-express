@@ -147,23 +147,13 @@ async function setupDatabase() {
     const assigningUserPermissions = ['assign_shipments', 'view_dashboard', 'view_total_shipments_overview', 'manage_inventory', 'view_all_shipments', 'view_profile', 'print_labels', 'view_delivered_shipments', 'view_couriers_by_zone'];
 
     const rolesToSeed = [
-        { id: 'role_admin', name: 'Administrator', permissions: allPermissions, isSystemRole: true },
-        { id: 'role_super_user', name: 'Super User', permissions: superUserPermissions, isSystemRole: true },
-        { id: 'role_client', name: 'Client', permissions: clientPermissions, isSystemRole: true },
-        { id: 'role_courier', name: 'Courier', permissions: courierPermissions, isSystemRole: true },
-        { id: 'role_assigning_user', name: 'Assigning User', permissions: assigningUserPermissions, isSystemRole: true },
+        { id: 'role_admin', name: 'Administrator', permissions: JSON.stringify(allPermissions), isSystemRole: true },
+        { id: 'role_super_user', name: 'Super User', permissions: JSON.stringify(superUserPermissions), isSystemRole: true },
+        { id: 'role_client', name: 'Client', permissions: JSON.stringify(clientPermissions), isSystemRole: true },
+        { id: 'role_courier', name: 'Courier', permissions: JSON.stringify(courierPermissions), isSystemRole: true },
+        { id: 'role_assigning_user', name: 'Assigning User', permissions: JSON.stringify(assigningUserPermissions), isSystemRole: true },
     ];
-    
-    // Insert roles one by one to avoid potential batch insert issues with JSON types.
-    for (const role of rolesToSeed) {
-        // Manually stringify the permissions array for consistent insertion
-        // across both SQLite and PostgreSQL.
-        const roleToInsert = {
-            ...role,
-            permissions: JSON.stringify(role.permissions)
-        };
-        await knex('custom_roles').insert(roleToInsert);
-    }
+    await knex('custom_roles').insert(rolesToSeed);
 
     // Seed admin user
     const adminExists = await knex('users').where({ email: 'admin@flash.com' }).first();

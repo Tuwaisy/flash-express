@@ -49,40 +49,12 @@ async function main() {
 
 
     // Explicitly configure CORS for better proxy compatibility
-    const corsOptions = {
-        origin: (origin, callback) => {
-            const isProduction = process.env.NODE_ENV === 'production';
-
-            if (!isProduction) {
-                // Allow any origin in development
-                return callback(null, true);
-            }
-
-            // Allow requests with no origin (like mobile apps or curl)
-            if (!origin) {
-                return callback(null, true);
-            }
-
-            const allowedOrigins = [
-                process.env.RAILWAY_STATIC_URL,
-                'https://flash-express-app-production.up.railway.app'
-            ].filter(Boolean); // Remove any falsy values
-
-            const isAllowed = allowedOrigins.includes(origin) || /\.up\.railway\.app$/.test(origin);
-
-            if (isAllowed) {
-                callback(null, true);
-            } else {
-                console.warn(`CORS Blocked: Origin ${origin} is not allowed.`);
-                callback(new Error(`Origin ${origin} not allowed by CORS`));
-            }
-        },
+    app.use(cors({
+        origin: true, // Allow all origins for now to debug
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
         allowedHeaders: ['Content-Type', 'Authorization'],
         credentials: true
-    };
-
-    app.use(cors(corsOptions));
+    }));
     
     // Add request logging middleware
     app.use((req, res, next) => {
@@ -210,41 +182,72 @@ async function main() {
     // --- Helper Functions ---
     const generateId = (prefix) => `${prefix}_${Date.now()}${Math.random().toString(36).substring(2, 9)}`;
     
-    // Safely parse JSON fields - handles SQLite (string), PostgreSQL (object),
-    // and double-stringified JSON that can occur during data migration.
+    // Safely parse JSON fields - handles both SQLite (string) and PostgreSQL (object) formats
     const safeJsonParse = (value, defaultValue = null) => {
-        if (value === null || value === undefined) {
-            return defaultValue;
-        }
-        if (typeof value === 'object') {
-            return value; // Already parsed by PostgreSQL
-        }
-
+        if (value === null || value === undefined) return defaultValue;
+        if (typeof value === 'object') return value; // Already parsed by PostgreSQL
         if (typeof value === 'string') {
             try {
-                let parsed = JSON.parse(value);
-                // Handle double-stringified values
-                if (typeof parsed === 'string') {
-                    // The second parse can also fail
-                    try {
-                        return JSON.parse(parsed);
-                    } catch (innerError) {
-                        // If the inner parse fails, it means we have a string that's not JSON.
-                        // For example, JSON.parse('"hello"') results in the string "hello".
-                        // In this case, we should return the result of the first parse.
-                        return parsed;
-                    }
-                }
-                return parsed;
-            } catch (outerError) {
-                // The initial string was not valid JSON.
+                return JSON.parse(value);
+            } catch (e) {
+                console.error('Failed to parse JSON:', e);
                 return defaultValue;
             }
         }
-        
-        return value; // For other primitive types
+        return defaultValue;
     };
 
+    const parseUserRoles = (user) => {
+        if (user && user.roles) {
+            return { ...user, roles: safeJsonParse(user.roles, []) };
+        }
+        return user;
+    };
+
+    const parseJsonField = (item, field) => {
+        if (item && item[field] !== undefined) {
+            return { ...item, [field]: safeJsonParse(item[field], null) };
+        }
+        return item;
+    };
+    
+    // Twilio Client
+    const twilioClient = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
+        ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
+        : null;
+
+
+    // --- Nodemailer Transporter ---
+    const transporter = nodemailer.createTransport({
+      host: 'smtpout.secureserver.net',
+      port: 465,
+      secure: true,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    async function sendEmail(notification) {
+        const { recipient, subject, message } = notification;
+
+        const mailOptions = {
+            from: `"Flash Express" <${process.env.EMAIL_USER}>`,
+            to: recipient,
+            subject: subject,
+            html: `<p>${message.replace(/\n/g, '<br>')}</p>`,
+        };
+
+        try {
+            await transporter.sendMail(mailOptions);
+            console.log('Email sent successfully to:', recipient);
+            return true;
+        } catch (error) {
+            console.error('Failed to send email:', error);
+            return false;
+        }
+    }
+    
     const createInAppNotification = async (trx, userId, message, link = null) => {
         await trx('in_app_notifications').insert({
             id: generateId('INAPP'),
@@ -409,10 +412,7 @@ async function main() {
     app.get('/api/roles', async (req, res) => {
         try {
             const roles = await knex('custom_roles').select();
-            const parsedRoles = roles.map(r => ({
-                ...r,
-                permissions: safeJsonParse(r.permissions, [])
-            }));
+            const parsedRoles = roles.map(r => parseJsonField(r, 'permissions'));
             res.json(parsedRoles);
         } catch (error) {
             res.status(500).json({ error: 'Failed to fetch roles' });
@@ -427,10 +427,7 @@ async function main() {
         try {
             const newRole = { id: generateId('role'), name, permissions: JSON.stringify(permissions), isSystemRole: false };
             await knex('custom_roles').insert(newRole);
-            res.status(201).json({
-                ...newRole,
-                permissions: permissions // Already in correct format
-            });
+            res.status(201).json(parseJsonField(newRole, 'permissions'));
             io.emit('data_updated');
         } catch (error) {
             res.status(500).json({ error: 'Server error creating role' });
@@ -482,13 +479,9 @@ async function main() {
                 if (match) {
                     console.log('✅ Password match successful');
                     const { password, ...userWithoutPassword } = user;
-                    // Ensure roles are parsed correctly from JSON string
-                    const finalUser = {
-                        ...userWithoutPassword,
-                        roles: safeJsonParse(userWithoutPassword.roles, []),
-                        address: safeJsonParse(userWithoutPassword.address, null),
-                        zones: safeJsonParse(userWithoutPassword.zones, [])
-                    };
+                    let finalUser = parseUserRoles(userWithoutPassword);
+                    finalUser = parseJsonField(finalUser, 'address'); // Ensure address is an object
+                    finalUser = parseJsonField(finalUser, 'zones'); // Ensure zones is an array
                     console.log('🚀 Sending user data:', finalUser.name, finalUser.roles);
                     res.json(finalUser);
                 } else {
@@ -525,29 +518,23 @@ async function main() {
         ]);
 
         const safeUsers = users.map(u => {
-            const { password, ...user } = u;
-            return {
-                ...user,
-                roles: safeJsonParse(user.roles, []),
-                address: safeJsonParse(user.address, null),
-                zones: safeJsonParse(user.zones, [])
-            };
+            let { password, ...user } = u;
+            user = parseUserRoles(user);
+            user = parseJsonField(user, 'address');
+            user = parseJsonField(user, 'zones');
+            return user;
         });
         
         const parsedShipments = shipments.map(s => {
-            return {
-                ...s,
-                fromAddress: safeJsonParse(s.fromAddress, null),
-                toAddress: safeJsonParse(s.toAddress, null),
-                packagingLog: safeJsonParse(s.packagingLog, []),
-                statusHistory: safeJsonParse(s.statusHistory, [])
-            };
+            let shipment = s;
+            shipment = parseJsonField(shipment, 'fromAddress');
+            shipment = parseJsonField(shipment, 'toAddress');
+            shipment = parseJsonField(shipment, 'packagingLog');
+            shipment = parseJsonField(shipment, 'statusHistory');
+            return shipment;
         });
 
-        const parsedRoles = customRoles.map(r => ({
-            ...r,
-            permissions: safeJsonParse(r.permissions, [])
-        }));
+        const parsedRoles = customRoles.map(r => parseJsonField(r, 'permissions'));
 
         res.json({ users: safeUsers, shipments: parsedShipments, clientTransactions, courierStats, courierTransactions, notifications, customRoles: parsedRoles, inventoryItems, assets, suppliers, supplierTransactions, inAppNotifications, tierSettings });
       } catch (error) {
@@ -614,12 +601,9 @@ async function main() {
             });
             
             const { password: _, ...userWithoutPassword } = newUser;
-            res.status(201).json({
-                ...userWithoutPassword,
-                roles: safeJsonParse(userWithoutPassword.roles, []),
-                address: safeJsonParse(userWithoutPassword.address, null),
-                zones: safeJsonParse(userWithoutPassword.zones, [])
-            });
+            let finalUser = parseUserRoles(userWithoutPassword);
+            finalUser = parseJsonField(finalUser, 'zones');
+            res.status(201).json(finalUser);
             io.emit('data_updated');
         } catch (error) {
             console.error('Error creating user:', error);
@@ -777,13 +761,7 @@ async function main() {
             });
             
             const createdShipment = await knex('shipments').where({ id: newId }).first();
-            res.status(201).json({
-                ...createdShipment,
-                fromAddress: safeJsonParse(createdShipment.fromAddress, null),
-                toAddress: safeJsonParse(createdShipment.toAddress, null),
-                packagingLog: safeJsonParse(createdShipment.packagingLog, []),
-                statusHistory: safeJsonParse(createdShipment.statusHistory, [])
-            });
+            res.status(201).json(createdShipment);
             io.emit('data_updated');
         } catch (error) {
             console.error("Error creating shipment:", error);
@@ -1342,12 +1320,8 @@ async function main() {
             if (shipment) {
                  const client = await knex('users').where({ id: shipment.clientId }).first();
                  if (shipment.recipientPhone === phone || client?.phone === phone) {
-                    return res.json({
-                        ...shipment,
-                        fromAddress: safeJsonParse(shipment.fromAddress, null),
-                        toAddress: safeJsonParse(shipment.toAddress, null),
-                        statusHistory: safeJsonParse(shipment.statusHistory, [])
-                    });
+                    const parsedShipment = parseJsonField(parseJsonField(parseJsonField(shipment, 'fromAddress'), 'toAddress'), 'statusHistory');
+                    return res.json(parsedShipment);
                  }
             }
             return res.status(404).json({ error: 'Wrong shipment ID or phone number.' });

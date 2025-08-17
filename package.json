@@ -6,9 +6,11 @@
   "scripts": {
     "start": "node server/server.js",
     "dev": "vite",
-    "build": "npm install --prefix server && vite build",
+    "build": "tsc --noEmit && vite build",
+    "build:skip-check": "vite build",
     "lint": "vite lint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postinstall": "npm install --prefix server && npm run build:skip-check"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -23,6 +25,7 @@
     "papaparse": "^5.4.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-spinners": "^0.17.0",
     "socket.io-client": "^4.7.5"
   },
   "devDependencies": {

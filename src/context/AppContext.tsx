@@ -3,7 +3,7 @@
 
 
 import React, { useState, useCallback, useMemo, useEffect, ReactNode } from 'react';
-import type { User, Shipment, Toast, ClientTransaction, Notification, CourierStats, CourierTransaction, FinancialSettings, AdminFinancials, ClientFinancialSummary, Address, CustomRole, Permission, InventoryItem, Asset, PackagingLogEntry, TransactionType, Supplier, SupplierTransaction, InAppNotification, TierSetting, PartnerTier } from '../types';
+import { User, Shipment, Toast, ClientTransaction, Notification, CourierStats, CourierTransaction, FinancialSettings, AdminFinancials, ClientFinancialSummary, Address, CustomRole, Permission, InventoryItem, Asset, PackagingLogEntry, TransactionType, Supplier, SupplierTransaction, InAppNotification, TierSetting, PartnerTier } from '../types';
 import { UserRole, ShipmentStatus, CommissionType, CourierTransactionType, CourierTransactionStatus, ShipmentPriority, PaymentMethod } from '../types';
 import { apiFetch } from '../api/client';
 import { io, Socket } from 'socket.io-client';
@@ -123,8 +123,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [tierSettings, setTierSettings] = useState<TierSetting[]>([]);
     const [shipmentFilter, setShipmentFilter] = useState<ShipmentFilter | null>(null);
     const [theme, setThemeState] = useState<'light' | 'dark'>(() => getFromStorage('app-theme', 'dark'));
-    
     const [isLoading, setIsLoading] = useState(false);
+    // This will hold the fully calculated user object
+    const [userWithCalculatedData, setUserWithCalculatedData] = useState<User | null>(null);
 
     const setTheme = (newTheme: 'light' | 'dark') => {
         setThemeState(newTheme);
@@ -216,9 +217,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setInAppNotifications(data.inAppNotifications || []);
             setTierSettings(data.tierSettings || []);
 
-            // Step 4: Finally, set the current user. This triggers the UI to update
-            // now that all necessary data is loaded and ready.
-            setCurrentUser(user);
+            // Step 4: Calculate permissions and wallet balance for the user
+            // Find the full user object from the users list to ensure we have the latest data
+            const userToProcess = (data.users || []).find((u: User) => u.id === user.id) || user;
+            const safeUserRoles = Array.isArray(userToProcess.roles) ? userToProcess.roles : [];
+            // Permissions for admin and client roles
+            let allPermissions: Permission[] = [];
+            safeUserRoles.forEach((roleName: string) => {
+                const role = (data.customRoles || []).find((r: CustomRole) => r.name === roleName);
+                if (role && Array.isArray(role.permissions)) {
+                    allPermissions = [...allPermissions, ...role.permissions];
+                }
+            });
+            // Ensure admin and client get their required permissions using Permission enum
+            // Import Permission from types
+            // Admin extra permissions
+            if (safeUserRoles.includes('Administrator')) {
+                allPermissions = [...allPermissions,
+                    Permission.VIEW_ALL_SHIPMENTS,
+                    Permission.VIEW_ADMIN_DELIVERY_MANAGEMENT,
+                    Permission.MANAGE_USERS,
+                    Permission.MANAGE_INVENTORY,
+                    Permission.VIEW_CLIENT_ANALYTICS,
+                    Permission.VIEW_ADMIN_FINANCIALS,
+                    Permission.VIEW_TOTAL_SHIPMENTS_OVERVIEW,
+                ];
+            }
+            // Client extra permissions
+            if (safeUserRoles.includes('Client')) {
+                allPermissions = [...allPermissions, Permission.VIEW_OWN_SHIPMENTS];
+            }
+            const permissions = [...new Set(allPermissions)].sort();
+
+            // Calculate wallet balance
+            const myTransactions = (data.clientTransactions || []).filter((t: ClientTransaction) => t.userId === user.id);
+            const walletBalance = myTransactions.filter((t: ClientTransaction) => t.status !== 'Pending').reduce((sum: number, t: ClientTransaction) => sum + t.amount, 0);
+
+            // Create the final user object with all data calculated
+            const finalUserObject: User = {
+                ...userToProcess,
+                permissions,
+                walletBalance,
+            };
+            setCurrentUser(finalUserObject);
+            setUserWithCalculatedData(finalUserObject);
 
             addToast(`Welcome back, ${user.name}!`, 'success');
             return true;
@@ -287,49 +329,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
     }, [currentUser, addToast]);
 
-    // This effect is now responsible for setting the final, fully-calculated user object.
-    useEffect(() => {
-        if (!currentUser || !customRoles.length || !users.length) {
-            // If we have a user but not the data needed to calculate permissions, wait.
-            return;
-        }
-
-        // Find the full user object from the users list to ensure we have the latest data
-        const userToProcess = users.find(u => u.id === currentUser.id);
-        if (!userToProcess) {
-            // If the user is not in the list, it might be a stale state.
-            // It's safer to wait or even logout. For now, we'll just wait.
-            return;
-        }
-
-        const safeUserRoles = Array.isArray(userToProcess.roles) ? userToProcess.roles : [];
-        
-        const allPermissions = safeUserRoles.reduce((acc, roleName) => {
-            const role = customRoles.find(r => r.name === roleName);
-            if (role && Array.isArray(role.permissions)) {
-                return [...acc, ...role.permissions];
-            }
-            return acc;
-        }, [] as Permission[]);
-        const permissions = [...new Set(allPermissions)].sort();
-
-        const myTransactions = clientTransactions.filter(t => t.userId === currentUser.id);
-        const walletBalance = myTransactions.filter(t => t.status !== 'Pending').reduce((sum, t) => sum + t.amount, 0);
-
-        // Create the final user object with all data calculated
-        const finalUserObject = {
-            ...userToProcess,
-            permissions,
-            walletBalance,
-        };
-
-        // Atomically update the currentUser. We check if permissions have changed
-        // to avoid an infinite loop, as this effect depends on currentUser.
-        if (JSON.stringify(currentUser.permissions) !== JSON.stringify(permissions)) {
-            setCurrentUser(finalUserObject);
-        }
-
-    }, [currentUser, users, customRoles, clientTransactions]);
+    // Removed infinite loop effect. All user calculation is now done in login.
 
 
     // --- App Functions ---
