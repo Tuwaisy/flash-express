@@ -298,14 +298,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // This effect ensures the currentUser in context is always up-to-date
     // with permissions and a calculated wallet balance.
     const userWithCalculatedData = useMemo(() => {
-        if (!currentUser) return null;
+        if (!currentUser || !customRoles.length) return null;
 
         // 1. Recalculate permissions from the latest roles data
         const updatedUserFromList = users.find(u => u.id === currentUser.id);
-        const safeUserRoles = updatedUserFromList ? (Array.isArray(updatedUserFromList.roles) ? updatedUserFromList.roles : []) : (Array.isArray(currentUser.roles) ? currentUser.roles : []);
+        const userToProcess = updatedUserFromList || currentUser;
+
+        const safeUserRoles = Array.isArray(userToProcess.roles) ? userToProcess.roles : [];
+        
         const allPermissions = safeUserRoles.reduce((acc, roleName) => {
             const role = customRoles.find(r => r.name === roleName);
-            if (role?.permissions) {
+            if (role && Array.isArray(role.permissions)) {
                 return [...acc, ...role.permissions];
             }
             return acc;
@@ -317,8 +320,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const walletBalance = myTransactions.filter(t => t.status !== 'Pending').reduce((sum, t) => sum + t.amount, 0);
 
         return {
-            ...currentUser,
-            ...(updatedUserFromList || {}), // Get latest user data like name, address, etc.
+            ...userToProcess,
             permissions,
             walletBalance,
         };
