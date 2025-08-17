@@ -711,8 +711,18 @@ app.get('/api/debug/users/:id', async (req, res) => {
             io.emit('data_updated');
         } catch (error) {
             console.error('Error creating user:', error);
-            if (error.code === 'SQLITE_CONSTRAINT' || (error.message && error.message.includes('UNIQUE constraint failed'))) {
-                return res.status(409).json({ error: 'A user with this email already exists.' });
+            if (error.code === '23505' || (error.message && (error.message.includes('UNIQUE constraint failed') || error.message.includes('duplicate key')))) {
+                 // Check for email constraint specifically if possible (depends on constraint name)
+                if (error.constraint && error.constraint.includes('email')) {
+                    return res.status(409).json({ error: 'A user with this email already exists.' });
+                }
+                 // Handle generic primary key violation
+                if (error.constraint === 'users_pkey') {
+                    console.error('FATAL: Primary key sequence for users is out of sync!');
+                    return res.status(500).json({ error: 'Server error: Could not assign a unique ID to the new user. Please contact support.' });
+                }
+                // Fallback for other unique constraints
+                return res.status(409).json({ error: 'A user with this value already exists.' });
             }
             res.status(500).json({ error: 'Server error creating user' });
         }

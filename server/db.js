@@ -1,20 +1,8 @@
 
-// server/db.js
+// server/db.js - Fixed for proper PostgreSQL JSON handling
 const path = require('path');
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
-
-// =================================================================================
-// Environment-Aware Database Configuration for Railway Compatibility
-// =================================================================================
-// This setup automatically detects if the app is running in a production environment
-// (like Railway) and uses the appropriate database configuration.
-//
-// - In Production (on Railway): It connects to your PostgreSQL database using the
-//   `DATABASE_URL` environment variable that Railway provides automatically.
-// - In Development (on your local machine): It falls back to using the local
-//   `flash.sqlite` file, so your development process remains unchanged.
-// =================================================================================
 
 let knex;
 
@@ -25,7 +13,7 @@ if (process.env.DATABASE_URL) {
     client: 'pg',
     connection: {
       connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false } // Required for many cloud database providers
+      ssl: { rejectUnauthorized: false }
     },
     pool: { min: 2, max: 10 },
   });
@@ -41,6 +29,138 @@ if (process.env.DATABASE_URL) {
   });
 }
 
+// Helper function to create JSON columns properly for each database type
+const createJsonColumn = (table, columnName, notNull = false) => {
+  if (process.env.DATABASE_URL) {
+    // PostgreSQL: Use JSONB for better performance and native operators
+    const column = table.jsonb(columnName);
+    return notNull ? column.notNullable() : column;
+  } else {
+    // SQLite: Use JSON
+    const column = table.json(columnName);
+    return notNull ? column.notNullable() : column;
+  }
+};
+
+// Helper function to alter JSON columns properly for each database type
+const alterJsonColumn = (table, columnName) => {
+  if (process.env.DATABASE_URL) {
+    // PostgreSQL: Use JSONB
+    return table.jsonb(columnName);
+  } else {
+    // SQLite: Use JSON
+    return table.json(columnName);
+  }
+};
+
+// Data migration helper to convert existing JSON strings to proper format
+const migrateJsonData = async () => {
+  if (!process.env.DATABASE_URL) return; // Skip for SQLite
+  
+  console.log('🔄 Migrating JSON data for PostgreSQL...');
+  
+  try {
+    // Check if we need to migrate users table JSON columns
+    const sampleUser = await knex('users').first();
+    if (sampleUser && typeof sampleUser.roles === 'string') {
+      console.log('📦 Converting user roles from string to JSONB...');
+      const users = await knex('users').select('id', 'roles', 'zones', 'address', 'priorityMultipliers');
+      
+      for (const user of users) {
+        const updates = {};
+        
+        // Convert roles
+        if (user.roles && typeof user.roles === 'string') {
+          try {
+            updates.roles = JSON.parse(user.roles);
+          } catch (e) {
+            console.warn(`Failed to parse roles for user ${user.id}:`, user.roles);
+            updates.roles = ['Client']; // Default fallback
+          }
+        }
+        
+        // Convert zones
+        if (user.zones && typeof user.zones === 'string') {
+          try {
+            updates.zones = JSON.parse(user.zones);
+          } catch (e) {
+            updates.zones = [];
+          }
+        }
+        
+        // Convert address
+        if (user.address && typeof user.address === 'string') {
+          try {
+            updates.address = JSON.parse(user.address);
+          } catch (e) {
+            updates.address = null;
+          }
+        }
+        
+        // Convert priorityMultipliers
+        if (user.priorityMultipliers && typeof user.priorityMultipliers === 'string') {
+          try {
+            updates.priorityMultipliers = JSON.parse(user.priorityMultipliers);
+          } catch (e) {
+            updates.priorityMultipliers = { Standard: 1.0, Urgent: 1.5, Express: 2.0 };
+          }
+        }
+        
+        if (Object.keys(updates).length > 0) {
+          await knex('users').where({ id: user.id }).update(updates);
+        }
+      }
+    }
+    
+    // Migrate shipments JSON columns
+    const sampleShipment = await knex('shipments').first();
+    if (sampleShipment && typeof sampleShipment.fromAddress === 'string') {
+      console.log('📦 Converting shipment JSON fields...');
+      const shipments = await knex('shipments').select('id', 'fromAddress', 'toAddress', 'statusHistory', 'packagingLog');
+      
+      for (const shipment of shipments) {
+        const updates = {};
+        
+        ['fromAddress', 'toAddress', 'statusHistory', 'packagingLog'].forEach(field => {
+          if (shipment[field] && typeof shipment[field] === 'string') {
+            try {
+              updates[field] = JSON.parse(shipment[field]);
+            } catch (e) {
+              console.warn(`Failed to parse ${field} for shipment ${shipment.id}`);
+              updates[field] = null;
+            }
+          }
+        });
+        
+        if (Object.keys(updates).length > 0) {
+          await knex('shipments').where({ id: shipment.id }).update(updates);
+        }
+      }
+    }
+    
+    // Migrate custom_roles permissions
+    const sampleRole = await knex('custom_roles').first();
+    if (sampleRole && typeof sampleRole.permissions === 'string') {
+      console.log('📦 Converting role permissions...');
+      const roles = await knex('custom_roles').select('id', 'permissions');
+      
+      for (const role of roles) {
+        if (role.permissions && typeof role.permissions === 'string') {
+          try {
+            const updates = { permissions: JSON.parse(role.permissions) };
+            await knex('custom_roles').where({ id: role.id }).update(updates);
+          } catch (e) {
+            console.warn(`Failed to parse permissions for role ${role.id}`);
+          }
+        }
+      }
+    }
+    
+    console.log('✅ JSON data migration complete');
+  } catch (error) {
+    console.error('❌ Error during JSON data migration:', error);
+  }
+};
 
 async function setupDatabase() {
   console.log('Setting up database...');
@@ -54,13 +174,13 @@ async function setupDatabase() {
         table.string('name').notNullable();
         table.string('email').unique().notNullable();
         table.string('password').notNullable();
-        table.json('roles').notNullable(); // Stored as JSON array of strings
-        table.json('zones');
+        createJsonColumn(table, 'roles', true); // JSON array of strings - NOT NULL
+        createJsonColumn(table, 'zones'); // JSON array for courier zones
         table.string('phone');
-        table.json('address');
+        createJsonColumn(table, 'address'); // JSON object for address
         table.decimal('flatRateFee', 10, 2);
         table.string('taxCardNumber');
-        table.json('priorityMultipliers');
+        createJsonColumn(table, 'priorityMultipliers'); // JSON object for multipliers
         // For courier referrals
         table.integer('referrerId').unsigned().references('id').inTable('users');
         table.decimal('referralCommission', 10, 2);
@@ -69,15 +189,15 @@ async function setupDatabase() {
         table.boolean('manualTierAssignment').defaultTo(false);
       });
     } else {
-      // Add new columns if they don't exist
+      // Add new columns if they don't exist and ensure proper types
       if (!(await knex.schema.hasColumn('users', 'publicId'))) {
         await knex.schema.alterTable('users', t => t.string('publicId').unique());
       }
       if (!(await knex.schema.hasColumn('users', 'roles'))) {
-        await knex.schema.alterTable('users', t => t.json('roles'));
+        await knex.schema.alterTable('users', t => createJsonColumn(t, 'roles', true));
       }
       if (!(await knex.schema.hasColumn('users', 'priorityMultipliers'))) {
-        await knex.schema.alterTable('users', t => t.json('priorityMultipliers'));
+        await knex.schema.alterTable('users', t => createJsonColumn(t, 'priorityMultipliers'));
       }
       if (!(await knex.schema.hasColumn('users', 'referrerId'))) {
         await knex.schema.alterTable('users', t => t.integer('referrerId').unsigned().references('id').inTable('users'));
@@ -85,14 +205,30 @@ async function setupDatabase() {
       if (!(await knex.schema.hasColumn('users', 'referralCommission'))) {
         await knex.schema.alterTable('users', t => t.decimal('referralCommission', 10, 2));
       }
-       if (!(await knex.schema.hasColumn('users', 'zones'))) {
-        await knex.schema.alterTable('users', t => t.json('zones'));
+      if (!(await knex.schema.hasColumn('users', 'zones'))) {
+        await knex.schema.alterTable('users', t => createJsonColumn(t, 'zones'));
       }
       if (!(await knex.schema.hasColumn('users', 'partnerTier'))) {
         await knex.schema.alterTable('users', t => t.string('partnerTier'));
       }
       if (!(await knex.schema.hasColumn('users', 'manualTierAssignment'))) {
         await knex.schema.alterTable('users', t => t.boolean('manualTierAssignment').defaultTo(false));
+      }
+      
+      // IMPORTANT: Convert existing JSON columns to proper types in PostgreSQL
+      if (process.env.DATABASE_URL) {
+        console.log('🔄 Converting JSON columns to JSONB in PostgreSQL...');
+        try {
+          const columnsToConvert = ['roles', 'zones', 'address', 'priorityMultipliers'];
+          for (const col of columnsToConvert) {
+            if (await knex.schema.hasColumn('users', col)) {
+              // Use raw SQL to convert TEXT to JSONB
+              await knex.raw(`ALTER TABLE users ALTER COLUMN ${col} TYPE jsonb USING ${col}::jsonb`);
+            }
+          }
+        } catch (error) {
+          console.log('Note: JSON column conversion skipped (may already be correct type)');
+        }
       }
     }
     
@@ -113,16 +249,24 @@ async function setupDatabase() {
         ]);
     }
 
-
     const hasCustomRolesTable = await knex.schema.hasTable('custom_roles');
     if (!hasCustomRolesTable) {
         console.log('Creating "custom_roles" table...');
         await knex.schema.createTable('custom_roles', table => {
             table.string('id').primary();
             table.string('name').unique().notNullable();
-            table.json('permissions').notNullable();
+            createJsonColumn(table, 'permissions', true); // NOT NULL JSON array
             table.boolean('isSystemRole').defaultTo(false);
         });
+    } else {
+      // Ensure permissions column is proper JSON type
+      if (process.env.DATABASE_URL && await knex.schema.hasColumn('custom_roles', 'permissions')) {
+        try {
+          await knex.raw('ALTER TABLE custom_roles ALTER COLUMN permissions TYPE jsonb USING permissions::jsonb');
+        } catch (error) {
+          console.log('Note: custom_roles permissions column conversion skipped');
+        }
+      }
     }
 
     // Always re-seed roles to ensure permissions are up-to-date
@@ -147,11 +291,11 @@ async function setupDatabase() {
     const assigningUserPermissions = ['assign_shipments', 'view_dashboard', 'view_total_shipments_overview', 'manage_inventory', 'view_all_shipments', 'view_profile', 'print_labels', 'view_delivered_shipments', 'view_couriers_by_zone'];
 
     const rolesToSeed = [
-        { id: 'role_admin', name: 'Administrator', permissions: JSON.stringify(allPermissions), isSystemRole: true },
-        { id: 'role_super_user', name: 'Super User', permissions: JSON.stringify(superUserPermissions), isSystemRole: true },
-        { id: 'role_client', name: 'Client', permissions: JSON.stringify(clientPermissions), isSystemRole: true },
-        { id: 'role_courier', name: 'Courier', permissions: JSON.stringify(courierPermissions), isSystemRole: true },
-        { id: 'role_assigning_user', name: 'Assigning User', permissions: JSON.stringify(assigningUserPermissions), isSystemRole: true },
+        { id: 'role_admin', name: 'Administrator', permissions: allPermissions, isSystemRole: true },
+        { id: 'role_super_user', name: 'Super User', permissions: superUserPermissions, isSystemRole: true },
+        { id: 'role_client', name: 'Client', permissions: clientPermissions, isSystemRole: true },
+        { id: 'role_courier', name: 'Courier', permissions: courierPermissions, isSystemRole: true },
+        { id: 'role_assigning_user', name: 'Assigning User', permissions: assigningUserPermissions, isSystemRole: true },
     ];
     await knex('custom_roles').insert(rolesToSeed);
 
@@ -161,16 +305,22 @@ async function setupDatabase() {
         console.log('Seeding admin user...');
         const hashedPassword = await bcrypt.hash('password123', saltRounds);
         await knex('users').insert({
-          id: 1, // Explicitly set ID for referral testing
+          id: 1,
           publicId: 'AD-1',
           name: 'Admin User',
           email: 'admin@flash.com',
           password: hashedPassword,
-          roles: JSON.stringify(['Administrator']),
+          roles: ['Administrator'], // Insert as array directly
         });
         console.log('Admin user created: admin@flash.com / password123');
     } else {
         console.log('Admin user already exists: admin@flash.com');
+        // Ensure admin has proper roles format
+        if (typeof adminExists.roles === 'string') {
+          await knex('users').where({ id: adminExists.id }).update({
+            roles: ['Administrator']
+          });
+        }
     }
 
     // Seed test client user with proper priority multipliers
@@ -184,15 +334,15 @@ async function setupDatabase() {
           name: 'Test Client',
           email: 'client@test.com',
           password: hashedPassword,
-          roles: JSON.stringify(['Client']),
+          roles: ['Client'], // Insert as array directly
           flatRateFee: 75.0,
-          priorityMultipliers: JSON.stringify({ Standard: 1.0, Urgent: 1.5, Express: 2.0 }),
-          address: JSON.stringify({
+          priorityMultipliers: { Standard: 1.0, Urgent: 1.5, Express: 2.0 }, // Insert as object directly
+          address: {
             street: "123 Test Street",
-            details: "Building A",
+            details: "Building A", 
             city: "Cairo",
             zone: "Downtown"
-          })
+          }
         });
         console.log('Test client created: client@test.com / password123');
     }
@@ -208,12 +358,11 @@ async function setupDatabase() {
           name: 'Test Courier',
           email: 'courier@test.com',
           password: hashedPassword,
-          roles: JSON.stringify(['Courier']),
-          zones: JSON.stringify(['Downtown', 'Heliopolis', 'Nasr City'])
+          roles: ['Courier'], // Insert as array directly
+          zones: ['Downtown', 'Heliopolis', 'Nasr City'] // Insert as array directly
         });
         console.log('Test courier created: courier@test.com / password123');
     }
-
 
     const hasShipmentsTable = await knex.schema.hasTable('shipments');
     if (!hasShipmentsTable) {
@@ -224,8 +373,8 @@ async function setupDatabase() {
             table.string('clientName').notNullable();
             table.string('recipientName').notNullable();
             table.string('recipientPhone').notNullable();
-            table.json('fromAddress').notNullable();
-            table.json('toAddress').notNullable();
+            createJsonColumn(table, 'fromAddress', true);
+            createJsonColumn(table, 'toAddress', true);
             table.text('packageDescription');
             table.boolean('isLargeOrder').defaultTo(false);
             table.decimal('price', 10, 2).notNullable();
@@ -241,26 +390,41 @@ async function setupDatabase() {
             table.text('failureReason');
             table.string('failurePhotoPath');
             table.text('packagingNotes');
-            table.json('packagingLog');
-            table.json('statusHistory');
+            createJsonColumn(table, 'packagingLog');
+            createJsonColumn(table, 'statusHistory');
             table.decimal('amountReceived', 10, 2);
             table.decimal('amountToCollect', 10, 2);
         });
     } else {
+       // Add missing columns and convert JSON types
        if (!(await knex.schema.hasColumn('shipments', 'packagingNotes'))) {
          await knex.schema.alterTable('shipments', t => t.text('packagingNotes'));
        }
        if (!(await knex.schema.hasColumn('shipments', 'packagingLog'))) {
-         await knex.schema.alterTable('shipments', t => t.json('packagingLog'));
+         await knex.schema.alterTable('shipments', t => createJsonColumn(t, 'packagingLog'));
        }
        if (!(await knex.schema.hasColumn('shipments', 'statusHistory'))) {
-         await knex.schema.alterTable('shipments', t => t.json('statusHistory'));
+         await knex.schema.alterTable('shipments', t => createJsonColumn(t, 'statusHistory'));
        }
        if (!(await knex.schema.hasColumn('shipments', 'amountReceived'))) {
         await knex.schema.alterTable('shipments', t => t.decimal('amountReceived', 10, 2));
       }
       if (!(await knex.schema.hasColumn('shipments', 'amountToCollect'))) {
         await knex.schema.alterTable('shipments', t => t.decimal('amountToCollect', 10, 2));
+      }
+      
+      // Convert JSON columns in PostgreSQL
+      if (process.env.DATABASE_URL) {
+        try {
+          const shipmentJsonColumns = ['fromAddress', 'toAddress', 'packagingLog', 'statusHistory'];
+          for (const col of shipmentJsonColumns) {
+            if (await knex.schema.hasColumn('shipments', col)) {
+              await knex.raw(`ALTER TABLE shipments ALTER COLUMN ${col} TYPE jsonb USING ${col}::jsonb`);
+            }
+          }
+        } catch (error) {
+          console.log('Note: Shipment JSON column conversion skipped');
+        }
       }
     }
     
@@ -273,7 +437,6 @@ async function setupDatabase() {
         });
         await knex('shipment_counters').insert({ id: 'global', count: 0 });
     }
-
 
     const hasClientTransactionsTable = await knex.schema.hasTable('client_transactions');
     if (!hasClientTransactionsTable) {
@@ -369,7 +532,6 @@ async function setupDatabase() {
         });
     }
     
-    // Add failurePhotoPath column if it doesn't exist
     if (await knex.schema.hasTable('shipments') && !(await knex.schema.hasColumn('shipments', 'failurePhotoPath'))) {
         console.log('Migration: Adding "failurePhotoPath" column to "shipments" table.');
         await knex.schema.alterTable('shipments', (table) => {
@@ -377,7 +539,7 @@ async function setupDatabase() {
         });
     }
 
-    // --- New Tables for Inventory & Asset Management ---
+    // Inventory & Asset Management tables (no JSON columns, so no changes needed)
     const hasInventoryTable = await knex.schema.hasTable('inventory_items');
     if (!hasInventoryTable) {
       console.log('Creating "inventory_items" table...');
@@ -399,17 +561,16 @@ async function setupDatabase() {
         }
     }
 
-    // Always re-seed inventory to ensure it's up to date with new items
+    // Always re-seed inventory
     console.log('Seeding inventory items...');
-    await knex('inventory_items').del(); // Clear old items
+    await knex('inventory_items').del();
     await knex('inventory_items').insert([
         { id: 'inv_label', name: 'Shipping Label', quantity: 10000, unit: 'labels', lastUpdated: new Date().toISOString(), minStock: 500, unitPrice: 0.50 },
         { id: 'inv_box_sm', name: 'Small Cardboard Box', quantity: 1000, unit: 'boxes', lastUpdated: new Date().toISOString(), minStock: 100, unitPrice: 5.00 },
         { id: 'inv_box_md', name: 'Medium Cardboard Box', quantity: 1000, unit: 'boxes', lastUpdated: new Date().toISOString(), minStock: 100, unitPrice: 7.50 },
         { id: 'inv_box_lg', name: 'Large Cardboard Box', quantity: 500, unit: 'boxes', lastUpdated: new Date().toISOString(), minStock: 50, unitPrice: 10.00 },
         { id: 'inv_plastic_wrap', name: 'Packaging Plastic', quantity: 200, unit: 'rolls', lastUpdated: new Date().toISOString(), minStock: 20, unitPrice: 30.00 },
-      ]);
-    
+    ]);
     
     const hasAssetsTable = await knex.schema.hasTable('assets');
     if (!hasAssetsTable) {
