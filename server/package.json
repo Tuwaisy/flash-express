@@ -4,7 +4,8 @@
   "description": "Backend server to send emails for Flash Express.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+  "start": "node server.js",
+  "build:skip-check": "echo 'Skipping build check.'"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

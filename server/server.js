@@ -15,9 +15,70 @@ const { knex, setupDatabase } = require('./db');
 const saltRounds = 10; // For bcrypt hashing
 
 // Main async function to set up and start the server
+// 5. Add a database migration helper to ensure proper JSON column types
+const ensureJsonColumnsInPostgreSQL = async () => {
+    if (!process.env.DATABASE_URL) return; // Skip if not PostgreSQL
+    try {
+        // Check if columns need to be converted to JSONB
+        const columnsToCheck = [
+            { table: 'users', column: 'roles' },
+            { table: 'users', column: 'address' },
+            { table: 'users', column: 'zones' },
+            { table: 'users', column: 'priorityMultipliers' },
+            { table: 'shipments', column: 'fromAddress' },
+            { table: 'shipments', column: 'toAddress' },
+            { table: 'shipments', column: 'statusHistory' },
+            { table: 'shipments', column: 'packagingLog' },
+            { table: 'custom_roles', column: 'permissions' }
+        ];
+        for (const { table, column } of columnsToCheck) {
+            try {
+                // Try to ensure the column is JSONB type
+                await knex.schema.alterTable(table, (t) => {
+                    t.jsonb(column).alter();
+                });
+                console.log(`✅ Converted ${table}.${column} to JSONB`);
+            } catch (error) {
+                // Column might already be JSONB or might not exist
+                console.log(`ℹ️  Column ${table}.${column} conversion skipped:`, error.message);
+            }
+        }
+    } catch (error) {
+        console.error('Error ensuring JSON columns:', error);
+    }
+};
+
+// 6. Add a data validation function to check for JSON parsing issues
+const validateUserRoles = async () => {
+    try {
+        const users = await knex('users').select('id', 'name', 'roles');
+        let issues = 0;
+        for (const user of users) {
+            const parsedRoles = safeJsonParse(user.roles, []);
+            if (!Array.isArray(parsedRoles)) {
+                console.warn(`⚠️  User ${user.name} (${user.id}) has invalid roles:`, user.roles);
+                issues++;
+                // Try to fix common issues
+                if (typeof user.roles === 'string' && !user.roles.startsWith('[')) {
+                    // Single role not in array format
+                    const fixedRoles = [user.roles.replace(/"/g, '')];
+                    await knex('users').where({ id: user.id }).update({ roles: JSON.stringify(fixedRoles) });
+                    console.log(`✅ Fixed roles for user ${user.name}: ${JSON.stringify(fixedRoles)}`);
+                }
+            }
+        }
+        console.log(`📊 User roles validation complete. Issues found: ${issues}`);
+        return issues;
+    } catch (error) {
+        console.error('Error validating user roles:', error);
+        return -1;
+    }
+};
 async function main() {
     // Wait for database setup to complete
     await setupDatabase();
+    await ensureJsonColumnsInPostgreSQL();
+    await validateUserRoles();
 
     // 2. Initialize Express app
     const app = express();
@@ -127,10 +188,10 @@ async function main() {
                 // PostgreSQL compatible JSON query using JSON functions
                 let clients;
                 if (process.env.DATABASE_URL) {
-                    // PostgreSQL: Check if JSON array contains "Client" using jsonb_array_elements_text
+                    // PostgreSQL: Use JSONB contains operator
                     clients = await trx('users')
                         .where('manualTierAssignment', false)
-                        .whereRaw("EXISTS (SELECT 1 FROM jsonb_array_elements_text(roles::jsonb) AS elem WHERE elem = 'Client')");
+                        .whereRaw("roles::jsonb ? 'Client'");
                 } else {
                     // SQLite: Use LIKE operator
                     clients = await trx('users')
@@ -185,12 +246,16 @@ async function main() {
     // Safely parse JSON fields - handles both SQLite (string) and PostgreSQL (object) formats
     const safeJsonParse = (value, defaultValue = null) => {
         if (value === null || value === undefined) return defaultValue;
-        if (typeof value === 'object') return value; // Already parsed by PostgreSQL
+        // PostgreSQL returns JSONB as objects directly
+        if (typeof value === 'object') {
+            return value;
+        }
+        // SQLite returns JSON as strings
         if (typeof value === 'string') {
             try {
                 return JSON.parse(value);
             } catch (e) {
-                console.error('Failed to parse JSON:', e);
+                console.error('Failed to parse JSON:', e, 'Value:', value);
                 return defaultValue;
             }
         }
@@ -480,8 +545,14 @@ async function main() {
                     console.log('✅ Password match successful');
                     const { password, ...userWithoutPassword } = user;
                     let finalUser = parseUserRoles(userWithoutPassword);
-                    finalUser = parseJsonField(finalUser, 'address'); // Ensure address is an object
-                    finalUser = parseJsonField(finalUser, 'zones'); // Ensure zones is an array
+                    finalUser = parseJsonField(finalUser, 'address');
+                    finalUser = parseJsonField(finalUser, 'zones');
+                    finalUser = parseJsonField(finalUser, 'priorityMultipliers');
+                    // Validate that roles is an array
+                    if (!Array.isArray(finalUser.roles)) {
+                        console.warn('⚠️  User roles is not an array, fixing...', finalUser.roles);
+                        finalUser.roles = [];
+                    }
                     console.log('🚀 Sending user data:', finalUser.name, finalUser.roles);
                     res.json(finalUser);
                 } else {
@@ -492,6 +563,39 @@ async function main() {
                 console.log('❌ User not found for email:', email);
                 res.status(401).json({ error: 'Invalid credentials' });
             }
+// 9. Add a debug endpoint to check user permissions (remove in production)
+app.get('/api/debug/users/:id', async (req, res) => {
+    if (process.env.NODE_ENV === 'production') {
+        return res.status(404).json({ error: 'Not found' });
+    }
+    try {
+        const { id } = req.params;
+        const user = await knex('users').where({ id }).first();
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        const { password, ...userWithoutPassword } = user;
+        const debugInfo = {
+            original: userWithoutPassword,
+            parsed: {
+                roles: safeJsonParse(user.roles, []),
+                address: safeJsonParse(user.address, null),
+                zones: safeJsonParse(user.zones, []),
+                priorityMultipliers: safeJsonParse(user.priorityMultipliers, null)
+            },
+            types: {
+                roles: typeof user.roles,
+                address: typeof user.address,
+                zones: typeof user.zones,
+                priorityMultipliers: typeof user.priorityMultipliers
+            }
+        };
+        res.json(debugInfo);
+    } catch (error) {
+        console.error('Debug endpoint error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
         } catch (error) {
             console.error("🔥 Login error:", error);
             res.status(500).json({ error: 'Server error during login' });
@@ -661,32 +765,52 @@ async function main() {
         const { id } = req.params;
         const { flatRateFee } = req.body;
         try {
-            // PostgreSQL compatible JSON query
             if (process.env.DATABASE_URL) {
-                await knex('users').where({ id }).whereRaw("EXISTS (SELECT 1 FROM jsonb_array_elements_text(roles::jsonb) AS elem WHERE elem = 'Client')").update({ flatRateFee });
+                // PostgreSQL: Use JSONB contains operator
+                await knex('users')
+                    .where({ id })
+                    .whereRaw("roles::jsonb ? 'Client'")
+                    .update({ flatRateFee });
             } else {
-                await knex('users').where({ id }).andWhereJsonSupersetOf('roles', ['Client']).update({ flatRateFee });
+                // SQLite: Use JSON superset check
+                await knex('users')
+                    .where({ id })
+                    .andWhereJsonSupersetOf('roles', ['Client'])
+                    .update({ flatRateFee });
             }
             res.status(200).json({ success: true });
             io.emit('data_updated');
         }
-        catch (error) { res.status(500).json({ error: 'Server error' }); }
+        catch (error) { 
+            console.error('Error updating client flat rate:', error);
+            res.status(500).json({ error: 'Server error' }); 
+        }
     });
 
     app.put('/api/clients/:id/taxcard', async (req, res) => {
         const { id } = req.params;
         const { taxCardNumber } = req.body;
         try {
-            // PostgreSQL compatible JSON query
             if (process.env.DATABASE_URL) {
-                await knex('users').where({ id }).whereRaw("EXISTS (SELECT 1 FROM jsonb_array_elements_text(roles::jsonb) AS elem WHERE elem = 'Client')").update({ taxCardNumber });
+                // PostgreSQL: Use JSONB contains operator
+                await knex('users')
+                    .where({ id })
+                    .whereRaw("roles::jsonb ? 'Client'")
+                    .update({ taxCardNumber });
             } else {
-                await knex('users').where({ id }).andWhereJsonSupersetOf('roles', ['Client']).update({ taxCardNumber });
+                // SQLite: Use JSON superset check
+                await knex('users')
+                    .where({ id })
+                    .andWhereJsonSupersetOf('roles', ['Client'])
+                    .update({ taxCardNumber });
             }
             res.status(200).json({ success: true });
             io.emit('data_updated');
         }
-        catch (error) { res.status(500).json({ error: 'Server error' }); }
+        catch (error) { 
+            console.error('Error updating tax card:', error);
+            res.status(500).json({ error: 'Server error' }); 
+        }
     });
 
 
