@@ -154,14 +154,16 @@ async function setupDatabase() {
         { id: 'role_assigning_user', name: 'Assigning User', permissions: assigningUserPermissions, isSystemRole: true },
     ];
     
-    // For both PostgreSQL and SQLite, the permissions array must be stringified
-    // before being inserted into the JSON column.
-    const finalRolesToSeed = rolesToSeed.map(r => ({ 
-        ...r, 
-        permissions: JSON.stringify(r.permissions) 
-    }));
-
-    await knex('custom_roles').insert(finalRolesToSeed);
+    // Insert roles one by one to avoid potential batch insert issues with JSON types.
+    for (const role of rolesToSeed) {
+        // Manually stringify the permissions array for consistent insertion
+        // across both SQLite and PostgreSQL.
+        const roleToInsert = {
+            ...role,
+            permissions: JSON.stringify(role.permissions)
+        };
+        await knex('custom_roles').insert(roleToInsert);
+    }
 
     // Seed admin user
     const adminExists = await knex('users').where({ email: 'admin@flash.com' }).first();
