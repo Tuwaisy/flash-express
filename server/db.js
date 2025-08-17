@@ -154,11 +154,12 @@ async function setupDatabase() {
         { id: 'role_assigning_user', name: 'Assigning User', permissions: assigningUserPermissions, isSystemRole: true },
     ];
     
-    // For PostgreSQL, knex handles JSON stringification automatically.
-    // For SQLite, we need to do it manually.
-    const finalRolesToSeed = process.env.DATABASE_URL 
-        ? rolesToSeed 
-        : rolesToSeed.map(r => ({ ...r, permissions: JSON.stringify(r.permissions) }));
+    // For both PostgreSQL and SQLite, the permissions array must be stringified
+    // before being inserted into the JSON column.
+    const finalRolesToSeed = rolesToSeed.map(r => ({ 
+        ...r, 
+        permissions: JSON.stringify(r.permissions) 
+    }));
 
     await knex('custom_roles').insert(finalRolesToSeed);
 
