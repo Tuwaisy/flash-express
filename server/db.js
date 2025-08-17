@@ -297,7 +297,13 @@ async function setupDatabase() {
         { id: 'role_courier', name: 'Courier', permissions: courierPermissions, isSystemRole: true },
         { id: 'role_assigning_user', name: 'Assigning User', permissions: assigningUserPermissions, isSystemRole: true },
     ];
-    await knex('custom_roles').insert(rolesToSeed);
+    
+    // Explicitly stringify JSON fields for insertion to avoid driver/db issues.
+    const processedRoles = rolesToSeed.map(role => ({
+        ...role,
+        permissions: JSON.stringify(role.permissions)
+    }));
+    await knex('custom_roles').insert(processedRoles);
 
     // Seed admin user
     const adminExists = await knex('users').where({ email: 'admin@flash.com' }).first();
@@ -310,17 +316,12 @@ async function setupDatabase() {
           name: 'Admin User',
           email: 'admin@flash.com',
           password: hashedPassword,
-          roles: ['Administrator'], // Insert as array directly
+          roles: JSON.stringify(['Administrator']), // Insert as stringified JSON
         });
         console.log('Admin user created: admin@flash.com / password123');
     } else {
         console.log('Admin user already exists: admin@flash.com');
-        // Ensure admin has proper roles format
-        if (typeof adminExists.roles === 'string') {
-          await knex('users').where({ id: adminExists.id }).update({
-            roles: ['Administrator']
-          });
-        }
+        // Do nothing if admin exists, validation logic is in server.js
     }
 
     // Seed test client user with proper priority multipliers
@@ -334,15 +335,15 @@ async function setupDatabase() {
           name: 'Test Client',
           email: 'client@test.com',
           password: hashedPassword,
-          roles: ['Client'], // Insert as array directly
+          roles: JSON.stringify(['Client']), // Stringify
           flatRateFee: 75.0,
-          priorityMultipliers: { Standard: 1.0, Urgent: 1.5, Express: 2.0 }, // Insert as object directly
-          address: {
+          priorityMultipliers: JSON.stringify({ Standard: 1.0, Urgent: 1.5, Express: 2.0 }), // Stringify
+          address: JSON.stringify({
             street: "123 Test Street",
             details: "Building A", 
             city: "Cairo",
             zone: "Downtown"
-          }
+          }) // Stringify
         });
         console.log('Test client created: client@test.com / password123');
     }
@@ -358,8 +359,8 @@ async function setupDatabase() {
           name: 'Test Courier',
           email: 'courier@test.com',
           password: hashedPassword,
-          roles: ['Courier'], // Insert as array directly
-          zones: ['Downtown', 'Heliopolis', 'Nasr City'] // Insert as array directly
+          roles: JSON.stringify(['Courier']), // Stringify
+          zones: JSON.stringify(['Downtown', 'Heliopolis', 'Nasr City']) // Stringify
         });
         console.log('Test courier created: courier@test.com / password123');
     }

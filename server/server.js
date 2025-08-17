@@ -14,6 +14,42 @@ const { knex, setupDatabase } = require('./db');
 
 const saltRounds = 10; // For bcrypt hashing
 
+// --- Helper Functions ---
+const generateId = (prefix) => `${prefix}_${Date.now()}${Math.random().toString(36).substring(2, 9)}`;
+
+// Safely parse JSON fields - handles both SQLite (string) and PostgreSQL (object) formats
+const safeJsonParse = (value, defaultValue = null) => {
+    if (value === null || value === undefined) return defaultValue;
+    // PostgreSQL returns JSONB as objects directly
+    if (typeof value === 'object') {
+        return value;
+    }
+    // SQLite returns JSON as strings
+    if (typeof value === 'string') {
+        try {
+            return JSON.parse(value);
+        } catch (e) {
+            console.error('Failed to parse JSON:', e, 'Value:', value);
+            return defaultValue;
+        }
+    }
+    return defaultValue;
+};
+
+const parseUserRoles = (user) => {
+    if (user && user.roles) {
+        return { ...user, roles: safeJsonParse(user.roles, []) };
+    }
+    return user;
+};
+
+const parseJsonField = (item, field) => {
+    if (item && item[field] !== undefined) {
+        return { ...item, [field]: safeJsonParse(item[field], null) };
+    }
+    return item;
+};
+
 // Main async function to set up and start the server
 // 5. Add a database migration helper to ensure proper JSON column types
 const ensureJsonColumnsInPostgreSQL = async () => {
@@ -191,7 +227,7 @@ async function main() {
                     // PostgreSQL: Use JSONB contains operator
                     clients = await trx('users')
                         .where('manualTierAssignment', false)
-                        .whereRaw("roles::jsonb ? 'Client'");
+                        .whereRaw(`roles @> '["Client"]'::jsonb`);
                 } else {
                     // SQLite: Use LIKE operator
                     clients = await trx('users')
@@ -240,41 +276,6 @@ async function main() {
     updateClientTiers(); // Run on startup
 
 
-    // --- Helper Functions ---
-    const generateId = (prefix) => `${prefix}_${Date.now()}${Math.random().toString(36).substring(2, 9)}`;
-    
-    // Safely parse JSON fields - handles both SQLite (string) and PostgreSQL (object) formats
-    const safeJsonParse = (value, defaultValue = null) => {
-        if (value === null || value === undefined) return defaultValue;
-        // PostgreSQL returns JSONB as objects directly
-        if (typeof value === 'object') {
-            return value;
-        }
-        // SQLite returns JSON as strings
-        if (typeof value === 'string') {
-            try {
-                return JSON.parse(value);
-            } catch (e) {
-                console.error('Failed to parse JSON:', e, 'Value:', value);
-                return defaultValue;
-            }
-        }
-        return defaultValue;
-    };
-
-    const parseUserRoles = (user) => {
-        if (user && user.roles) {
-            return { ...user, roles: safeJsonParse(user.roles, []) };
-        }
-        return user;
-    };
-
-    const parseJsonField = (item, field) => {
-        if (item && item[field] !== undefined) {
-            return { ...item, [field]: safeJsonParse(item[field], null) };
-        }
-        return item;
-    };
     
     // Twilio Client
     const twilioClient = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
