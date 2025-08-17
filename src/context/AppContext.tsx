@@ -287,14 +287,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
     }, [currentUser, addToast]);
 
-    // This effect ensures the currentUser in context is always up-to-date
-    // with permissions and a calculated wallet balance.
-    const userWithCalculatedData = useMemo(() => {
-        if (!currentUser || !customRoles.length) return null;
+    // This effect is now responsible for setting the final, fully-calculated user object.
+    useEffect(() => {
+        if (!currentUser || !customRoles.length || !users.length) {
+            // If we have a user but not the data needed to calculate permissions, wait.
+            return;
+        }
 
-        // 1. Recalculate permissions from the latest roles data
-        const updatedUserFromList = users.find(u => u.id === currentUser.id);
-        const userToProcess = updatedUserFromList || currentUser;
+        // Find the full user object from the users list to ensure we have the latest data
+        const userToProcess = users.find(u => u.id === currentUser.id);
+        if (!userToProcess) {
+            // If the user is not in the list, it might be a stale state.
+            // It's safer to wait or even logout. For now, we'll just wait.
+            return;
+        }
 
         const safeUserRoles = Array.isArray(userToProcess.roles) ? userToProcess.roles : [];
         
@@ -307,23 +313,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }, [] as Permission[]);
         const permissions = [...new Set(allPermissions)].sort();
 
-        // 2. Calculate wallet balance
         const myTransactions = clientTransactions.filter(t => t.userId === currentUser.id);
         const walletBalance = myTransactions.filter(t => t.status !== 'Pending').reduce((sum, t) => sum + t.amount, 0);
 
-        return {
+        // Create the final user object with all data calculated
+        const finalUserObject = {
             ...userToProcess,
             permissions,
             walletBalance,
         };
+
+        // Atomically update the currentUser. We check if permissions have changed
+        // to avoid an infinite loop, as this effect depends on currentUser.
+        if (JSON.stringify(currentUser.permissions) !== JSON.stringify(permissions)) {
+            setCurrentUser(finalUserObject);
+        }
 
     }, [currentUser, users, customRoles, clientTransactions]);
 
 
     // --- App Functions ---
     const hasPermission = useCallback((permission: Permission) => {
-        return userWithCalculatedData?.permissions?.includes(permission) ?? false;
-    }, [userWithCalculatedData]);
+        // The permission check now directly uses the permissions array on the user object.
+        return currentUser?.permissions?.includes(permission) ?? false;
+    }, [currentUser]);
 
     const addShipment = useCallback(async (shipmentData: Omit<Shipment, 'id' | 'creationDate' | 'status'>) => {
         if (!userWithCalculatedData) return;
