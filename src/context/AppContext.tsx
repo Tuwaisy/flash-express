@@ -173,7 +173,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const logout = useCallback(() => {
         setCurrentUser(null);
-        // Also clear other states
         setUsers([]);
         setShipments([]);
         setClientTransactions([]);
@@ -190,83 +189,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addToast('You have been logged out.', 'info');
     }, [addToast]);
 
-    const fetchData = useCallback(async () => {
-        if (!currentUser) return;
+    const login = useCallback(async (email: string, password: string): Promise<boolean> => {
         setIsLoading(true);
         try {
+            // Step 1: Log in and get the user object.
+            const user: User = await apiFetch('/api/login', {
+                method: 'POST',
+                body: JSON.stringify({ email, password })
+            });
+
+            // Step 2: Fetch all other application data.
             const data = await apiFetch('/api/data');
+
+            // Step 3: Set all data states from the fetched data.
+            setCustomRoles(data.customRoles || []);
             setUsers(data.users || []);
             setShipments(data.shipments || []);
             setClientTransactions(data.clientTransactions || []);
             setNotifications(data.notifications || []);
             setRawCourierStats(data.courierStats || []);
             setCourierTransactions(data.courierTransactions || []);
-            setCustomRoles(data.customRoles || []);
             setInventoryItems(data.inventoryItems || []);
             setAssets(data.assets || []);
             setSuppliers(data.suppliers || []);
             setSupplierTransactions(data.supplierTransactions || []);
             setInAppNotifications(data.inAppNotifications || []);
             setTierSettings(data.tierSettings || []);
-        } catch (error: any) {
-            addToast(`Failed to load data: ${error.message}`, 'error');
-            logout();
-        } finally {
-            setIsLoading(false);
-        }
-    }, [addToast, currentUser, logout]);
 
-    const login = useCallback(async (email: string, password: string): Promise<boolean> => {
-        setIsLoading(true);
-        try {
-            console.log('🔑 Starting login process...');
-            
-            // First, try to get roles (but don't fail if this fails)
-            let rolesData: CustomRole[] = [];
-            try {
-                console.log('📋 Fetching roles...');
-                rolesData = await apiFetch('/api/roles');
-                console.log('✅ Roles fetched successfully');
-            } catch (rolesError) {
-                console.warn('⚠️ Failed to fetch roles, continuing with empty roles:', rolesError);
-                // Continue with empty roles rather than failing completely
-            }
-            setCustomRoles(rolesData);
-            
-            console.log('👤 Attempting login...');
-            const user: User = await apiFetch('/api/login', { 
-                method: 'POST', 
-                body: JSON.stringify({ email, password }) 
-            });
-            console.log('✅ Login API successful:', user.name);
-            
-            // Set the user immediately. The permissions will be calculated by the `userWithCalculatedData` memo.
+            // Step 4: Finally, set the current user. This triggers the UI to update
+            // now that all necessary data is loaded and ready.
             setCurrentUser(user);
+
             addToast(`Welcome back, ${user.name}!`, 'success');
-            console.log('🎉 Login completed successfully');
             return true;
         } catch (error: any) {
-            console.error('❌ Login failed:', error);
             const errorMessage = error.message || 'Login failed - please try again';
             addToast(errorMessage, 'error');
-            setCurrentUser(null);
+            logout(); // Ensure a clean state on failure
             return false;
         } finally {
             setIsLoading(false);
         }
-    }, [addToast]);
-    
-    useEffect(() => {
-        if (currentUser) {
-            fetchData();
-        }
-    }, [currentUser, fetchData]);
+    }, [addToast, logout]);
     
     // WebSocket integration for real-time updates
     useEffect(() => {
         if (!currentUser) {
             return;
         }
+
+        // This function will be called by the websocket
+        const refetchData = async () => {
+            try {
+                const data = await apiFetch('/api/data');
+                setUsers(data.users || []);
+                setShipments(data.shipments || []);
+                setClientTransactions(data.clientTransactions || []);
+                setNotifications(data.notifications || []);
+                setRawCourierStats(data.courierStats || []);
+                setCourierTransactions(data.courierTransactions || []);
+                setCustomRoles(data.customRoles || []);
+                setInventoryItems(data.inventoryItems || []);
+                setAssets(data.assets || []);
+                setSuppliers(data.suppliers || []);
+                setSupplierTransactions(data.supplierTransactions || []);
+                setInAppNotifications(data.inAppNotifications || []);
+                setTierSettings(data.tierSettings || []);
+            } catch (error: any) {
+                addToast(`Failed to refresh data: ${error.message}`, 'error');
+            }
+        };
 
         const socketOptions = {
             transports: ['websocket'],
@@ -283,7 +275,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         socket.on('data_updated', () => {
             console.log('Received data_updated event. Fetching new data...');
             addToast('Data updated in real-time.', 'info', 2000);
-            fetchData();
+            refetchData();
         });
 
         socket.on('disconnect', () => {
@@ -293,7 +285,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return () => {
             socket.disconnect();
         };
-    }, [currentUser, fetchData, addToast]);
+    }, [currentUser, addToast]);
 
     // This effect ensures the currentUser in context is always up-to-date
     // with permissions and a calculated wallet balance.
