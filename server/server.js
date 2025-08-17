@@ -20,37 +20,51 @@ const generateId = (prefix) => `${prefix}_${Date.now()}${Math.random().toString(
 // Safely parse JSON fields - handles both SQLite (string) and PostgreSQL (object) formats
 const safeJsonParse = (value, defaultValue = null) => {
     if (value === null || value === undefined) return defaultValue;
-    // PostgreSQL can return JSONB as objects directly, so if it's already an object, return it.
-    if (typeof value === 'object') {
-        return value;
-    }
-    // SQLite returns JSON as strings, so we need to parse it.
+    if (typeof value === 'object') return value; // Already parsed (from PG)
     if (typeof value === 'string') {
         try {
             return JSON.parse(value);
         } catch (e) {
-            // If parsing fails, it might be a simple string that's not JSON.
-            // Log the error and return the original string or a default.
-            console.warn('safeJsonParse: Value is a string but not valid JSON. Value:', value);
+            console.warn('safeJsonParse: Failed to parse string, returning default. Value:', value);
             return defaultValue;
         }
     }
-    // Fallback for other types or if logic fails
-    return defaultValue;
+    return defaultValue; // Fallback
 };
 
-const parseUserRoles = (user) => {
-    if (user && user.roles) {
-        return { ...user, roles: safeJsonParse(user.roles, []) };
-    }
-    return user;
+// Centralized parser for User objects
+const parseUser = (user) => {
+    if (!user) return null;
+    
+    // Create a new object to avoid modifying the original
+    const parsedUser = { ...user };
+
+    // Safely remove password
+    delete parsedUser.password;
+
+    // Parse all JSON-like fields
+    parsedUser.roles = safeJsonParse(user.roles, []);
+    parsedUser.address = safeJsonParse(user.address, null);
+    parsedUser.zones = safeJsonParse(user.zones, []);
+    parsedUser.priorityMultipliers = safeJsonParse(user.priorityMultipliers, null);
+
+    return parsedUser;
 };
 
-const parseJsonField = (item, field) => {
-    if (item && item[field] !== undefined) {
-        return { ...item, [field]: safeJsonParse(item[field], null) };
-    }
-    return item;
+// Centralized parser for Shipment objects
+const parseShipment = (shipment) => {
+    if (!shipment) return null;
+
+    // Create a new object
+    const parsedShipment = { ...shipment };
+
+    // Parse all JSON-like fields
+    parsedShipment.fromAddress = safeJsonParse(shipment.fromAddress, null);
+    parsedShipment.toAddress = safeJsonParse(shipment.toAddress, null);
+    parsedShipment.packagingLog = safeJsonParse(shipment.packagingLog, []);
+    parsedShipment.statusHistory = safeJsonParse(shipment.statusHistory, []);
+
+    return parsedShipment;
 };
 
 // Main async function to set up and start the server
@@ -513,14 +527,10 @@ async function main() {
                 const match = await bcrypt.compare(password, user.password);
                 if (match) {
                     console.log('✅ Password match successful');
-                    const { password, ...userWithoutPassword } = user;
-                    let finalUser = parseUserRoles(userWithoutPassword);
-                    finalUser = parseJsonField(finalUser, 'address');
-                    finalUser = parseJsonField(finalUser, 'zones');
-                    finalUser = parseJsonField(finalUser, 'priorityMultipliers');
-                    // Validate that roles is an array
+                    const finalUser = parseUser(user);
+                    // Validate that roles is an array after parsing
                     if (!Array.isArray(finalUser.roles)) {
-                        console.warn('⚠️  User roles is not an array, fixing...', finalUser.roles);
+                        console.warn('⚠️  User roles is not an array after parsing, fixing...', finalUser.roles);
                         finalUser.roles = [];
                     }
                     console.log('🚀 Sending user data:', finalUser.name, finalUser.roles);
@@ -544,15 +554,9 @@ app.get('/api/debug/users/:id', async (req, res) => {
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
-        const { password, ...userWithoutPassword } = user;
         const debugInfo = {
-            original: userWithoutPassword,
-            parsed: {
-                roles: safeJsonParse(user.roles, []),
-                address: safeJsonParse(user.address, null),
-                zones: safeJsonParse(user.zones, []),
-                priorityMultipliers: safeJsonParse(user.priorityMultipliers, null)
-            },
+            original: user,
+            parsed: parseUser(user),
             types: {
                 roles: typeof user.roles,
                 address: typeof user.address,
@@ -591,25 +595,9 @@ app.get('/api/debug/users/:id', async (req, res) => {
           knex('tier_settings').select(),
         ]);
 
-        const safeUsers = users.map(u => {
-            let { password, ...user } = u;
-            user = parseUserRoles(user);
-            user = parseJsonField(user, 'address');
-            user = parseJsonField(user, 'zones');
-            user = parseJsonField(user, 'priorityMultipliers');
-            return user;
-        });
-        
-        const parsedShipments = shipments.map(s => {
-            let shipment = s;
-            shipment = parseJsonField(shipment, 'fromAddress');
-            shipment = parseJsonField(shipment, 'toAddress');
-            shipment = parseJsonField(shipment, 'packagingLog');
-            shipment = parseJsonField(shipment, 'statusHistory');
-            return shipment;
-        });
-
-        const parsedRoles = customRoles.map(r => parseJsonField(r, 'permissions'));
+        const safeUsers = users.map(parseUser);
+        const parsedShipments = shipments.map(parseShipment);
+        const parsedRoles = customRoles.map(r => ({ ...r, permissions: safeJsonParse(r.permissions, []) }));
 
         res.json({ users: safeUsers, shipments: parsedShipments, clientTransactions, courierStats, courierTransactions, notifications, customRoles: parsedRoles, inventoryItems, assets, suppliers, supplierTransactions, inAppNotifications, tierSettings });
       } catch (error) {
@@ -676,8 +664,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             });
             
             const { password: _, ...userWithoutPassword } = newUser;
-            let finalUser = parseUserRoles(userWithoutPassword);
-            finalUser = parseJsonField(finalUser, 'zones');
+            const finalUser = parseUser(userWithoutPassword);
             res.status(201).json(finalUser);
             io.emit('data_updated');
         } catch (error) {
@@ -866,7 +853,8 @@ app.get('/api/debug/users/:id', async (req, res) => {
             });
             
             const createdShipment = await knex('shipments').where({ id: newId }).first();
-            res.status(201).json(createdShipment);
+            const finalShipment = parseShipment(createdShipment);
+            res.status(201).json(finalShipment);
             io.emit('data_updated');
         } catch (error) {
             console.error("Error creating shipment:", error);
