@@ -226,7 +226,7 @@ async function setupDatabase() {
         { id: 'role_client', name: 'Client', permissions: clientPermissions, isSystemRole: true },
         { id: 'role_courier', name: 'Courier', permissions: courierPermissions, isSystemRole: true },
         { id: 'role_assigning_user', name: 'Assigning User', permissions: assigningUserPermissions, isSystemRole: true },
-    ];
+    ].map(role => ({ ...role, permissions: JSON.stringify(role.permissions) }));
     await knex('custom_roles').insert(rolesToSeed);
 
     // Seed admin user
@@ -240,7 +240,7 @@ async function setupDatabase() {
           name: 'Admin User',
           email: 'admin@flash.com',
           password: hashedPassword,
-          roles: ['Administrator'],
+          roles: JSON.stringify(['Administrator']),
         });
         console.log('Admin user created: admin@flash.com / password123');
     }
@@ -256,10 +256,10 @@ async function setupDatabase() {
           name: 'Test Client',
           email: 'client@test.com',
           password: hashedPassword,
-          roles: ['Client'],
+          roles: JSON.stringify(['Client']),
           flatRateFee: 75.0,
-          priorityMultipliers: { Standard: 1.0, Urgent: 1.5, Express: 2.0 },
-          address: { street: "123 Test Street", details: "Building A", city: "Cairo", zone: "Downtown" }
+          priorityMultipliers: JSON.stringify({ Standard: 1.0, Urgent: 1.5, Express: 2.0 }),
+          address: JSON.stringify({ street: "123 Test Street", details: "Building A", city: "Cairo", zone: "Downtown" })
         });
         console.log('Test client created: client@test.com / password123');
     }
@@ -275,8 +275,8 @@ async function setupDatabase() {
           name: 'Test Courier',
           email: 'courier@test.com',
           password: hashedPassword,
-          roles: ['Courier'],
-          zones: ['Downtown', 'Heliopolis', 'Nasr City']
+          roles: JSON.stringify(['Courier']),
+          zones: JSON.stringify(['Downtown', 'Heliopolis', 'Nasr City'])
         });
         console.log('Test courier created: courier@test.com / password123');
     }
