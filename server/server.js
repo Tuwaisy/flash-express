@@ -35,36 +35,46 @@ const safeJsonParse = (value, defaultValue = null) => {
 // Centralized parser for User objects
 const parseUser = (user) => {
     if (!user) return null;
-    
-    // Create a new object to avoid modifying the original
     const parsedUser = { ...user };
-
-    // Safely remove password
-    delete parsedUser.password;
-
-    // Parse all JSON-like fields
+    delete parsedUser.password; // Ensure password is never sent
     parsedUser.roles = safeJsonParse(user.roles, []);
     parsedUser.address = safeJsonParse(user.address, null);
     parsedUser.zones = safeJsonParse(user.zones, []);
     parsedUser.priorityMultipliers = safeJsonParse(user.priorityMultipliers, null);
-
     return parsedUser;
 };
 
 // Centralized parser for Shipment objects
 const parseShipment = (shipment) => {
     if (!shipment) return null;
-
-    // Create a new object
     const parsedShipment = { ...shipment };
-
-    // Parse all JSON-like fields
     parsedShipment.fromAddress = safeJsonParse(shipment.fromAddress, null);
     parsedShipment.toAddress = safeJsonParse(shipment.toAddress, null);
     parsedShipment.packagingLog = safeJsonParse(shipment.packagingLog, []);
     parsedShipment.statusHistory = safeJsonParse(shipment.statusHistory, []);
-
     return parsedShipment;
+};
+
+// Centralized parser for Role objects
+const parseRole = (role) => {
+    if (!role) return null;
+    const parsedRole = { ...role };
+    parsedRole.permissions = safeJsonParse(role.permissions, []);
+    return parsedRole;
+};
+
+// Centralized parser for Asset objects
+const parseAsset = (asset) => {
+    if (!asset) return null;
+    // No JSON fields in asset currently, but good practice to have a parser
+    return { ...asset };
+};
+
+// Centralized parser for InventoryItem objects
+const parseInventoryItem = (item) => {
+    if (!item) return null;
+    // No JSON fields in inventory item currently
+    return { ...item };
 };
 
 // Main async function to set up and start the server
@@ -461,8 +471,7 @@ async function main() {
     app.get('/api/roles', async (req, res) => {
         try {
             const roles = await knex('custom_roles').select();
-            const parsedRoles = roles.map(r => parseJsonField(r, 'permissions'));
-            res.json(parsedRoles);
+            res.json(roles.map(parseRole));
         } catch (error) {
             res.status(500).json({ error: 'Failed to fetch roles' });
         }
@@ -474,9 +483,9 @@ async function main() {
             return res.status(400).json({ error: 'Missing role name or permissions' });
         }
         try {
-            const newRole = { id: generateId('role'), name, permissions: JSON.stringify(permissions), isSystemRole: false };
-            await knex('custom_roles').insert(newRole);
-            res.status(201).json(parseJsonField(newRole, 'permissions'));
+            const newRoleData = { id: generateId('role'), name, permissions: JSON.stringify(permissions), isSystemRole: false };
+            await knex('custom_roles').insert(newRoleData);
+            res.status(201).json(parseRole(newRoleData));
             io.emit('data_updated');
         } catch (error) {
             res.status(500).json({ error: 'Server error creating role' });
@@ -527,12 +536,8 @@ async function main() {
                 const match = await bcrypt.compare(password, user.password);
                 if (match) {
                     console.log('✅ Password match successful');
+                    // The user object is passed to parseUser which handles password removal and parsing
                     const finalUser = parseUser(user);
-                    // Validate that roles is an array after parsing
-                    if (!Array.isArray(finalUser.roles)) {
-                        console.warn('⚠️  User roles is not an array after parsing, fixing...', finalUser.roles);
-                        finalUser.roles = [];
-                    }
                     console.log('🚀 Sending user data:', finalUser.name, finalUser.roles);
                     res.json(finalUser);
                 } else {
@@ -597,9 +602,11 @@ app.get('/api/debug/users/:id', async (req, res) => {
 
         const safeUsers = users.map(parseUser);
         const parsedShipments = shipments.map(parseShipment);
-        const parsedRoles = customRoles.map(r => ({ ...r, permissions: safeJsonParse(r.permissions, []) }));
+        const parsedRoles = customRoles.map(parseRole);
+        const parsedAssets = assets.map(parseAsset);
+        const parsedInventory = inventoryItems.map(parseInventoryItem);
 
-        res.json({ users: safeUsers, shipments: parsedShipments, clientTransactions, courierStats, courierTransactions, notifications, customRoles: parsedRoles, inventoryItems, assets, suppliers, supplierTransactions, inAppNotifications, tierSettings });
+        res.json({ users: safeUsers, shipments: parsedShipments, clientTransactions, courierStats, courierTransactions, notifications, customRoles: parsedRoles, inventoryItems: parsedInventory, assets: parsedAssets, suppliers, supplierTransactions, inAppNotifications, tierSettings });
       } catch (error) {
         console.error('Error fetching data:', error);
         res.status(500).json({ error: 'Failed to fetch application data' });
@@ -663,9 +670,8 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 newUser = finalUser;
             });
             
-            const { password: _, ...userWithoutPassword } = newUser;
-            const finalUser = parseUser(userWithoutPassword);
-            res.status(201).json(finalUser);
+            // The finalUser object from the DB is passed to the parser
+            res.status(201).json(parseUser(newUser));
             io.emit('data_updated');
         } catch (error) {
             console.error('Error creating user:', error);
@@ -853,8 +859,8 @@ app.get('/api/debug/users/:id', async (req, res) => {
             });
             
             const createdShipment = await knex('shipments').where({ id: newId }).first();
-            const finalShipment = parseShipment(createdShipment);
-            res.status(201).json(finalShipment);
+            // The newly created shipment is parsed before being sent back
+            res.status(201).json(parseShipment(createdShipment));
             io.emit('data_updated');
         } catch (error) {
             console.error("Error creating shipment:", error);
@@ -1413,8 +1419,8 @@ app.get('/api/debug/users/:id', async (req, res) => {
             if (shipment) {
                  const client = await knex('users').where({ id: shipment.clientId }).first();
                  if (shipment.recipientPhone === phone || client?.phone === phone) {
-                    const parsedShipment = parseJsonField(parseJsonField(parseJsonField(shipment, 'fromAddress'), 'toAddress'), 'statusHistory');
-                    return res.json(parsedShipment);
+                    // The shipment is parsed before being sent back
+                    return res.json(parseShipment(shipment));
                  }
             }
             return res.status(404).json({ error: 'Wrong shipment ID or phone number.' });
@@ -1449,7 +1455,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 unitPrice: unitPrice || 0,
             };
             await knex('inventory_items').insert(newItem);
-            res.status(201).json(newItem);
+            res.status(201).json(parseInventoryItem(newItem));
             io.emit('data_updated');
         } catch (e) { res.status(500).json({ error: 'Failed to create inventory item' }); }
     });
@@ -1675,7 +1681,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             usefulLifeMonths: usefulLifeMonths || null
         };
         await knex('assets').insert(newAsset);
-        res.status(201).json(newAsset);
+        res.status(201).json(parseAsset(newAsset));
         io.emit('data_updated');
       } catch (e) { res.status(500).json({ error: 'Failed to create asset' }); }
     });
