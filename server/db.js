@@ -122,7 +122,7 @@ const resetSequences = async () => {
     if (!process.env.DATABASE_URL) return; // Only for PostgreSQL
     console.log('🔄 Resetting PostgreSQL sequences...');
     try {
-        await knex.raw(`SELECT setval(pg_get_serial_sequence('users', 'id'), (SELECT MAX(id) FROM users), true);`);
+        await knex.raw(`SELECT setval(pg_get_serial_sequence('users', 'id'), COALESCE((SELECT MAX(id) FROM users), 1), false);`);
         // Add more for other tables with auto-incrementing IDs if you seed them manually
         console.log('✅ Sequences reset successfully.');
     } catch (error) {
