@@ -467,6 +467,20 @@ async function main() {
         });
     });
 
+    // Debug endpoint to check request handling
+    app.get('/api/debug', (req, res) => {
+        console.log('🔍 Debug endpoint requested');
+        res.json({ 
+            status: 'OK',
+            timestamp: new Date().toISOString(),
+            headers: req.headers,
+            environment: process.env.NODE_ENV || 'development',
+            nodeEnv: process.env.NODE_ENV,
+            railwayUrl: process.env.RAILWAY_STATIC_URL,
+            userAgent: req.headers['user-agent']
+        });
+    });
+
     // Role Management
     app.get('/api/roles', async (req, res) => {
         try {
