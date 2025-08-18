@@ -124,6 +124,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [shipmentFilter, setShipmentFilter] = useState<ShipmentFilter | null>(null);
     const [theme, setThemeState] = useState<'light' | 'dark'>(() => getFromStorage('app-theme', 'dark'));
     const [isLoading, setIsLoading] = useState(false);
+    const [socket, setSocket] = useState<Socket | null>(null);
 
     const setTheme = (newTheme: 'light' | 'dark') => {
         setThemeState(newTheme);
@@ -140,6 +141,87 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setToasts(prev => prev.filter(t => t.id !== toastId));
     }, []);
 
+    // Data fetching function
+    const fetchAppData = useCallback(async () => {
+        if (!currentUser) return;
+        
+        try {
+            console.log('🔄 Fetching application data...');
+            setIsLoading(true);
+            
+            const data = await apiFetch('/api/data');
+            console.log('✅ Application data fetched successfully:', {
+                users: data.users?.length || 0,
+                shipments: data.shipments?.length || 0,
+                inventory: data.inventoryItems?.length || 0,
+                assets: data.assets?.length || 0
+            });
+            
+            // Update all state with fetched data
+            setUsers(data.users || []);
+            setShipments(data.shipments || []);
+            setClientTransactions(data.clientTransactions || []);
+            setNotifications(data.notifications || []);
+            setCourierStats(data.courierStats || []);
+            setCourierTransactions(data.courierTransactions || []);
+            setCustomRoles(data.customRoles || []);
+            setInventoryItems(data.inventoryItems || []);
+            setAssets(data.assets || []);
+            setSuppliers(data.suppliers || []);
+            setSupplierTransactions(data.supplierTransactions || []);
+            setInAppNotifications(data.inAppNotifications || []);
+            setTierSettings(data.tierSettings || []);
+            
+        } catch (error: any) {
+            console.error('❌ Failed to fetch application data:', error);
+            addToast(`Failed to load data: ${error.message}`, 'error');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [currentUser, addToast]);
+
+    // Socket connection setup and initial data fetching
+    useEffect(() => {
+        if (currentUser && !socket) {
+            console.log('🔌 Setting up WebSocket connection...');
+            console.log('👤 User is logged in, fetching initial data...');
+            
+            const newSocket = io({
+                autoConnect: true,
+                timeout: 10000,
+            });
+
+            newSocket.on('connect', () => {
+                console.log('✅ WebSocket connected');
+            });
+
+            newSocket.on('data_updated', () => {
+                console.log('🔄 Received data update signal, refetching data...');
+                fetchAppData();
+            });
+
+            newSocket.on('disconnect', () => {
+                console.log('❌ WebSocket disconnected');
+            });
+
+            setSocket(newSocket);
+            
+            // Fetch initial data after setting up socket
+            fetchAppData();
+            
+            return () => {
+                console.log('🔌 Cleaning up WebSocket connection');
+                newSocket.disconnect();
+                setSocket(null);
+            };
+        } else if (!currentUser && socket) {
+            // User logged out, clean up socket
+            console.log('🔌 User logged out, cleaning up WebSocket');
+            socket.disconnect();
+            setSocket(null);
+        }
+    }, [currentUser, socket, fetchAppData]);
+
     const logout = useCallback(() => {
         setCurrentUser(null);
         setUsers([]);
@@ -155,8 +237,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSupplierTransactions([]);
         setInAppNotifications([]);
         setTierSettings([]);
+        
+        // Clean up socket connection
+        if (socket) {
+            socket.disconnect();
+            setSocket(null);
+        }
+        
         addToast('You have been logged out.', 'info');
-    }, [addToast]);
+    }, [addToast, socket]);
 
     const login = useCallback(async (email: string, password: string): Promise<boolean> => {
         setIsLoading(true);

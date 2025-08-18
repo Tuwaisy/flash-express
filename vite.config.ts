@@ -30,13 +30,13 @@ export default defineConfig({
     // Proxy API requests to the backend server
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'http://localhost:8080',
         changeOrigin: true, // Recommended for virtual hosts
         secure: false, // Important for proxying from HTTPS (ngrok) to HTTP (local)
       },
       // Add proxy for WebSocket connections
       '/socket.io': {
-        target: 'ws://localhost:3001',
+        target: 'ws://localhost:8080',
         ws: true,
         changeOrigin: true, // Ensures origin header is updated, improving proxy reliability
       },
