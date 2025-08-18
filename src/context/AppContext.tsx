@@ -143,10 +143,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Data fetching function
     const fetchAppData = useCallback(async () => {
-        if (!currentUser) return;
+        if (!currentUser) {
+            console.log('⚠️ fetchAppData called but no currentUser, skipping...');
+            return;
+        }
         
         try {
             console.log('🔄 Fetching application data...');
+            console.log('📍 Current user:', { id: currentUser.id, name: currentUser.name, roles: currentUser.roles });
+            console.log('🌐 API URL:', import.meta.env.VITE_API_URL || 'relative');
+            
             setIsLoading(true);
             
             const data = await apiFetch('/api/data');
@@ -154,7 +160,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 users: data.users?.length || 0,
                 shipments: data.shipments?.length || 0,
                 inventory: data.inventoryItems?.length || 0,
-                assets: data.assets?.length || 0
+                assets: data.assets?.length || 0,
+                suppliers: data.suppliers?.length || 0,
+                roles: data.customRoles?.length || 0,
+                tiers: data.tierSettings?.length || 0
             });
             
             // Update all state with fetched data
@@ -172,8 +181,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setInAppNotifications(data.inAppNotifications || []);
             setTierSettings(data.tierSettings || []);
             
+            console.log('📊 State updated with fetched data');
+            
         } catch (error: any) {
             console.error('❌ Failed to fetch application data:', error);
+            console.error('🔍 Error details:', {
+                message: error.message,
+                stack: error.stack
+            });
             addToast(`Failed to load data: ${error.message}`, 'error');
         } finally {
             setIsLoading(false);
@@ -251,9 +266,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsLoading(true);
         try {
             console.log('🔑 Starting login process...');
+            console.log('📧 Email:', email);
             
             // Fetch roles first, as they are needed to calculate permissions.
+            console.log('📋 Fetching roles...');
             const rolesData: CustomRole[] = await apiFetch('/api/roles');
+            console.log('✅ Roles fetched:', rolesData.length);
             setCustomRoles(rolesData); // Set for global state
             
             console.log('👤 Attempting login...');
@@ -261,10 +279,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 method: 'POST', 
                 body: JSON.stringify({ email, password }) 
             });
-            console.log('✅ Login API successful:', user.name);
+            console.log('✅ Login API successful:', { id: user.id, name: user.name, email: user.email });
 
             // Calculate permissions for the logged-in user right away.
             const userRoleNames = Array.isArray(user.roles) ? user.roles : [];
+            console.log('🔍 User roles:', userRoleNames);
+            
             const allPermissions = userRoleNames.reduce((acc, roleName) => {
                 const role = rolesData.find(r => r.name === roleName);
                 if (role?.permissions) {
@@ -273,6 +293,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 return acc;
             }, [] as Permission[]);
             const permissions = [...new Set(allPermissions)].sort();
+            console.log('🔐 User permissions:', permissions.length, 'permissions');
 
             // Create the complete user object with permissions.
             const userWithPermissions = {
@@ -282,11 +303,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             
             // Set the complete user object.
             setCurrentUser(userWithPermissions);
+            console.log('🎯 Current user set, this should trigger data fetching...');
+            
             addToast(`Welcome back, ${user.name}!`, 'success');
-            console.log('🎉 Login completed successfully with permissions');
+            console.log('🎉 Login completed successfully');
             return true;
         } catch (error: any) {
             const errorMessage = error.message || 'Login failed - please try again';
+            console.error('❌ Login failed:', error);
             addToast(errorMessage, 'error');
             logout();
             return false;
