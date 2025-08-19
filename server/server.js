@@ -792,6 +792,12 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     currentBalance: calculatedBalance,
                     totalEarnings: totalEarnings
                 });
+                
+                // CRITICAL FIX: Also update the walletBalance in the users table so frontend displays correct balance
+                await knex('users').where({ id: stats.courierId }).update({ 
+                    walletBalance: calculatedBalance
+                });
+                console.log(`💰 Updated user ${stats.courierId} walletBalance to ${calculatedBalance.toFixed(2)}`);
             }
             
             return {
