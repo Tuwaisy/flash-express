@@ -311,7 +311,7 @@ const CreateShipment = () => {
                     {canCreateForOthers && (
                          <div className="p-4 bg-secondary rounded-lg">
                             <label className="block text-sm font-medium text-foreground mb-1">Create Shipment For Client</label>
-                            <select value={selectedClientId} onChange={e => setSelectedClientId(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg focus:ring-primary focus:border-primary" required>
+                            <select value={selectedClientId} onChange={e => setSelectedClientId(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg focus:ring-primary focus:border-primary text-foreground bg-background" required>
                                 <option value="" disabled>Select a client...</option>
                                 {clients.map(client => (
                                     <option key={client.id} value={client.id}>{client.name}</option>
@@ -323,23 +323,23 @@ const CreateShipment = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-sm font-medium text-foreground mb-1">Recipient Name</label>
-                            <input type="text" value={recipientName} onChange={e => setRecipientName(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg focus:ring-primary focus:border-primary" required />
+                            <input type="text" value={recipientName} onChange={e => setRecipientName(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg focus:ring-primary focus:border-primary text-foreground bg-background" required />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-foreground mb-1">Recipient Phone</label>
-                            <input type="text" inputMode="numeric" pattern="[0-9]*" value={recipientPhone} onChange={e => setRecipientPhone(e.target.value.replace(/[^0-9]/g, ''))} className="w-full px-4 py-2 border border-border rounded-lg focus:ring-primary focus:border-primary" placeholder="01xxxxxxxxx" required />
+                            <input type="text" inputMode="numeric" pattern="[0-9]*" value={recipientPhone} onChange={e => setRecipientPhone(e.target.value.replace(/[^0-9]/g, ''))} className="w-full px-4 py-2 border border-border rounded-lg focus:ring-primary focus:border-primary text-foreground bg-background" placeholder="01xxxxxxxxx" required />
                             <p className="text-xs text-muted-foreground mt-1">Example for Egyptian number: 01012345678</p>
                         </div>
                     </div>
                     {/* Address Info */}
                      <div>
                         <label className="block text-sm font-medium text-foreground mb-1">Recipient Street Address</label>
-                        <input type="text" value={toAddress.street} onChange={e => setToAddress(prev => ({ ...prev, street: e.target.value }))} className="w-full px-4 py-2 border border-border rounded-lg" required />
+                        <input type="text" value={toAddress.street} onChange={e => setToAddress(prev => ({ ...prev, street: e.target.value }))} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background" required />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-sm font-medium text-foreground mb-1">Zone</label>
-                            <select value={toAddress.zone} onChange={handleZoneChange} className="w-full px-4 py-2 border border-border rounded-lg">
+                            <select value={toAddress.zone} onChange={handleZoneChange} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background">
                                 <optgroup label="Cairo">
                                     {ZONES.GreaterCairo.Cairo.map(z => <option key={z} value={z}>{z}</option>)}
                                 </optgroup>
@@ -356,34 +356,34 @@ const CreateShipment = () => {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-foreground mb-1">Address Details (Apt, Floor, etc.)</label>
-                            <input type="text" value={toAddress.details} onChange={e => setToAddress(prev => ({ ...prev, details: e.target.value }))} className="w-full px-4 py-2 border border-border rounded-lg" />
+                            <input type="text" value={toAddress.details} onChange={e => setToAddress(prev => ({ ...prev, details: e.target.value }))} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background" />
                         </div>
                     </div>
 
                     {/* Package Info */}
                     <div>
                         <label className="block text-sm font-medium text-foreground mb-1">Package Description</label>
-                        <textarea value={packageDescription} onChange={e => setPackageDescription(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg" rows={2} required></textarea>
+                        <textarea value={packageDescription} onChange={e => setPackageDescription(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background" rows={2} required></textarea>
                     </div>
 
                      {/* Financial Info */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
                             <label className="block text-sm font-medium text-foreground mb-1">Payment Method</label>
-                            <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as PaymentMethod)} className="w-full px-4 py-2 border border-border rounded-lg">
+                            <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as PaymentMethod)} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background">
                                 <option value={PaymentMethod.COD}>Cash on Delivery (COD)</option>
                                 <option value={PaymentMethod.TRANSFER}>InstaPay (Pre-paid)</option>
                             </select>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-foreground mb-1">Priority</label>
-                            <select value={priority} onChange={e => setPriority(e.target.value as ShipmentPriority)} className="w-full px-4 py-2 border border-border rounded-lg">
+                            <select value={priority} onChange={e => setPriority(e.target.value as ShipmentPriority)} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background">
                                 {Object.values(ShipmentPriority).map(p => <option key={p} value={p}>{p}</option>)}
                             </select>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-foreground mb-1">Package Value (EGP)</label>
-                            <input type="number" step="0.01" value={packageValue} onChange={e => setPackageValue(e.target.value)} disabled={paymentMethod === PaymentMethod.TRANSFER} className="w-full px-4 py-2 border border-border rounded-lg" required />
+                            <input type="number" step="0.01" value={packageValue} onChange={e => setPackageValue(e.target.value)} disabled={paymentMethod === PaymentMethod.TRANSFER} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background" required />
                         </div>
                     </div>
                     
@@ -391,12 +391,12 @@ const CreateShipment = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
                             <div>
                                 <label className="block text-sm font-medium text-foreground mb-1">Amount Received from Client</label>
-                                <input type="number" step="0.01" value={amountReceived} onChange={e => setAmountReceived(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg" placeholder="e.g., 500" required />
+                                <input type="number" step="0.01" value={amountReceived} onChange={e => setAmountReceived(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background" placeholder="e.g., 500" required />
                                 <p className="text-xs text-muted-foreground mt-1">The amount you already collected.</p>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-foreground mb-1">Amount to Collect from Recipient</label>
-                                <input type="number" step="0.01" value={amountToCollect} onChange={e => setAmountToCollect(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg" placeholder="e.g., 200" required />
+                                <input type="number" step="0.01" value={amountToCollect} onChange={e => setAmountToCollect(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background" placeholder="e.g., 200" required />
                                 <p className="text-xs text-muted-foreground mt-1">Amount courier will collect (0 if none).</p>
                             </div>
                         </div>
@@ -445,7 +445,7 @@ const CreateShipment = () => {
                     {canCreateForOthers && (
                         <div className="p-4 bg-secondary rounded-lg">
                             <label className="block text-sm font-medium text-foreground mb-1">Upload Shipments For Client</label>
-                            <select value={bulkSelectedClientId} onChange={e => setBulkSelectedClientId(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg focus:ring-primary focus:border-primary" required>
+                            <select value={bulkSelectedClientId} onChange={e => setBulkSelectedClientId(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg focus:ring-primary focus:border-primary text-foreground bg-background" required>
                                 <option value="" disabled>Select a client...</option>
                                 {clients.map(client => (
                                     <option key={client.id} value={client.id}>{client.name}</option>
