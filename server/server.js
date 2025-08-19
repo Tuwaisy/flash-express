@@ -500,13 +500,37 @@ async function main() {
                     walletChange = amountToCollect;
                 }
             } else if (shipment.paymentMethod === 'Wallet') {
-                // For Wallet payments: Client already paid shipping fee, credit package value collected
+                // For Wallet payments: Charge shipping fee and credit package value collected
                 const packageValue = shipment.packageValue || 0;
+                const transactions = [];
+                
+                // Debit shipping fee from client wallet
+                transactions.push({
+                    id: generateId('TRN'), 
+                    userId: client.id, 
+                    type: 'Payment', 
+                    amount: -shippingFee, 
+                    date: new Date().toISOString(), 
+                    description: `Shipping fee for delivered shipment ${shipment.id}`, 
+                    status: 'Processed'
+                });
+                
+                // Credit package value collected
                 if (packageValue > 0) {
-                    await trx('client_transactions').insert([
-                        { id: generateId('TRN'), userId: client.id, type: 'Deposit', amount: packageValue, date: new Date().toISOString(), description: `Package value collected for delivered shipment ${shipment.id}`, status: 'Processed' }
-                    ]);
-                    walletChange = packageValue;
+                    transactions.push({
+                        id: generateId('TRN'), 
+                        userId: client.id, 
+                        type: 'Deposit', 
+                        amount: packageValue, 
+                        date: new Date().toISOString(), 
+                        description: `Package value collected for delivered shipment ${shipment.id}`, 
+                        status: 'Processed'
+                    });
+                }
+                
+                if (transactions.length > 0) {
+                    await trx('client_transactions').insert(transactions);
+                    walletChange = packageValue - shippingFee;
                 }
             }
             
@@ -689,12 +713,36 @@ app.get('/api/debug/users/:id', async (req, res) => {
             }
             return parsedUser;
         });
+        
+        // Recalculate courier balances from transactions to ensure consistency
+        const correctedCourierStats = courierStats.map(stats => {
+            const courierTransactionsForCourier = courierTransactions.filter(t => 
+                t.courierId === stats.courierId && t.status !== 'Declined'
+            );
+            const calculatedBalance = courierTransactionsForCourier.reduce((sum, t) => {
+                const amount = Number(t.amount) || 0;
+                return sum + amount;
+            }, 0);
+            
+            // If calculated balance differs significantly from stored balance, log and use calculated
+            if (Math.abs(calculatedBalance - (Number(stats.currentBalance) || 0)) > 0.01) {
+                console.log(`⚠️  Courier ${stats.courierId} balance mismatch: stored=${stats.currentBalance}, calculated=${calculatedBalance.toFixed(2)}`);
+            }
+            
+            return {
+                ...stats,
+                currentBalance: calculatedBalance, // Use calculated balance for consistency
+                // Keep totalEarnings as the maximum of calculated balance and stored totalEarnings
+                totalEarnings: Math.max(calculatedBalance, Number(stats.totalEarnings) || 0)
+            };
+        });
+        
         const parsedShipments = shipments.map(parseShipment);
         const parsedRoles = customRoles.map(parseRole);
         const parsedAssets = assets.map(parseAsset);
         const parsedInventory = inventoryItems.map(parseInventoryItem);
 
-        res.json({ users: safeUsers, shipments: parsedShipments, clientTransactions, courierStats, courierTransactions, notifications, customRoles: parsedRoles, inventoryItems: parsedInventory, assets: parsedAssets, suppliers, supplierTransactions, inAppNotifications, tierSettings });
+        res.json({ users: safeUsers, shipments: parsedShipments, clientTransactions, courierStats: correctedCourierStats, courierTransactions, notifications, customRoles: parsedRoles, inventoryItems: parsedInventory, assets: parsedAssets, suppliers, supplierTransactions, inAppNotifications, tierSettings });
       } catch (error) {
         console.error('Error fetching data:', error);
         res.status(500).json({ error: 'Failed to fetch application data' });
@@ -1401,6 +1449,25 @@ app.get('/api/debug/users/:id', async (req, res) => {
         const { courierId, amount, paymentMethod } = req.body;
         try {
             await knex.transaction(async trx => {
+                // Check for existing pending payout requests
+                const existingPendingPayout = await trx('courier_transactions')
+                    .where({ 
+                        courierId, 
+                        type: 'Withdrawal Request', 
+                        status: 'Pending' 
+                    })
+                    .first();
+                
+                if (existingPendingPayout) {
+                    throw new Error('You already have a pending payout request. Please wait for it to be processed before requesting another.');
+                }
+                
+                // Check if courier has sufficient balance
+                const courierStats = await trx('courier_stats').where({ courierId }).first();
+                if (!courierStats || (courierStats.currentBalance || 0) < amount) {
+                    throw new Error('Insufficient balance for payout request.');
+                }
+                
                 const withdrawalAmount = -Math.abs(amount);
                 await trx('courier_transactions').insert({ 
                     id: generateId('TRN'), courierId, type: 'Withdrawal Request', 
@@ -1411,7 +1478,6 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 });
                 
                 // Update courier stats to subtract the requested amount from balance
-                const courierStats = await trx('courier_stats').where({ courierId }).first();
                 if (courierStats) {
                     const newBalance = (courierStats.currentBalance || 0) + withdrawalAmount; // withdrawalAmount is negative
                     await trx('courier_stats').where({ courierId }).update({ 
@@ -1419,10 +1485,13 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     });
                 }
             });
-            res.status(200).json({ success: true });
+            res.status(200).json({ success: true, message: 'Payout request submitted successfully' });
             throttledDataUpdate();
         }
-        catch (error) { res.status(500).json({ error: 'Server error' }); }
+        catch (error) { 
+            console.error('Payout request error:', error.message);
+            res.status(400).json({ error: error.message }); 
+        }
     });
 
     app.put('/api/payouts/:id/process', async (req, res) => {

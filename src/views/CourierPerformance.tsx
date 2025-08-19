@@ -363,7 +363,18 @@ const ManageCourierModal: React.FC<ManageCourierModalProps> = ({ isOpen, onClose
             addToast('Please upload proof of transfer for this payout.', 'error');
             return;
         }
-        onProcessPayout(payout.id, Math.abs(payout.amount), transferEvidence[payout.id]);
+        
+        if (confirm(`Are you sure you want to approve this payout of ${Math.abs(payout.amount).toFixed(2)} EGP for ${courierUser.name}?`)) {
+            onProcessPayout(payout.id, Math.abs(payout.amount), transferEvidence[payout.id]);
+            onClose(); // Close modal after processing
+        }
+    };
+
+    const handleDeclineClick = (payout: CourierTransaction) => {
+        if (confirm(`Are you sure you want to decline this payout request of ${Math.abs(payout.amount).toFixed(2)} EGP for ${courierUser.name}?`)) {
+            onDeclinePayout(payout.id);
+            onClose(); // Close modal after declining
+        }
     };
 
     return (
@@ -418,8 +429,20 @@ const ManageCourierModal: React.FC<ManageCourierModalProps> = ({ isOpen, onClose
                                             <p className="text-xs text-muted-foreground">{payout.paymentMethod}</p>
                                         </div>
                                          <div className="flex gap-2">
-                                            <button onClick={() => onDeclinePayout(payout.id)} className="px-3 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded">Decline</button>
-                                            <button onClick={() => handleProcessClick(payout)} className="px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded">Process</button>
+                                            <button 
+                                                onClick={() => handleDeclineClick(payout)} 
+                                                className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded transition-colors"
+                                                title="Decline this payout request"
+                                            >
+                                                Decline
+                                            </button>
+                                            <button 
+                                                onClick={() => handleProcessClick(payout)} 
+                                                className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-xs font-semibold rounded transition-colors"
+                                                title="Approve and process this payout"
+                                            >
+                                                Approve
+                                            </button>
                                         </div>
                                     </div>
                                     {payout.paymentMethod === 'Bank Transfer' && (

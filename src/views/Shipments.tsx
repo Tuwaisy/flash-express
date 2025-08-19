@@ -81,7 +81,7 @@ const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
         const shipmentsToExport = visibleShipments;
         
         if (canViewAll) {
-            const headers = ['ID', 'Client', 'Recipient', 'Recipient Phone', 'Date', 'Status', 'Courier', 'Total COD (EGP)', 'Package Value (EGP)'];
+            const headers = ['ID', 'Client', 'Recipient', 'Recipient Phone', 'Date', 'Status', 'Total COD (EGP)', 'Package Value (EGP)'];
             if (!isSuperUser) {
                 headers.push('Client Fee (EGP)');
             }
@@ -89,8 +89,6 @@ const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
                  headers.push('Courier Commission (EGP)');
             }
             const body = shipmentsToExport.map(s => {
-                const courierName = getCourierName(s.courierId);
-                
                 // Safely convert to numbers with fallbacks
                 const clientFee = Number(s.clientFlatRateFee) || 0;
                 const courierCommission = Number(s.courierCommission) || 0;
@@ -100,7 +98,7 @@ const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
                 const row: (string | number)[] = [
                     s.id, s.clientName, s.recipientName, s.recipientPhone,
                     new Date(s.creationDate).toLocaleDateString(), s.status,
-                    courierName, (Number(price) || 0).toFixed(2), (Number(packageValue) || 0).toFixed(2)
+                    (Number(price) || 0).toFixed(2), (Number(packageValue) || 0).toFixed(2)
                 ];
                 
                 if (!isSuperUser) {

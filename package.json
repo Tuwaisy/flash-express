@@ -9,7 +9,10 @@
     "build": "tsc --noEmit && vite build",
     "build:skip-check": "vite build",
     "lint": "vite lint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "clear-railway-db": "node scripts/clear-railway-cli.js",
+    "get-railway-db": "node scripts/get-railway-db.js",
+    "clear-railway-manual": "node scripts/clear-railway-db.js"
   },
   "engines": {
     "node": ">=18.0.0"
