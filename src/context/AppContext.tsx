@@ -326,6 +326,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setCurrentUser(userWithPermissions);
             console.log('🎯 Current user set, this should trigger data fetching...');
             
+            // TEMPORARY: Manual data fetch trigger to bypass potential useEffect issues
+            setTimeout(() => {
+                console.log('⏰ Manual fetchAppData trigger (3 second delay)');
+                fetchAppData();
+            }, 3000);
+            
             addToast(`Welcome back, ${user.name}!`, 'success');
             console.log('🎉 Login completed successfully');
             return true;

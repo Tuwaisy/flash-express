@@ -296,8 +296,8 @@ const UserManagement = () => {
                  <form onSubmit={handleSubmit} className="space-y-4">
                      <p>Resetting password for <strong>{selectedUser.name}</strong>.</p>
                      <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">New Password</label>
-                        <input type="password" name="password" onChange={handleFormChange} className="w-full px-4 py-2 border border-border rounded-lg bg-background" required />
+                        <label htmlFor="reset-password" className="block text-sm font-medium text-muted-foreground mb-1">New Password</label>
+                        <input id="reset-password" type="password" name="password" onChange={handleFormChange} className="w-full px-4 py-2 border border-border rounded-lg bg-background" required />
                     </div>
                      <div className="flex justify-end gap-4 pt-4">
                         <button type="button" onClick={closeModal} className="px-4 py-2 bg-secondary rounded-lg font-semibold">Cancel</button>
@@ -313,13 +313,13 @@ const UserManagement = () => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <p>Editing default pickup address for <strong>{selectedUser.name}</strong>.</p>
                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">Street Address</label>
-                        <input type="text" name="street" value={formData.address?.street || ''} onChange={handleAddressChange} className="w-full p-2 border border-border rounded bg-background" />
+                        <label htmlFor="address-street" className="block text-sm font-medium text-muted-foreground mb-1">Street Address</label>
+                        <input id="address-street" type="text" name="street" value={formData.address?.street || ''} onChange={handleAddressChange} className="w-full p-2 border border-border rounded bg-background" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-muted-foreground mb-1">City</label>
-                            <select name="city" value={formData.address?.city || 'Cairo'} onChange={handleAddressChange} className="w-full p-2 border border-border rounded bg-background">
+                            <label htmlFor="address-city" className="block text-sm font-medium text-muted-foreground mb-1">City</label>
+                            <select id="address-city" name="city" value={formData.address?.city || 'Cairo'} onChange={handleAddressChange} className="w-full p-2 border border-border rounded bg-background">
                                 <option value="Cairo">Cairo</option>
                                 <option value="Giza">Giza</option>
                                 <option value="Alexandria">Alexandria</option>
@@ -327,15 +327,15 @@ const UserManagement = () => {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-muted-foreground mb-1">Zone</label>
-                            <select name="zone" value={formData.address?.zone || ''} onChange={handleAddressChange} className="w-full p-2 border border-border rounded bg-background">
+                            <label htmlFor="address-zone" className="block text-sm font-medium text-muted-foreground mb-1">Zone</label>
+                            <select id="address-zone" name="zone" value={formData.address?.zone || ''} onChange={handleAddressChange} className="w-full p-2 border border-border rounded bg-background">
                                 {availableZones.map(z => <option key={z} value={z}>{z}</option>)}
                             </select>
                         </div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">Address Details (Apt, Floor)</label>
-                        <input type="text" name="details" value={formData.address?.details || ''} onChange={handleAddressChange} className="w-full p-2 border border-border rounded bg-background" />
+                        <label htmlFor="address-details" className="block text-sm font-medium text-muted-foreground mb-1">Address Details (Apt, Floor)</label>
+                        <input id="address-details" type="text" name="details" value={formData.address?.details || ''} onChange={handleAddressChange} className="w-full p-2 border border-border rounded bg-background" />
                     </div>
                     <div className="flex justify-end gap-4 pt-4">
                         <button type="button" onClick={closeModal} className="px-4 py-2 bg-secondary rounded-lg font-semibold">Cancel</button>
@@ -350,8 +350,9 @@ const UserManagement = () => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <p>Manually assign a partner tier for <strong>{selectedUser.name}</strong>.</p>
                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">Partner Tier</label>
+                        <label htmlFor="partner-tier" className="block text-sm font-medium text-muted-foreground mb-1">Partner Tier</label>
                         <select
+                            id="partner-tier"
                             value={tempTier || 'auto'}
                             onChange={e => setTempTier(e.target.value === 'auto' ? null : e.target.value as PartnerTier)}
                             className="w-full px-4 py-2 border border-border rounded-lg bg-background"
@@ -386,16 +387,16 @@ const UserManagement = () => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <p>Set custom priority fee percentages for <strong>{selectedUser.name}</strong> (e.g., 100 for standard rate, 150 for a 1.5x fee).</p>
                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">{ShipmentPriority.STANDARD} (%)</label>
-                        <input type="number" min="0" value={tempPriorityMultipliers[ShipmentPriority.STANDARD]} onChange={e => handleMultiplierChange(ShipmentPriority.STANDARD, e.target.value)} className="w-full p-2 border border-border rounded bg-background" />
+                        <label htmlFor="priority-standard" className="block text-sm font-medium text-muted-foreground mb-1">{ShipmentPriority.STANDARD} (%)</label>
+                        <input id="priority-standard" type="number" min="0" value={tempPriorityMultipliers[ShipmentPriority.STANDARD]} onChange={e => handleMultiplierChange(ShipmentPriority.STANDARD, e.target.value)} className="w-full p-2 border border-border rounded bg-background" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">{ShipmentPriority.URGENT} (%)</label>
-                        <input type="number" min="0" value={tempPriorityMultipliers[ShipmentPriority.URGENT]} onChange={e => handleMultiplierChange(ShipmentPriority.URGENT, e.target.value)} className="w-full p-2 border border-border rounded bg-background" />
+                        <label htmlFor="priority-urgent" className="block text-sm font-medium text-muted-foreground mb-1">{ShipmentPriority.URGENT} (%)</label>
+                        <input id="priority-urgent" type="number" min="0" value={tempPriorityMultipliers[ShipmentPriority.URGENT]} onChange={e => handleMultiplierChange(ShipmentPriority.URGENT, e.target.value)} className="w-full p-2 border border-border rounded bg-background" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">{ShipmentPriority.EXPRESS} (%)</label>
-                        <input type="number" min="0" value={tempPriorityMultipliers[ShipmentPriority.EXPRESS]} onChange={e => handleMultiplierChange(ShipmentPriority.EXPRESS, e.target.value)} className="w-full p-2 border border-border rounded bg-background" />
+                        <label htmlFor="priority-express" className="block text-sm font-medium text-muted-foreground mb-1">{ShipmentPriority.EXPRESS} (%)</label>
+                        <input id="priority-express" type="number" min="0" value={tempPriorityMultipliers[ShipmentPriority.EXPRESS]} onChange={e => handleMultiplierChange(ShipmentPriority.EXPRESS, e.target.value)} className="w-full p-2 border border-border rounded bg-background" />
                     </div>
                     <div className="flex justify-end gap-4 pt-4">
                         <button type="button" onClick={closeModal} className="px-4 py-2 bg-secondary rounded-lg font-semibold">Cancel</button>
@@ -412,21 +413,21 @@ const UserManagement = () => {
             return (
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">Full Name</label>
-                        <input type="text" name="name" value={formData.name || ''} onChange={handleFormChange} className="w-full px-4 py-2 border border-border rounded-lg bg-background" required />
+                        <label htmlFor="user-name" className="block text-sm font-medium text-muted-foreground mb-1">Full Name</label>
+                        <input id="user-name" type="text" name="name" value={formData.name || ''} onChange={handleFormChange} className="w-full px-4 py-2 border border-border rounded-lg bg-background" required />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">Email</label>
-                        <input type="email" name="email" value={formData.email || ''} onChange={handleFormChange} className="w-full px-4 py-2 border border-border rounded-lg bg-background" required />
+                        <label htmlFor="user-email" className="block text-sm font-medium text-muted-foreground mb-1">Email</label>
+                        <input id="user-email" type="email" name="email" value={formData.email || ''} onChange={handleFormChange} className="w-full px-4 py-2 border border-border rounded-lg bg-background" required />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">Phone Number</label>
-                        <input type="tel" name="phone" value={formData.phone || ''} onChange={handleFormChange} className="w-full px-4 py-2 border border-border rounded-lg bg-background" placeholder="01xxxxxxxxx" />
+                        <label htmlFor="user-phone" className="block text-sm font-medium text-muted-foreground mb-1">Phone Number</label>
+                        <input id="user-phone" type="tel" name="phone" value={formData.phone || ''} onChange={handleFormChange} className="w-full px-4 py-2 border border-border rounded-lg bg-background" placeholder="01xxxxxxxxx" />
                     </div>
                     {mode === 'add' && (
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1">Password</label>
-                           <input type="password" name="password" onChange={handleFormChange} className="w-full px-4 py-2 border border-border rounded-lg bg-background" required />
+                           <label htmlFor="user-password" className="block text-sm font-medium text-muted-foreground mb-1">Password</label>
+                           <input id="user-password" type="password" name="password" onChange={handleFormChange} className="w-full px-4 py-2 border border-border rounded-lg bg-background" required />
                        </div>
                     )}
                     <div>
@@ -434,8 +435,8 @@ const UserManagement = () => {
                         <div className="grid grid-cols-2 gap-3 p-3 bg-secondary rounded-lg">
                             {/* FIX: Added explicit type for parameter */}
                             {availableRoles.map((r: CustomRole) => (
-                                <label key={r.id} className="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" checked={(formData.roles || []).includes(r.name)} onChange={e => handleRoleChange(r.name, e.target.checked)} className="h-4 w-4 rounded border-border text-primary focus:ring-primary" />
+                                <label key={r.id} htmlFor={`role-${r.id}`} className="flex items-center gap-2 cursor-pointer">
+                                    <input id={`role-${r.id}`} type="checkbox" checked={(formData.roles || []).includes(r.name)} onChange={e => handleRoleChange(r.name, e.target.checked)} className="h-4 w-4 rounded border-border text-primary focus:ring-primary" />
                                     <span>{r.name}</span>
                                 </label>
                             ))}
@@ -465,8 +466,8 @@ const UserManagement = () => {
                            </div>
                            {mode === 'add' && (
                                <div>
-                                   <label className="block text-sm font-medium text-muted-foreground mb-1">Referred By (Optional)</label>
-                                   <select name="referrerId" value={formData.referrerId || ''} onChange={handleFormChange} className="w-full px-4 py-2 border border-border rounded-lg bg-background">
+                                   <label htmlFor="user-referrer" className="block text-sm font-medium text-muted-foreground mb-1">Referred By (Optional)</label>
+                                   <select id="user-referrer" name="referrerId" value={formData.referrerId || ''} onChange={handleFormChange} className="w-full px-4 py-2 border border-border rounded-lg bg-background">
                                        <option value="">No Referrer</option>
                                        {/* FIX: Added explicit type for parameter */}
                                        {users.filter((u: User) => (u.roles || []).includes(UserRole.COURIER)).map((c: User) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -479,8 +480,8 @@ const UserManagement = () => {
                          <div className="p-4 border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10 rounded-lg space-y-4">
                             <h4 className="font-semibold text-green-800 dark:text-green-300">Client Settings</h4>
                              <div>
-                               <label className="block text-sm font-medium text-muted-foreground mb-1">Flat Rate Fee (EGP)</label>
-                               <input type="number" step="0.01" min="0" name="flatRateFee" value={formData.flatRateFee ?? ''} onChange={(e) => setFormData(prev => ({ ...prev, flatRateFee: parseFloat(e.target.value) || 0 }))} className="w-full px-4 py-2 border border-border rounded-lg bg-background" />
+                               <label htmlFor="client-flat-rate" className="block text-sm font-medium text-muted-foreground mb-1">Flat Rate Fee (EGP)</label>
+                               <input id="client-flat-rate" type="number" step="0.01" min="0" name="flatRateFee" value={formData.flatRateFee ?? ''} onChange={(e) => setFormData(prev => ({ ...prev, flatRateFee: parseFloat(e.target.value) || 0 }))} className="w-full px-4 py-2 border border-border rounded-lg bg-background" />
                            </div>
                          </div>
                     )}
@@ -488,8 +489,8 @@ const UserManagement = () => {
                          <div className="p-4 border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/10 rounded-lg space-y-4">
                             <h4 className="font-semibold text-purple-800 dark:text-purple-300">Referral Settings (for Referrer)</h4>
                             <div>
-                                <label className="block text-sm font-medium text-muted-foreground mb-1">Referral Commission (EGP per delivery)</label>
-                                <input type="number" step="0.01" min="0" name="referralCommission" value={formData.referralCommission ?? ''} onChange={(e) => setFormData(prev => ({...prev, referralCommission: parseFloat(e.target.value) || 0 }))} className="w-full px-4 py-2 border border-border rounded-lg bg-background" />
+                                <label htmlFor="referral-commission" className="block text-sm font-medium text-muted-foreground mb-1">Referral Commission (EGP per delivery)</label>
+                                <input id="referral-commission" type="number" step="0.01" min="0" name="referralCommission" value={formData.referralCommission ?? ''} onChange={(e) => setFormData(prev => ({...prev, referralCommission: parseFloat(e.target.value) || 0 }))} className="w-full px-4 py-2 border border-border rounded-lg bg-background" />
                                 <p className="text-xs text-muted-foreground mt-1">This commission is paid to the referring courier for each successful delivery made by this new courier.</p>
                             </div>
                          </div>
@@ -527,6 +528,7 @@ const UserManagement = () => {
 
             <div className="p-4 bg-secondary border-b border-border flex flex-col md:flex-row gap-4">
                 <input 
+                    id="user-search"
                     type="text"
                     placeholder="Search by name, email, or ID..."
                     value={searchTerm}
@@ -534,6 +536,7 @@ const UserManagement = () => {
                     className="w-full md:w-1/3 px-4 py-2 border border-border rounded-lg bg-background"
                 />
                  <select
+                    id="role-filter"
                     value={filterRole}
                     onChange={e => setFilterRole(e.target.value)}
                     className="w-full md:w-1/3 px-4 py-2 border border-border rounded-lg bg-background"
