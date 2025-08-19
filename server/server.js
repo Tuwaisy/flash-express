@@ -769,6 +769,10 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 return sum + amount;
             }, 0);
             
+            // Debug: Always log balance calculation for courier
+            console.log(`🧮 Courier ${stats.courierId} balance calculation: ${calculatedBalance.toFixed(2)} from ${courierTransactionsForCourier.length} transactions`);
+            console.log(`📝 Included transactions:`, courierTransactionsForCourier.map(t => `${t.type}: ${t.amount} (${t.status}, ${t.timestamp || t.date})`));
+            
             // Calculate total earnings (sum of all positive earnings, excluding withdrawals)
             const totalEarnings = courierTransactions
                 .filter(t => 
@@ -783,6 +787,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             if (Math.abs(calculatedBalance - (Number(stats.currentBalance) || 0)) > 0.01 || 
                 Math.abs(totalEarnings - (Number(stats.totalEarnings) || 0)) > 0.01) {
                 console.log(`🔄 Updating courier ${stats.courierId}: balance ${stats.currentBalance} → ${calculatedBalance.toFixed(2)}, earnings ${stats.totalEarnings} → ${totalEarnings.toFixed(2)}`);
+                console.log(`📊 Transactions for courier ${stats.courierId}:`, courierTransactionsForCourier.map(t => `${t.type}: ${t.amount} (${t.status})`));
                 await knex('courier_stats').where({ courierId: stats.courierId }).update({ 
                     currentBalance: calculatedBalance,
                     totalEarnings: totalEarnings
