@@ -145,8 +145,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const lastFetchTime = useRef<number>(0);
     const fetchTimeout = useRef<NodeJS.Timeout | null>(null);
     const isFetching = useRef<boolean>(false);
-    const FETCH_THROTTLE_MS = 10000; // Only allow fetching every 10 seconds (increased from 5)
-    const FETCH_DEBOUNCE_MS = 3000; // Wait 3 seconds after last request before fetching (increased from 1)
+    const FETCH_THROTTLE_MS = 5000; // Only allow fetching every 5 seconds (reduced from 10s for better responsiveness)
+    const FETCH_DEBOUNCE_MS = 1500; // Wait 1.5 seconds after last request before fetching (reduced from 3s)
     
     const fetchAppData = useCallback(async (force = false) => {
         if (!currentUser) {
@@ -248,11 +248,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     clearTimeout(socketEventTimeout);
                 }
                 
-                // Debounce socket events for 2 seconds
+                // Debounce socket events for 500ms (reduced from 2s for better responsiveness)
                 socketEventTimeout = setTimeout(() => {
                     console.log('Executing debounced data fetch from socket event');
                     fetchAppData(); // This is already throttled internally
-                }, 2000);
+                }, 500);
             });
 
             newSocket.on('disconnect', () => {
