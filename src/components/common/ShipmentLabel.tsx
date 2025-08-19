@@ -92,13 +92,19 @@ export const ShipmentLabel: React.FC<{ shipment: Shipment }> = ({ shipment }) =>
                         <div>
                              <p className="text-xs uppercase font-bold text-slate-600">Payment Details</p>
                              <p className="text-2xl font-bold">{shipment.paymentMethod}</p>
-                             {shipment.paymentMethod === PaymentMethod.COD && (
-                                <div className="mt-2">
-                                    <div className="flex justify-between text-sm"><span>Package Value:</span> <span>{(Number(shipment.packageValue) || 0).toFixed(2)} EGP</span></div>
-                                    <div className="flex justify-between text-sm"><span>Shipping Fee:</span> <span>{(Number(shippingFee) || 0).toFixed(2)} EGP</span></div>
-                                    <div className="flex justify-between text-xl font-extrabold mt-1 border-t border-black pt-1"><span>COD Amount:</span> <span className="text-green-600">{(Number(shipment.price) || 0).toFixed(2)} EGP</span></div>
-                                </div>
-                             )}
+                             <div className="mt-2">
+                                 <div className="flex justify-between text-sm"><span>Package Value:</span> <span>{(Number(shipment.packageValue) || 0).toFixed(2)} EGP</span></div>
+                                 <div className="flex justify-between text-sm"><span>Shipping Fee:</span> <span>{(Number(shippingFee) || 0).toFixed(2)} EGP</span></div>
+                                 {shipment.paymentMethod === PaymentMethod.COD && (
+                                     <div className="flex justify-between text-xl font-extrabold mt-1 border-t border-black pt-1"><span>COD Amount:</span> <span className="text-green-600">{(Number(shipment.price) || 0).toFixed(2)} EGP</span></div>
+                                 )}
+                                 {shipment.paymentMethod === PaymentMethod.TRANSFER && shipment.amountToCollect && (
+                                     <div className="flex justify-between text-xl font-extrabold mt-1 border-t border-black pt-1"><span>Collect:</span> <span className="text-orange-600">{(Number(shipment.amountToCollect) || 0).toFixed(2)} EGP</span></div>
+                                 )}
+                                 {shipment.paymentMethod === PaymentMethod.WALLET && (
+                                     <div className="flex justify-between text-xl font-extrabold mt-1 border-t border-black pt-1"><span>Paid by Wallet</span> <span className="text-blue-600">✓</span></div>
+                                 )}
+                             </div>
                              <p className="text-xs uppercase font-bold text-slate-600 mt-4">Package</p>
                              <p>{shipment.packageDescription}{shipment.isLargeOrder && ' (Large Order)'}</p>
                         </div>

@@ -1064,7 +1064,20 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     courierStats = defaultStats;
                 }
 
-                const commission = courierStats.commissionType === 'flat' ? courierStats.commissionValue : shipment.price * (courierStats.commissionValue / 100);
+                // Calculate commission based on shipment priority
+                let commission;
+                if (courierStats.commissionType === 'flat') {
+                    // Priority-based commission rates
+                    const priorityCommissions = {
+                        'Standard': 30,
+                        'Express': 50,
+                        'Urgent': 70
+                    };
+                    commission = priorityCommissions[shipment.priority] || 30;
+                } else {
+                    commission = shipment.price * (courierStats.commissionValue / 100);
+                }
+                
                 const newStatus = 'Assigned to Courier';
                 
                 const currentHistory = safeJsonParse(shipment.statusHistory, []);
@@ -1123,7 +1136,21 @@ app.get('/api/debug/users/:id', async (req, res) => {
                         
                         const client = await trx('users').where({ id: shipment.clientId }).first();
                         const courierStats = await trx('courier_stats').where({ courierId: bestCourier.id }).first();
-                        const commission = courierStats.commissionType === 'flat' ? courierStats.commissionValue : shipment.price * (courierStats.commissionValue / 100);
+                        
+                        // Calculate commission based on shipment priority
+                        let commission;
+                        if (courierStats.commissionType === 'flat') {
+                            // Priority-based commission rates
+                            const priorityCommissions = {
+                                'Standard': 30,
+                                'Express': 50,
+                                'Urgent': 70
+                            };
+                            commission = priorityCommissions[shipment.priority] || 30;
+                        } else {
+                            commission = shipment.price * (courierStats.commissionValue / 100);
+                        }
+                        
                         const newStatus = 'Assigned to Courier';
                         const currentHistory = safeJsonParse(shipment.statusHistory, []);
                         currentHistory.push({ status: newStatus, timestamp: new Date().toISOString() });
@@ -1369,6 +1396,17 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     type: 'Withdrawal Declined',
                     description: `Payout request for ${(-payoutRequest.amount).toFixed(2)} EGP declined by admin.`
                 };
+                
+                // Return the money to courier's balance by creating a credit transaction
+                await trx('courier_transactions').insert({
+                    id: generateId('TRN_REFUND'),
+                    courierId: payoutRequest.courierId,
+                    type: 'Commission',
+                    amount: -payoutRequest.amount, // Positive amount to credit back
+                    description: `Refund for declined payout request ${id}`,
+                    timestamp: new Date().toISOString(),
+                    status: 'Processed'
+                });
                 
                 const [payout] = await trx('courier_transactions').where({ id }).update(updatePayload).returning('*');
                 await createInAppNotification(trx, payout.courierId, `Your payout request for ${(-payout.amount).toFixed(2)} EGP has been declined.`, '/courier-financials');

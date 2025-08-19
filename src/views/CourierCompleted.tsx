@@ -49,7 +49,7 @@ const CourierCompleted: React.FC<CourierCompletedProps> = ({ onSelectShipment })
     const handleExport = () => {
         const headers = ['ID', 'Client', 'Recipient', 'Delivery Date', 'Status', 'Price (EGP)', 'Commission (EGP)'];
         const body = completedShipments.map(s => [
-            s.id, s.clientName, s.recipientName, s.deliveryDate ? new Date(s.deliveryDate).toLocaleDateString() : 'N/A', s.status, s.price.toFixed(2), (s.courierCommission || 0).toFixed(2)
+            s.id, s.clientName, s.recipientName, s.deliveryDate ? new Date(s.deliveryDate).toLocaleDateString() : 'N/A', s.status, (Number(s.price) || 0).toFixed(2), (Number(s.courierCommission) || 0).toFixed(2)
         ]);
         exportToCsv(headers, body, `My_Completed_Shipments`);
     };

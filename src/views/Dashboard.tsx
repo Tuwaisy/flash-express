@@ -38,14 +38,14 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard 
                     title="Cash to Collect" 
-                    value={`${cashToCollect.toFixed(2)} EGP`} 
+                    value={`${(Number(cashToCollect) || 0).toFixed(2)} EGP`} 
                     icon={<WalletIcon />} 
                     color="#f97316"
                     onClick={() => setActiveView('tasks')}
                 />
                 <StatCard 
                     title="Current Balance" 
-                    value={`${myStats?.currentBalance.toFixed(2) ?? '0.00'} EGP`} 
+                    value={`${(Number(myStats?.currentBalance) || 0).toFixed(2)} EGP`} 
                     icon={<CurrencyDollarIcon />} 
                     color="#16a34a"
                     onClick={() => setActiveView('courier-financials')}

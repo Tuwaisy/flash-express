@@ -260,7 +260,7 @@ const CreateShipment = () => {
                 'Additional address details',
                 'Describe package contents',
                 paymentMethodOptions,
-                `Standard (${standardFee.toFixed(2)} EGP), Urgent (${urgentFee.toFixed(2)} EGP), Express (${expressFee.toFixed(2)} EGP)`,
+                `Standard (${(Number(standardFee) || 0).toFixed(2)} EGP), Urgent (${(Number(urgentFee) || 0).toFixed(2)} EGP), Express (${(Number(expressFee) || 0).toFixed(2)} EGP)`,
                 'Package value in EGP (optional for Transfer)'
             ],
             [
@@ -414,20 +414,20 @@ const CreateShipment = () => {
                                     <span className="text-muted-foreground">Partner Discount </span>
                                     <span className="font-semibold">({clientForShipment?.partnerTier} - {discountPercentage}%)</span>
                                 </div>
-                                <span className="font-semibold">- {discountAmount.toFixed(2)} EGP</span>
+                                <span className="font-semibold">- {(Number(discountAmount) || 0).toFixed(2)} EGP</span>
                             </div>
                         )}
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground font-bold">Final Shipping Fee:</span>
-                            <span className="font-bold text-foreground">{finalFee.toFixed(2)} EGP</span>
+                            <span className="font-bold text-foreground">{(Number(finalFee) || 0).toFixed(2)} EGP</span>
                         </div>
                          <div className="flex justify-between text-sm pt-2 border-t border-border">
                             <span className="text-muted-foreground">Package Value:</span>
-                            <span className="font-semibold text-foreground">{numericPackageValue.toFixed(2)} EGP</span>
+                            <span className="font-semibold text-foreground">{(Number(numericPackageValue) || 0).toFixed(2)} EGP</span>
                         </div>
                         <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2">
                             <span className="text-foreground">Total to Collect (COD):</span>
-                            <span className="text-primary">{totalPrice.toFixed(2)} EGP</span>
+                            <span className="text-primary">{(Number(totalPrice) || 0).toFixed(2)} EGP</span>
                         </div>
                     </div>
 
