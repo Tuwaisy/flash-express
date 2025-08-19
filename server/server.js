@@ -1979,9 +1979,6 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     currentBalance: 0,
                     totalEarnings: 0,
                     consecutiveFailures: 0,
-                    totalDeliveries: 0,
-                    deliverySuccessRate: 100.00,
-                    averageDeliveryTime: 0,
                     isRestricted: false
                 });
                 
