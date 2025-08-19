@@ -112,7 +112,7 @@ const AdminFinancials: React.FC<AdminFinancialsProps> = ({ setActiveView }) => {
         const data = clientFinancials.map(client => [
             client.clientName,
             client.totalOrders.toString(),
-            client.orderSum.toFixed(2),
+            (Number(client.orderSum) || 0).toFixed(2),
             (Number(client.flatRateFee) || 0).toFixed(2)
         ]);
         exportToCsv(headers, data, 'Client_Financial_Summary');
@@ -254,7 +254,7 @@ const AdminFinancials: React.FC<AdminFinancialsProps> = ({ setActiveView }) => {
                                             {client.totalOrders}
                                         </button>
                                     </td>
-                                    <td className="px-6 py-4 text-muted-foreground">{client.orderSum.toFixed(2)} EGP</td>
+                                    <td className="px-6 py-4 text-muted-foreground">{(Number(client.orderSum) || 0).toFixed(2)} EGP</td>
                                     <td className="px-6 py-4 font-semibold text-primary">{(Number(client.flatRateFee) || 0).toFixed(2)} EGP</td>
                                     <td className="px-6 py-4">
                                         {client.partnerTier ? (
@@ -316,7 +316,7 @@ const AdminFinancials: React.FC<AdminFinancialsProps> = ({ setActiveView }) => {
                             </div>
                             <div className="responsive-card-item">
                                 <span className="responsive-card-label">Order Sum</span>
-                                <span className="responsive-card-value">{client.orderSum.toFixed(2)} EGP</span>
+                                <span className="responsive-card-value">{(Number(client.orderSum) || 0).toFixed(2)} EGP</span>
                             </div>
                         </div>
                     ))}

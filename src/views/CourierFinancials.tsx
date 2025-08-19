@@ -187,7 +187,7 @@ const CourierFinancials = () => {
                             type="number"
                             value={payoutAmount}
                             onChange={e => setPayoutAmount(e.target.value)}
-                            placeholder={`Max ${myStats.currentBalance.toFixed(2)}`}
+                            placeholder={`Max ${(Number(myStats.currentBalance) || 0).toFixed(2)}`}
                             className="w-full px-4 py-2 border border-border rounded-lg bg-background"
                             min="0.01"
                             step="0.01"

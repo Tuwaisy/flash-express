@@ -1208,12 +1208,13 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 }
 
                 if (verification.code === code) {
-                    const shipment = parseJsonField(await trx('shipments').where({ id }).first(), 'statusHistory');
-                    if (!shipment) {
+                    const rawShipment = await trx('shipments').where({ id }).first();
+                    if (!rawShipment) {
                         const err = new Error('Shipment not found.');
                         err.statusCode = 404;
                         throw err;
                     }
+                    const shipment = parseShipment(rawShipment);
                     await processDeliveredShipment(trx, shipment);
                     await trx('delivery_verifications').where({ shipmentId: id }).del();
                 } else {
