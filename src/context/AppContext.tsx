@@ -56,6 +56,7 @@ export type AppContextType = {
     requestCourierPayout: (courierId: number, amount: number, paymentMethod: 'Cash' | 'Bank Transfer') => Promise<void>;
     requestClientPayout: (userId: number, amount: number) => Promise<void>;
     processClientPayout: (transactionId: string) => Promise<void>;
+    declineClientPayout: (transactionId: string) => Promise<void>;
     updateClientFlatRate: (clientId: number, flatRate: number) => Promise<void>;
     updateClientTaxCard: (clientId: number, taxCardNumber: string) => Promise<void>;
     updateTierSettings: (settings: TierSetting[]) => Promise<void>;
@@ -651,6 +652,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         await apiFetch(`/api/client-transactions/${transactionId}/process`, { method: 'PUT' });
     };
 
+    const declineClientPayout = async (transactionId: string) => {
+        await apiFetch(`/api/client-transactions/${transactionId}/decline`, { method: 'PUT' });
+    };
+
     const updateClientFlatRate = async (clientId: number, flatRateFee: number) => {
         await apiFetch(`/api/clients/${clientId}/flatrate`, { method: 'PUT', body: JSON.stringify({ flatRateFee }) });
     };
@@ -852,6 +857,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         requestCourierPayout,
         requestClientPayout,
         processClientPayout,
+        declineClientPayout,
         updateClientFlatRate,
         updateClientTaxCard,
         updateTierSettings,

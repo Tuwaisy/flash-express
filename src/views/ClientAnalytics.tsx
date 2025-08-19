@@ -15,7 +15,7 @@ interface ClientAnalyticsProps {
 }
 
 const ClientAnalytics: React.FC<ClientAnalyticsProps> = ({ onSelectShipment, setActiveView }) => {
-    const { users, shipments, clientTransactions, processClientPayout, addToast } = useAppContext();
+    const { users, shipments, clientTransactions, processClientPayout, declineClientPayout, addToast } = useAppContext();
     const [mainTab, setMainTab] = useState<'summary' | 'payouts'>('summary');
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: 'shipmentCount', direction: 'desc' });
     const [selectedClient, setSelectedClient] = useState<User | null>(null);
@@ -122,6 +122,13 @@ const ClientAnalytics: React.FC<ClientAnalyticsProps> = ({ onSelectShipment, set
     const handleProcessPayout = (id: string) => {
         processClientPayout(id);
         addToast("Payout processed successfully", "success");
+    }
+
+    const handleDeclinePayout = (id: string) => {
+        if (confirm('Are you sure you want to decline this payout request?')) {
+            declineClientPayout(id);
+            addToast("Payout declined successfully", "success");
+        }
     }
 
     const handleExportSummary = () => {
@@ -292,7 +299,10 @@ const ClientAnalytics: React.FC<ClientAnalyticsProps> = ({ onSelectShipment, set
                                         </td>
                                         <td className="p-4 font-bold text-red-600">-{Math.abs(Number(payout.amount) || 0).toFixed(2)} EGP</td>
                                         <td className="p-4">
-                                            <button onClick={() => handleProcessPayout(payout.id)} className="px-3 py-1.5 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 text-sm">Process Payout</button>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => handleProcessPayout(payout.id)} className="px-3 py-1.5 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 text-sm">Process</button>
+                                                <button onClick={() => handleDeclinePayout(payout.id)} className="px-3 py-1.5 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 text-sm">Decline</button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

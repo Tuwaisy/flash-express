@@ -1771,14 +1771,98 @@ app.get('/api/debug/users/:id', async (req, res) => {
     app.put('/api/client-transactions/:id/process', async (req, res) => {
         const { id } = req.params;
         try {
-            await knex('client_transactions')
-                .where({ id, type: 'Withdrawal Request' })
-                .update({ status: 'Processed', type: 'Withdrawal Processed', description: 'Payout processed by admin' });
+            await knex.transaction(async trx => {
+                // Update the transaction status
+                await trx('client_transactions')
+                    .where({ id, type: 'Withdrawal Request' })
+                    .update({ status: 'Processed', type: 'Withdrawal Processed', description: 'Payout processed by admin' });
+                
+                // Get the transaction to find the user
+                const transaction = await trx('client_transactions').where({ id }).first();
+                if (transaction) {
+                    // Update client's stored wallet balance
+                    await updateClientWalletBalance(trx, transaction.userId);
+                }
+            });
+            
             res.status(200).json({ success: true });
             throttledDataUpdate();
         } catch (error) {
             console.error('Client payout processing error:', error);
             res.status(500).json({ error: 'Server error processing payout.' });
+        }
+    });
+
+    app.put('/api/client-transactions/:id/decline', async (req, res) => {
+        const { id } = req.params;
+        try {
+            await knex.transaction(async trx => {
+                // Update the transaction status to declined
+                await trx('client_transactions')
+                    .where({ id, type: 'Withdrawal Request' })
+                    .update({ status: 'Declined', type: 'Withdrawal Declined', description: 'Payout declined by admin' });
+                
+                // Get the transaction to find the user
+                const transaction = await trx('client_transactions').where({ id }).first();
+                if (transaction) {
+                    // Update client's stored wallet balance (this will restore available balance)
+                    await updateClientWalletBalance(trx, transaction.userId);
+                }
+            });
+            
+            res.status(200).json({ success: true });
+            throttledDataUpdate();
+        } catch (error) {
+            console.error('Client payout decline error:', error);
+            res.status(500).json({ error: 'Server error declining payout.' });
+        }
+    });
+
+    // --- DEBUG ENDPOINT: Check courier balance calculation ---
+    app.get('/api/debug/courier-balance/:courierId', async (req, res) => {
+        const { courierId } = req.params;
+        try {
+            const courierTransactions = await knex('courier_transactions').where({ courierId });
+            const courierStats = await knex('courier_stats').where({ courierId }).first();
+            
+            // Calculate balance excluding withdrawal transactions
+            const includedTransactions = courierTransactions.filter(t => 
+                t.status !== 'Declined' &&
+                !['Withdrawal Request', 'Withdrawal Processed', 'Withdrawal Declined'].includes(t.type)
+            );
+            
+            const excludedTransactions = courierTransactions.filter(t => 
+                t.status === 'Declined' ||
+                ['Withdrawal Request', 'Withdrawal Processed', 'Withdrawal Declined'].includes(t.type)
+            );
+            
+            const calculatedBalance = includedTransactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+            
+            res.json({
+                courierId,
+                storedBalance: courierStats?.currentBalance || 0,
+                calculatedBalance,
+                totalTransactions: courierTransactions.length,
+                includedTransactions: includedTransactions.map(t => ({
+                    id: t.id,
+                    type: t.type,
+                    amount: t.amount,
+                    status: t.status,
+                    description: t.description,
+                    date: t.date
+                })),
+                excludedTransactions: excludedTransactions.map(t => ({
+                    id: t.id,
+                    type: t.type,
+                    amount: t.amount,
+                    status: t.status,
+                    description: t.description,
+                    date: t.date
+                }))
+            });
+        } catch (error) {
+            console.error('Debug courier balance error:', error);
+            res.status(500).json({ error: 'Debug failed' });
         }
     });
 
