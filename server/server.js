@@ -781,16 +781,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 // Update shipments to remove courier references
                 await trx('shipments').where({ courierId: id }).update({ 
                     courierId: null, 
-                    status: 'Unassigned',
-                    statusHistory: knex.raw(`
-                        CASE 
-                            WHEN statusHistory IS NULL THEN ?
-                            ELSE json_insert(statusHistory, '$[#]', json(?))
-                        END
-                    `, [
-                        JSON.stringify([{ status: 'Unassigned', timestamp: new Date().toISOString() }]),
-                        JSON.stringify({ status: 'Unassigned', timestamp: new Date().toISOString() })
-                    ])
+                    status: 'Unassigned'
                 });
                 
                 // Finally delete the user

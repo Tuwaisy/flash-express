@@ -73,12 +73,12 @@ const CourierTasks: React.FC<CourierTasksProps> = ({ setActiveView }) => {
     // Calculate financial metrics
     const totalCashToCollect = myDeliveryTasks
         .filter(s => s.paymentMethod === PaymentMethod.COD)
-        .reduce((sum, s) => sum + s.price, 0);
+        .reduce((sum, s) => sum + (Number(s.price) || 0), 0);
     
     const myDeliveredShipments = shipments.filter(s => s.courierId === currentUser.id && s.status === ShipmentStatus.DELIVERED);
     const totalCODCollected = myDeliveredShipments
         .filter(s => s.paymentMethod === PaymentMethod.COD)
-        .reduce((sum, s) => sum + s.price, 0);
+        .reduce((sum, s) => sum + (Number(s.price) || 0), 0);
     
     const pendingDeliveries = myDeliveryTasks.length;
 
@@ -215,7 +215,7 @@ const CourierTasks: React.FC<CourierTasksProps> = ({ setActiveView }) => {
                 <p className="font-mono text-sm text-muted-foreground">{task.id}</p>
                 <p className="text-lg font-bold text-foreground">Deliver to: {task.recipientName}</p>
                 <p className="text-muted-foreground">{task.toAddress.street}, {task.toAddress.zone}</p>
-                 <p className="text-sm font-semibold text-foreground mt-1">Payment: {task.paymentMethod} ({task.price > 0 ? `${task.price.toFixed(2)} EGP` : 'Pre-Paid'})</p>
+                 <p className="text-sm font-semibold text-foreground mt-1">Payment: {task.paymentMethod} ({(Number(task.price) || 0) > 0 ? `${(Number(task.price) || 0).toFixed(2)} EGP` : 'Pre-Paid'})</p>
             </div>
             <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full md:w-auto">
                 <div className="flex-grow"><ShipmentStatusBadge status={task.status} /></div>
@@ -257,14 +257,14 @@ const CourierTasks: React.FC<CourierTasksProps> = ({ setActiveView }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard 
                     title="Cash to Collect" 
-                    value={`${totalCashToCollect.toFixed(2)} EGP`} 
+                    value={`${(Number(totalCashToCollect) || 0).toFixed(2)} EGP`} 
                     icon={<WalletIcon className="w-7 h-7"/>} 
                     color="#f97316"
                     subtitle={`${myDeliveryTasks.filter(s => s.paymentMethod === PaymentMethod.COD).length} COD packages`}
                 />
                 <StatCard 
                     title="Total COD Collected" 
-                    value={`${totalCODCollected.toFixed(2)} EGP`} 
+                    value={`${(Number(totalCODCollected) || 0).toFixed(2)} EGP`} 
                     icon={<CurrencyDollarIcon className="w-7 h-7"/>} 
                     color="#16a34a"
                     subtitle={`From ${myDeliveredShipments.filter(s => s.paymentMethod === PaymentMethod.COD).length} completed deliveries`}

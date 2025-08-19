@@ -93,8 +93,8 @@ const CourierPerformance: React.FC<CourierPerformanceProps> = ({ onSelectShipmen
             totalCompleted,
             totalFailed,
             pendingCount,
-            stats?.totalEarnings?.toFixed(2) || '0.00',
-            stats?.currentBalance?.toFixed(2) || '0.00',
+            (Number(stats?.totalEarnings) || 0).toFixed(2),
+            (Number(stats?.currentBalance) || 0).toFixed(2),
             stats?.commissionType || 'N/A',
             stats?.commissionValue || 'N/A'
         ]);
@@ -508,7 +508,7 @@ const ManageCourierModal: React.FC<ManageCourierModalProps> = ({ isOpen, onClose
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <h4 className="text-sm font-medium text-muted-foreground">Total Referral Earnings</h4>
-                                            <p className="text-lg font-bold text-green-600">{referralEarnings.toFixed(2)} EGP</p>
+                                            <p className="text-lg font-bold text-green-600">{(Number(referralEarnings) || 0).toFixed(2)} EGP</p>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-sm text-muted-foreground">Commission Rate</p>

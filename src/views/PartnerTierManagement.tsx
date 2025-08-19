@@ -76,7 +76,7 @@ const PartnerTierManagement = () => {
                                         type="number"
                                         value={setting.shipmentThreshold}
                                         onChange={e => handleInputChange(setting.tierName, 'shipmentThreshold', e.target.value)}
-                                        className="w-full px-4 py-2 border border-border rounded-lg"
+                                        className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground"
                                     />
                                     <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-sm text-muted-foreground">
                                         or more
@@ -94,7 +94,7 @@ const PartnerTierManagement = () => {
                                         step="0.1"
                                         value={setting.discountPercentage}
                                         onChange={e => handleInputChange(setting.tierName, 'discountPercentage', e.target.value)}
-                                        className="w-full px-4 py-2 border border-border rounded-lg"
+                                        className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground"
                                     />
                                      <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-sm text-muted-foreground">
                                         %
