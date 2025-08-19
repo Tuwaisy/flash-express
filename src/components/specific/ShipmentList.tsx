@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Shipment, ShipmentStatus } from '../../types';
+import { Shipment, ShipmentStatus, PartnerTier } from '../../types';
 import { ShipmentStatusBadge } from '../common/ShipmentStatusBadge';
 import { PencilIcon, ClockIcon } from '../Icons';
+import { useAppContext } from '../../context/AppContext';
 
 interface ShipmentListProps {
     shipments: Shipment[]; 
@@ -26,6 +27,7 @@ export const ShipmentList: React.FC<ShipmentListProps> = ({
     showEditableFees = false,
     updateShipmentFees,
 }) => {
+    const { currentUser, tierSettings, users } = useAppContext();
     const [editingCell, setEditingCell] = useState<{ shipmentId: string; field: 'clientFee' | 'courierCommission' } | null>(null);
     const [editValue, setEditValue] = useState<string>('');
     const [now, setNow] = useState(new Date());
@@ -35,6 +37,22 @@ export const ShipmentList: React.FC<ShipmentListProps> = ({
         const timer = setInterval(() => setNow(new Date()), 60000); // Update every minute
         return () => clearInterval(timer);
     }, []);
+
+    // Function to calculate tier-discounted price
+    const calculateDiscountedPrice = (shipment: Shipment): number => {
+        const basePrice = Number(shipment.price) || 0;
+        
+        // If this is the client's own shipment, apply their tier discount
+        if (currentUser?.id === shipment.clientId && currentUser?.partnerTier) {
+            const tierSetting = tierSettings.find(t => t.tierName === currentUser.partnerTier);
+            if (tierSetting && tierSetting.discountPercentage > 0) {
+                const discountAmount = basePrice * (tierSetting.discountPercentage / 100);
+                return basePrice - discountAmount;
+            }
+        }
+        
+        return basePrice;
+    };
 
     const isEditable = (status: ShipmentStatus) => ![ShipmentStatus.DELIVERED, ShipmentStatus.DELIVERY_FAILED].includes(status);
     
@@ -168,7 +186,8 @@ export const ShipmentList: React.FC<ShipmentListProps> = ({
                         const courierCommission = Number(s.courierCommission) || 0;
                         const netProfit = clientFee - courierCommission;
                         const days = getDaysInPhase(s);
-                        const price = Number(s.price) || 0;
+                        const basePrice = Number(s.price) || 0;
+                        const discountedPrice = calculateDiscountedPrice(s);
                         
                         return (
                             <tr key={s.id} onClick={() => onSelect?.(s)} className={`hover:bg-accent ${onSelect ? 'cursor-pointer' : ''}`}>
@@ -186,7 +205,14 @@ export const ShipmentList: React.FC<ShipmentListProps> = ({
                                         </div>
                                     )}
                                 </td>
-                                {showPackageValue && <td className="px-4 py-3 font-mono font-semibold text-primary">{(s.paymentMethod === 'Transfer' ? 0 : price).toFixed(2)}</td>}
+                                {showPackageValue && <td className="px-4 py-3 font-mono font-semibold text-primary">
+                                    <div>
+                                        {(s.paymentMethod === 'Transfer' ? 0 : discountedPrice).toFixed(2)}
+                                        {discountedPrice < basePrice && currentUser?.id === s.clientId && (
+                                            <div className="text-xs text-muted-foreground line-through">{basePrice.toFixed(2)}</div>
+                                        )}
+                                    </div>
+                                </td>}
                                 {showClientFee && <td className="px-4 py-3 font-mono text-green-600 dark:text-green-400">{renderFeeCell(s, 'clientFee', s.clientFlatRateFee)}</td>}
                                 {showCourierCommission && <td className="px-4 py-3 font-mono text-red-600 dark:text-red-400">{renderFeeCell(s, 'courierCommission', s.courierCommission)}</td>}
                                 {showNetProfit && <td className={`px-4 py-3 font-mono font-bold ${netProfit >= 0 ? 'text-foreground' : 'text-red-600 dark:text-red-400'}`}>{netProfit.toFixed(2)}</td>}

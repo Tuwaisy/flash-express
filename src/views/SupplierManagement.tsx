@@ -68,11 +68,13 @@ const SupplierManagement = () => {
 
     const handleTransactionSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (currentSupplier && transactionData.amount > 0) {
+        const amount = Number(transactionData.amount) || 0;
+        if (currentSupplier && amount > 0) {
             addSupplierTransaction({
                 supplier_id: currentSupplier.id,
                 date: new Date().toISOString(),
-                ...transactionData
+                ...transactionData,
+                amount
             });
             setTransactionModalOpen(false);
             setTransactionData({ type: 'Payment', amount: 0, description: '' });
@@ -144,7 +146,7 @@ const SupplierManagement = () => {
                         <option value="Payment">Payment</option>
                         <option value="Credit">Credit</option>
                     </select>
-                    <input type="number" value={transactionData.amount} onChange={e => setTransactionData({...transactionData, amount: parseFloat(e.target.value)})} placeholder="Amount" className="w-full p-2 border border-border rounded bg-background" required />
+                    <input type="number" value={transactionData.amount} onChange={e => setTransactionData({...transactionData, amount: Number(e.target.value) || 0})} placeholder="Amount" className="w-full p-2 border border-border rounded bg-background" required />
                     <input value={transactionData.description} onChange={e => setTransactionData({...transactionData, description: e.target.value})} placeholder="Description (optional)" className="w-full p-2 border border-border rounded bg-background" />
                     <button type="submit" className="w-full bg-primary text-primary-foreground py-2 rounded">Log Transaction</button>
                 </form>

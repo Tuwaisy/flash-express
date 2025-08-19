@@ -523,24 +523,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const inTransitCOD = shipments.filter(s => [ShipmentStatus.OUT_FOR_DELIVERY].includes(s.status) && s.paymentMethod === PaymentMethod.COD);
         const deliveredCOD = shipments.filter(s => s.status === ShipmentStatus.DELIVERED && s.paymentMethod === PaymentMethod.COD);
     
-        const totalCollectedMoney = deliveredShipments.reduce((sum, s) => sum + s.price, 0);
-        const undeliveredPackagesValue = undeliveredShipments.reduce((sum, s) => sum + s.price, 0);
+        const totalCollectedMoney = deliveredShipments.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+        const undeliveredPackagesValue = undeliveredShipments.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
         
         const uncollectedTransferFees = undeliveredShipments
             .filter(s => s.paymentMethod === PaymentMethod.TRANSFER)
-            .reduce((sum, s) => sum + (s.clientFlatRateFee || 0), 0);
+            .reduce((sum, s) => sum + (Number(s.clientFlatRateFee) || 0), 0);
 
         const allShipmentsWithFees = shipments.filter(s => s.status === ShipmentStatus.DELIVERED || s.status === ShipmentStatus.DELIVERY_FAILED);
         
-        const potentialFeesFromPending = undeliveredShipments.reduce((sum, s) => sum + (s.clientFlatRateFee || 0), 0);
-        const totalRevenue = allShipmentsWithFees.reduce((sum, s) => sum + (s.clientFlatRateFee || 0), 0);
-        const totalCommission = deliveredShipments.reduce((sum, s) => sum + (s.courierCommission || 0), 0);
+        const potentialFeesFromPending = undeliveredShipments.reduce((sum, s) => sum + (Number(s.clientFlatRateFee) || 0), 0);
+        const totalRevenue = allShipmentsWithFees.reduce((sum, s) => sum + (Number(s.clientFlatRateFee) || 0), 0);
+        const totalCommission = deliveredShipments.reduce((sum, s) => sum + (Number(s.courierCommission) || 0), 0);
         const netRevenue = totalRevenue - totalCommission;
 
-        const cashToCollect = inTransitCOD.reduce((sum, s) => sum + s.price, 0);
-        const totalCODCollected = deliveredCOD.reduce((sum, s) => sum + s.price, 0);
+        const cashToCollect = inTransitCOD.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+        const totalCODCollected = deliveredCOD.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
         
-        const totalOwedToCouriers = courierStats.reduce((sum, stat) => sum + (stat.currentBalance || 0), 0);
+        const totalOwedToCouriers = courierStats.reduce((sum, stat) => sum + (Number(stat.currentBalance) || 0), 0);
 
         return {
             totalCollectedMoney,
