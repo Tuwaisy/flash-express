@@ -474,10 +474,13 @@ async function main() {
                     ]);
                 }
             } else if (shipment.paymentMethod === 'Wallet') {
-                // For Wallet payments: Client already paid upfront, deduct shipping fee only
-                await trx('client_transactions').insert([
-                    { id: generateId('TRN'), userId: client.id, type: 'Payment', amount: -shippingFee, date: new Date().toISOString(), description: `Shipping fee for delivered shipment ${shipment.id}`, status: 'Processed' }
-                ]);
+                // For Wallet payments: Client already paid shipping fee, credit package value collected
+                const packageValue = shipment.packageValue || 0;
+                if (packageValue > 0) {
+                    await trx('client_transactions').insert([
+                        { id: generateId('TRN'), userId: client.id, type: 'Deposit', amount: packageValue, date: new Date().toISOString(), description: `Package value collected for delivered shipment ${shipment.id}`, status: 'Processed' }
+                    ]);
+                }
             }
         }
     };
@@ -768,11 +771,37 @@ app.get('/api/debug/users/:id', async (req, res) => {
     app.delete('/api/users/:id', async (req, res) => {
         const { id } = req.params;
         try {
-            await knex('users').where({ id }).del();
+            await knex.transaction(async (trx) => {
+                // Delete related records first to avoid foreign key constraints
+                await trx('client_transactions').where({ userId: id }).del();
+                await trx('courier_transactions').where({ courierId: id }).del();
+                await trx('courier_stats').where({ courierId: id }).del();
+                await trx('in_app_notifications').where({ userId: id }).del();
+                
+                // Update shipments to remove courier references
+                await trx('shipments').where({ courierId: id }).update({ 
+                    courierId: null, 
+                    status: 'Unassigned',
+                    statusHistory: knex.raw(`
+                        CASE 
+                            WHEN statusHistory IS NULL THEN ?
+                            ELSE json_insert(statusHistory, '$[#]', json(?))
+                        END
+                    `, [
+                        JSON.stringify([{ status: 'Unassigned', timestamp: new Date().toISOString() }]),
+                        JSON.stringify({ status: 'Unassigned', timestamp: new Date().toISOString() })
+                    ])
+                });
+                
+                // Finally delete the user
+                await trx('users').where({ id }).del();
+            });
             res.status(200).json({ success: true });
             throttledDataUpdate();
+        } catch (error) { 
+            console.error('Error deleting user:', error);
+            res.status(500).json({ error: 'Server error deleting user' }); 
         }
-        catch (error) { res.status(500).json({ error: 'Server error deleting user' }); }
     });
 
     app.put('/api/users/:id/password', async (req, res) => {
@@ -1087,7 +1116,6 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     courierId,
                     status: newStatus,
                     statusHistory: JSON.stringify(currentHistory),
-                    clientFlatRateFee: client.flatRateFee,
                     courierCommission: commission
                 });
                 
@@ -1159,7 +1187,6 @@ app.get('/api/debug/users/:id', async (req, res) => {
                             courierId: bestCourier.id,
                             status: newStatus,
                             statusHistory: JSON.stringify(currentHistory),
-                            clientFlatRateFee: client.flatRateFee,
                             courierCommission: commission
                         });
 
@@ -1715,7 +1742,6 @@ app.get('/api/debug/users/:id', async (req, res) => {
                         courierId,
                         status: newStatus,
                         statusHistory: JSON.stringify(currentHistory),
-                        clientFlatRateFee: client.flatRateFee,
                         courierCommission: commission
                     });
                     

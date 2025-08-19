@@ -131,6 +131,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         saveToStorage('app-theme', newTheme);
     };
 
+    // Apply theme to document element
+    useEffect(() => {
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+            document.documentElement.classList.remove('light');
+        } else {
+            document.documentElement.classList.add('light');
+            document.documentElement.classList.remove('dark');
+        }
+    }, [theme]);
+
     const addToast = useCallback((message: string, type: Toast['type'], duration?: number) => {
         const id = Date.now();
         const toastDuration = duration || 10000;
@@ -569,7 +580,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const deliveredShipments = clientShipments.filter(s => s.status === ShipmentStatus.DELIVERED);
             const totalOrders = clientShipments.length; // Total orders placed
             const deliveredOrders = deliveredShipments.length; // Delivered orders count
-            const orderSum = deliveredShipments.reduce((sum, s) => sum + s.price, 0); // Revenue from delivered orders only
+            const orderSum = deliveredShipments.reduce((sum, s) => sum + (Number(s.price) || 0), 0); // Revenue from delivered orders only
             return {
                 clientId: client.id,
                 clientName: client.name,
