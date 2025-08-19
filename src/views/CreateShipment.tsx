@@ -26,8 +26,7 @@ const CreateShipment = () => {
     const [packageValue, setPackageValue] = useState('');
     const [amountReceived, setAmountReceived] = useState('');
     const [amountToCollect, setAmountToCollect] = useState('');
-
-    // State for Bulk Upload
+    const [includeShippingFee, setIncludeShippingFee] = useState(false);
     const [bulkSelectedClientId, setBulkSelectedClientId] = useState<string>(canCreateForOthers ? '' : String(currentUser?.id));
     const [file, setFile] = useState<File | null>(null);
     const [parsedData, setParsedData] = useState<BulkShipment[]>([]);
@@ -67,10 +66,11 @@ const CreateShipment = () => {
     
     const totalPrice = useMemo(() => {
         if (paymentMethod === PaymentMethod.TRANSFER) {
-            return parseFloat(amountToCollect) || 0;
+            const baseAmount = parseFloat(amountToCollect) || 0;
+            return includeShippingFee ? baseAmount + finalFee : baseAmount;
         }
         return numericPackageValue + finalFee;
-    }, [paymentMethod, finalFee, numericPackageValue, amountToCollect]);
+    }, [paymentMethod, finalFee, numericPackageValue, amountToCollect, includeShippingFee]);
 
 
     const handleSingleSubmit = (e: React.FormEvent) => {
@@ -388,16 +388,31 @@ const CreateShipment = () => {
                     </div>
                     
                     {paymentMethod === PaymentMethod.TRANSFER && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
-                            <div>
-                                <label className="block text-sm font-medium text-foreground mb-1">Amount Received from Client</label>
-                                <input type="number" step="0.01" value={amountReceived} onChange={e => setAmountReceived(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background" placeholder="e.g., 500" required />
-                                <p className="text-xs text-muted-foreground mt-1">The amount you already collected.</p>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                                <div>
+                                    <label className="block text-sm font-medium text-foreground mb-1">Amount Received from Client</label>
+                                    <input type="number" step="0.01" value={amountReceived} onChange={e => setAmountReceived(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background" placeholder="e.g., 500" required />
+                                    <p className="text-xs text-muted-foreground mt-1">The amount you already collected.</p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-foreground mb-1">Amount to Collect from Recipient</label>
+                                    <input type="number" step="0.01" value={amountToCollect} onChange={e => setAmountToCollect(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background" placeholder="e.g., 200" required />
+                                    <p className="text-xs text-muted-foreground mt-1">Amount courier will collect (0 if none).</p>
+                                </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-foreground mb-1">Amount to Collect from Recipient</label>
-                                <input type="number" step="0.01" value={amountToCollect} onChange={e => setAmountToCollect(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background" placeholder="e.g., 200" required />
-                                <p className="text-xs text-muted-foreground mt-1">Amount courier will collect (0 if none).</p>
+                            
+                            <div className="flex items-center gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+                                <input 
+                                    type="checkbox" 
+                                    id="includeShippingFee" 
+                                    checked={includeShippingFee} 
+                                    onChange={e => setIncludeShippingFee(e.target.checked)}
+                                    className="w-4 h-4 text-primary bg-background border-border rounded focus:ring-primary focus:ring-2"
+                                />
+                                <label htmlFor="includeShippingFee" className="text-sm font-medium text-foreground cursor-pointer">
+                                    Include shipping fee ({(Number(finalFee) || 0).toFixed(2)} EGP) in total amount to collect
+                                </label>
                             </div>
                         </div>
                     )}
@@ -426,7 +441,9 @@ const CreateShipment = () => {
                             <span className="font-semibold text-foreground">{(Number(numericPackageValue) || 0).toFixed(2)} EGP</span>
                         </div>
                         <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2">
-                            <span className="text-foreground">Total to Collect (COD):</span>
+                            <span className="text-foreground">
+                                {paymentMethod === PaymentMethod.TRANSFER ? 'Total to Collect from Recipient:' : 'Total to Collect (COD):'}
+                            </span>
                             <span className="text-primary">{(Number(totalPrice) || 0).toFixed(2)} EGP</span>
                         </div>
                     </div>
