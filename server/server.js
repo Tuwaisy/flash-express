@@ -1951,8 +1951,8 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 
                 // Get first 2 shipments to preserve
                 const shipmentsToKeep = await trx('shipments')
-                    .select('id', 'createdAt')
-                    .orderBy('createdAt')
+                    .select('id', 'creationDate')
+                    .orderBy('creationDate')
                     .limit(2);
                     
                 const shipmentIds = shipmentsToKeep.map(s => s.id);
