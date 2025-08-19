@@ -1542,25 +1542,26 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     throw new Error('You already have a pending payout request. Please wait for it to be processed before requesting another.');
                 }
                 
-                // Calculate real-time balance from transactions instead of relying on stored balance
-                // Exclude pending withdrawal requests to get available balance
-                const courierTransactionsForBalance = await trx('courier_transactions')
-                    .where({ courierId })
-                    .where(function() {
-                        this.where('status', 'Processed')
-                            .orWhere(function() {
-                                this.where('status', 'Pending')
-                                    .whereNot('type', 'Withdrawal Request');
-                            });
-                    });
-                
-                const calculatedBalance = courierTransactionsForBalance.reduce((sum, transaction) => {
+                // Calculate real-time balance from transactions (exclude all withdrawal types)
+                const courierTransactions = await trx('courier_transactions').where({ courierId });
+                const calculatedBalance = courierTransactions.reduce((sum, transaction) => {
                     const amount = Number(transaction.amount) || 0;
-                    return sum + amount;
+                    // Exclude withdrawal transactions (both pending and processed) from available balance
+                    if (['Withdrawal Request', 'Withdrawal Processed', 'Withdrawal Declined'].includes(transaction.type)) {
+                        return sum; // Don't add withdrawal transactions to available balance
+                    }
+                    // Only include processed transactions or non-withdrawal pending transactions
+                    if (transaction.status === 'Processed' || (transaction.status === 'Pending' && transaction.type !== 'Withdrawal Request')) {
+                        return sum + amount;
+                    }
+                    return sum;
                 }, 0);
                 
                 console.log(`💰 Courier ${courierId} balance check: calculated=${calculatedBalance.toFixed(2)}, requested=${amount}`);
-                console.log(`📊 Transactions used for balance:`, courierTransactionsForBalance.map(t => `${t.type}: ${t.amount} (${t.status})`));
+                console.log(`📊 Transactions used for balance:`, courierTransactions.filter(t => 
+                    !['Withdrawal Request', 'Withdrawal Processed', 'Withdrawal Declined'].includes(t.type) &&
+                    (t.status === 'Processed' || (t.status === 'Pending' && t.type !== 'Withdrawal Request'))
+                ).map(t => `${t.type}: ${t.amount} (${t.status})`));
                 
                 if (calculatedBalance < amount) {
                     throw new Error(`Insufficient balance for payout request. Available: ${calculatedBalance.toFixed(2)} EGP, Requested: ${amount} EGP`);
@@ -1622,6 +1623,20 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 }
 
                 const [payout] = await trx('courier_transactions').where({ id }).update(updatePayload).returning('*');
+                
+                // Update courier's stored balance by deducting the processed amount
+                const courierStats = await trx('courier_stats').where({ courierId: payout.courierId }).first();
+                if (courierStats) {
+                    const currentBalance = Number(courierStats.currentBalance) || 0;
+                    const deductionAmount = Math.abs(Number(finalAmount)); // Make sure it's positive for deduction
+                    const newBalance = currentBalance - deductionAmount;
+                    
+                    await trx('courier_stats').where({ courierId: payout.courierId }).update({ 
+                        currentBalance: newBalance
+                    });
+                    
+                    console.log(`💸 Payout processed: Courier ${payout.courierId} balance: ${currentBalance.toFixed(2)} - ${deductionAmount.toFixed(2)} = ${newBalance.toFixed(2)}`);
+                }
                 
                 console.log(`✅ Payout processed: ID ${id}, Type changed from 'Withdrawal Request' to 'Withdrawal Processed'`);
                 
@@ -1709,10 +1724,14 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     throw new Error('You already have a pending payout request. Please wait for it to be processed before requesting another.');
                 }
                 
-                // Check client's current available balance
+                // Check client's current available balance (exclude pending withdrawal requests)
                 const clientTransactions = await trx('client_transactions').where({ userId: id });
                 const availableBalance = clientTransactions.reduce((sum, t) => {
                     const transactionAmount = Number(t.amount) || 0;
+                    // Exclude withdrawal requests (both pending and processed) from available balance
+                    if (['Withdrawal Request', 'Withdrawal Processed', 'Withdrawal Declined'].includes(t.type)) {
+                        return sum; // Don't add withdrawal transactions to available balance
+                    }
                     return sum + transactionAmount;
                 }, 0);
                 

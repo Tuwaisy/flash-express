@@ -385,12 +385,12 @@ const ManageCourierModal: React.FC<ManageCourierModalProps> = ({ isOpen, onClose
 
     useEffect(() => { setSettings({ commissionType: courierStats.commissionType, commissionValue: courierStats.commissionValue }); }, [courierStats]);
     
-    // Auto-close modal when all payouts are processed
+    // Auto-close modal when all payouts are processed (with longer delay)
     useEffect(() => {
         if (payoutRequests.length === 0 && isOpen) {
             const timer = setTimeout(() => {
                 onClose();
-            }, 1000); // Give a small delay to let users see the change
+            }, 5000); // Give 5 seconds delay to let users see the change and do other tasks
             return () => clearTimeout(timer);
         }
     }, [payoutRequests.length, isOpen, onClose]);
