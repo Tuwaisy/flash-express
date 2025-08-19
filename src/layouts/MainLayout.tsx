@@ -154,7 +154,7 @@ const MainLayout: React.FC = () => {
                             </div>
                         </div>
 
-                        {selectedShipment.packagingLog && selectedShipment.packagingLog.length > 0 && !currentUser.roles.includes(UserRole.CLIENT) && (
+                        {selectedShipment.packagingLog && selectedShipment.packagingLog.length > 0 && !currentUser.roles.includes(UserRole.CLIENT as any) && !(currentUser.roles as string[]).includes('Client') && (
                             <div className="pt-4 border-t border-border">
                                 <h4 className="font-semibold text-foreground">Packaging Info</h4>
                                 <ul className="list-disc list-inside text-sm text-muted-foreground">

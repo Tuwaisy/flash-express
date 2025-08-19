@@ -24,7 +24,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <StatCard title="Total Shipments" value={clientShipments.length} icon={<PackageIcon />} color="#3b82f6" onClick={() => setActiveView('shipments')} />
             <StatCard title="Out for Delivery" value={clientShipments.filter(s => s.status === ShipmentStatus.OUT_FOR_DELIVERY).length} icon={<TruckIcon />} color="#8b5cf6" onClick={() => navigateWithFilter(s => s.clientId === currentUser.id && s.status === ShipmentStatus.OUT_FOR_DELIVERY, 'shipments')} />
-            <StatCard title="Wallet Balance" value={`${currentUser.walletBalance?.toFixed(2) ?? 0} EGP`} icon={<WalletIcon />} color="#22c55e" onClick={() => setActiveView('wallet')} />
+            <StatCard title="Wallet Balance" value={`${(Number(currentUser.walletBalance) || 0).toFixed(2)} EGP`} icon={<WalletIcon />} color="#22c55e" onClick={() => setActiveView('wallet')} />
         </div>
     );
     

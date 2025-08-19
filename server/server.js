@@ -643,7 +643,19 @@ app.get('/api/debug/users/:id', async (req, res) => {
           knex('tier_settings').select(),
         ]);
 
-        const safeUsers = users.map(parseUser);
+        const safeUsers = users.map(user => {
+            const parsedUser = parseUser(user);
+            // Calculate wallet balance from client transactions
+            if (parsedUser.roles.includes('Client')) {
+                const userTransactions = clientTransactions.filter(t => t.userId === user.id);
+                const balance = userTransactions.reduce((sum, t) => {
+                    const amount = Number(t.amount) || 0;
+                    return sum + amount;
+                }, 0);
+                parsedUser.walletBalance = balance;
+            }
+            return parsedUser;
+        });
         const parsedShipments = shipments.map(parseShipment);
         const parsedRoles = customRoles.map(parseRole);
         const parsedAssets = assets.map(parseAsset);
