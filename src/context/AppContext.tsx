@@ -143,35 +143,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Data fetching function
     const fetchAppData = useCallback(async () => {
-        console.log('🚀 fetchAppData called');
-        console.log('🔍 fetchAppData - currentUser check:', { 
-            hasCurrentUser: !!currentUser, 
-            userId: currentUser?.id,
-            userName: currentUser?.name 
-        });
-        
         if (!currentUser) {
-            console.log('⚠️ fetchAppData called but no currentUser, skipping...');
             return;
         }
         
         try {
-            console.log('🔄 Fetching application data...');
-            console.log('📍 Current user:', { id: currentUser.id, name: currentUser.name, roles: currentUser.roles });
-            console.log('🌐 API URL:', import.meta.env.VITE_API_URL || 'relative');
-            
             setIsLoading(true);
-            
             const data = await apiFetch('/api/data');
-            console.log('✅ Application data fetched successfully:', {
-                users: data.users?.length || 0,
-                shipments: data.shipments?.length || 0,
-                inventory: data.inventoryItems?.length || 0,
-                assets: data.assets?.length || 0,
-                suppliers: data.suppliers?.length || 0,
-                roles: data.customRoles?.length || 0,
-                tiers: data.tierSettings?.length || 0
-            });
             
             // Update all state with fetched data
             setUsers(data.users || []);
@@ -188,14 +166,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setInAppNotifications(data.inAppNotifications || []);
             setTierSettings(data.tierSettings || []);
             
-            console.log('📊 State updated with fetched data');
-            
         } catch (error: any) {
-            console.error('❌ Failed to fetch application data:', error);
-            console.error('🔍 Error details:', {
-                message: error.message,
-                stack: error.stack
-            });
+            console.error('Failed to fetch application data:', error);
             addToast(`Failed to load data: ${error.message}`, 'error');
         } finally {
             setIsLoading(false);
@@ -204,59 +176,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Socket connection setup and initial data fetching
     useEffect(() => {
-        console.log('🔄 useEffect triggered:', { 
-            hasCurrentUser: !!currentUser, 
-            hasSocket: !!socket,
-            currentUserId: currentUser?.id,
-            currentUserName: currentUser?.name
-        });
-        
         if (currentUser && !socket) {
-            console.log('🔌 Setting up WebSocket connection...');
-            console.log('👤 User is logged in, fetching initial data...');
-            
             const newSocket = io({
                 autoConnect: true,
                 timeout: 10000,
             });
 
             newSocket.on('connect', () => {
-                console.log('✅ WebSocket connected');
+                console.log('WebSocket connected');
             });
 
             newSocket.on('data_updated', () => {
-                console.log('🔄 Received data update signal, refetching data...');
                 fetchAppData();
             });
 
             newSocket.on('disconnect', () => {
-                console.log('❌ WebSocket disconnected');
+                console.log('WebSocket disconnected');
             });
 
             setSocket(newSocket);
             
             // Fetch initial data after setting up socket
-            console.log('🚀 About to call fetchAppData...');
             fetchAppData();
             
             return () => {
-                console.log('🔌 Cleaning up WebSocket connection');
                 newSocket.disconnect();
                 setSocket(null);
             };
         } else if (!currentUser && socket) {
             // User logged out, clean up socket
-            console.log('🔌 User logged out, cleaning up WebSocket');
             socket.disconnect();
             setSocket(null);
-        } else {
-            console.log('⏸️ useEffect conditions not met:', {
-                hasCurrentUser: !!currentUser,
-                hasSocket: !!socket,
-                reason: !currentUser ? 'No current user' : socket ? 'Already has socket' : 'Unknown'
-            });
         }
-    }, [currentUser, socket, fetchAppData]);
+    }, [currentUser, socket]); // Removed fetchAppData from dependencies
 
     const logout = useCallback(() => {
         setCurrentUser(null);
@@ -324,20 +276,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             
             // Set the complete user object.
             setCurrentUser(userWithPermissions);
-            console.log('🎯 Current user set, this should trigger data fetching...');
-            console.log('🔍 User object created:', userWithPermissions);
-            console.log('🔍 Setting up manual trigger...');
-            
-            // TEMPORARY: Manual data fetch trigger to bypass potential useEffect issues
-            setTimeout(() => {
-                console.log('⏰ Manual fetchAppData trigger (3 second delay)');
-                console.log('🔍 Current user in setTimeout:', currentUser);
-                fetchAppData();
-            }, 3000);
-            
-            console.log('📋 Manual trigger set, continuing with login...');
             addToast(`Welcome back, ${user.name}!`, 'success');
-            console.log('🎉 Login completed successfully');
             return true;
         } catch (error: any) {
             const errorMessage = error.message || 'Login failed - please try again';
