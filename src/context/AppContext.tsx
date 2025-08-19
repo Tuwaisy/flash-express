@@ -565,8 +565,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const clients = users.filter(u => (u.roles || []).includes(UserRole.CLIENT));
         return clients.map(client => {
             const clientShipments = shipments.filter(s => s.clientId === client.id);
-            const totalOrders = clientShipments.length;
-            const orderSum = clientShipments.reduce((sum, s) => sum + s.price, 0);
+            // Only count delivered orders for revenue calculation
+            const deliveredShipments = clientShipments.filter(s => s.status === ShipmentStatus.DELIVERED);
+            const totalOrders = clientShipments.length; // Total orders placed
+            const deliveredOrders = deliveredShipments.length; // Delivered orders count
+            const orderSum = deliveredShipments.reduce((sum, s) => sum + s.price, 0); // Revenue from delivered orders only
             return {
                 clientId: client.id,
                 clientName: client.name,
