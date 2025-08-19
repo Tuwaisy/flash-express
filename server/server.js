@@ -1990,9 +1990,20 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 
                 // STEP 5: Reset sequences for clean numbering
                 console.log('🔢 Resetting sequences...');
-                await trx.raw('SELECT setval(\'courier_transactions_id_seq\', 1, false)');
-                await trx.raw('SELECT setval(\'client_transactions_id_seq\', 1, false)');
-                await trx.raw('SELECT setval(\'in_app_notifications_id_seq\', 1, false)');
+                try {
+                    const sequences = await trx.raw(`
+                        SELECT sequence_name 
+                        FROM information_schema.sequences 
+                        WHERE sequence_schema = 'public'
+                    `);
+                    
+                    for (const seq of sequences.rows) {
+                        await trx.raw(`SELECT setval('${seq.sequence_name}', 1, false)`);
+                        console.log(`🔢 Reset sequence: ${seq.sequence_name}`);
+                    }
+                } catch (error) {
+                    console.log('⚠️ Sequence reset skipped:', error.message);
+                }
                 
                 // Get new counts for verification
                 resetResults.final = {
