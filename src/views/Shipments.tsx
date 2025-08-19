@@ -86,7 +86,7 @@ const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
                 headers.push('Client Fee (EGP)');
             }
             if (canSeeAdminFinancials) {
-                 headers.push('Courier Commission (EGP)', 'Net Profit (EGP)');
+                 headers.push('Courier Commission (EGP)');
             }
             const body = shipmentsToExport.map(s => {
                 const courierName = getCourierName(s.courierId);
@@ -108,11 +108,7 @@ const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
                 }
 
                 if (canSeeAdminFinancials) {
-                    let netProfit = 0;
-                    if (s.courierId && s.clientFlatRateFee && s.courierCommission) {
-                        netProfit = clientFee - courierCommission;
-                    }
-                    row.push((Number(courierCommission) || 0).toFixed(2), (Number(netProfit) || 0).toFixed(2));
+                    row.push((Number(courierCommission) || 0).toFixed(2));
                 }
                 return row;
             });
@@ -214,11 +210,11 @@ const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
                 <ShipmentList 
                     shipments={visibleShipments} 
                     onSelect={onSelectShipment}
-                    showPackageValue={true} // Always show package value
-                    priceColumnTitle={isAssigner ? 'Total COD' : (canViewOwn ? 'Package Value' : 'Price')}
-                    showClientFee={!isSuperUser || canViewOwn}
+                    showPackageValue={isAssigner}
+                    priceColumnTitle={isAssigner ? 'Total COD' : 'Price'}
+                    showClientFee={!isSuperUser}
                     showCourierCommission={canSeeAdminFinancials}
-                    showNetProfit={canSeeAdminFinancials || canViewOwn} // Show net profit for clients too
+                    showNetProfit={false}
                     showEditableFees={canSeeAdminFinancials}
                     updateShipmentFees={canSeeAdminFinancials ? updateShipmentFees : undefined}
                 />

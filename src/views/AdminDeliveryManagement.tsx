@@ -222,7 +222,7 @@ const AdminDeliveryManagement = () => {
                                     onChange={(e) => setVerificationCode(e.target.value)}
                                     maxLength={6}
                                     placeholder="123456"
-                                    className="w-full text-center tracking-[1em] font-mono text-2xl px-4 py-2 border border-border rounded-lg"
+                                    className="w-full text-center tracking-[1em] font-mono text-2xl px-4 py-2 border border-border rounded-lg bg-background text-foreground"
                                 />
                                 <button
                                     onClick={handleVerifyAndDeliver}

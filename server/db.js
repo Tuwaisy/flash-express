@@ -77,6 +77,7 @@ async function setupDatabase() {
         table.decimal('referralCommission', 10, 2);
         table.string('partnerTier');
         table.boolean('manualTierAssignment').defaultTo(false);
+        // Note: walletBalance removed - calculated from client_transactions
       });
     }
 
@@ -110,8 +111,8 @@ async function setupDatabase() {
     // Seeding: custom_roles (always re-seed to keep permissions fresh)
     console.log('Seeding default roles and permissions...');
     await knex('custom_roles').del();
-    const allPermissions = ['manage_users', 'edit_user_profile', 'manage_roles', 'create_shipments', 'view_own_shipments', 'view_all_shipments', 'assign_shipments', 'view_courier_tasks', 'update_shipment_status', 'view_own_wallet', 'view_own_financials', 'view_admin_financials', 'view_client_analytics', 'view_courier_performance', 'manage_courier_payouts', 'view_courier_earnings', 'view_notifications_log', 'view_dashboard', 'view_profile', 'view_total_shipments_overview', 'view_courier_completed_orders', 'manage_inventory', 'manage_assets', 'view_own_assets', 'delete_inventory_item', 'delete_asset', 'manage_client_payouts', 'manage_suppliers', 'create_shipments_for_others', 'print_labels', 'view_delivered_shipments', 'view_couriers_by_zone', 'manage_partner_tiers', 'edit_client_address', 'view_admin_delivery_management'];
-    const clientPermissions = ['create_shipments', 'view_own_shipments', 'view_own_wallet', 'view_own_financials', 'view_dashboard', 'view_profile', 'view_own_assets'];
+    const allPermissions = ['manage_users', 'edit_user_profile', 'manage_roles', 'create_shipments', 'view_own_shipments', 'view_all_shipments', 'assign_shipments', 'view_courier_tasks', 'update_shipment_status', 'view_own_wallet', 'view_own_financials', 'view_client_revenue', 'view_admin_financials', 'view_client_analytics', 'view_courier_performance', 'manage_courier_payouts', 'view_courier_earnings', 'view_notifications_log', 'view_dashboard', 'view_profile', 'view_total_shipments_overview', 'view_courier_completed_orders', 'manage_inventory', 'manage_assets', 'view_own_assets', 'delete_inventory_item', 'delete_asset', 'manage_client_payouts', 'manage_suppliers', 'create_shipments_for_others', 'print_labels', 'view_delivered_shipments', 'view_couriers_by_zone', 'manage_partner_tiers', 'edit_client_address', 'view_admin_delivery_management'];
+    const clientPermissions = ['create_shipments', 'view_own_shipments', 'view_own_wallet', 'view_own_financials', 'view_client_revenue', 'view_dashboard', 'view_profile', 'view_own_assets'];
     const courierPermissions = ['view_courier_tasks', 'update_shipment_status', 'view_courier_earnings', 'view_dashboard', 'view_profile', 'view_courier_completed_orders', 'view_own_assets'];
     const superUserPermissions = allPermissions.filter(p => !['manage_roles', 'view_admin_financials'].includes(p));
     const assigningUserPermissions = ['assign_shipments', 'view_dashboard', 'view_total_shipments_overview', 'manage_inventory', 'view_all_shipments', 'view_profile', 'print_labels', 'view_delivered_shipments', 'view_couriers_by_zone'];
@@ -239,7 +240,25 @@ async function setupDatabase() {
             table.boolean('isRestricted').defaultTo(false);
             table.string('restrictionReason');
             table.decimal('performanceRating', 3, 1).defaultTo(5.0);
+            table.decimal('currentBalance', 10, 2).defaultTo(0);
+            table.decimal('totalEarnings', 10, 2).defaultTo(0);
         });
+    } else {
+        // Migration: Add missing columns if they don't exist
+        const hasCurrentBalance = await knex.schema.hasColumn('courier_stats', 'currentBalance');
+        const hasTotalEarnings = await knex.schema.hasColumn('courier_stats', 'totalEarnings');
+        
+        if (!hasCurrentBalance || !hasTotalEarnings) {
+            console.log('Adding missing columns to courier_stats table...');
+            await knex.schema.alterTable('courier_stats', table => {
+                if (!hasCurrentBalance) {
+                    table.decimal('currentBalance', 10, 2).defaultTo(0);
+                }
+                if (!hasTotalEarnings) {
+                    table.decimal('totalEarnings', 10, 2).defaultTo(0);
+                }
+            });
+        }
     }
 
     // Table: courier_transactions

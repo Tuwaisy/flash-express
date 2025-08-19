@@ -510,12 +510,8 @@ async function main() {
                 }
             }
             
-            // Update client wallet balance
-            if (walletChange !== 0) {
-                const currentWalletBalance = Number(client.walletBalance) || 0;
-                const newWalletBalance = currentWalletBalance + walletChange;
-                await trx('users').where({ id: client.id }).update({ walletBalance: newWalletBalance });
-            }
+            // Note: Client wallet balance is calculated from transactions in /api/data
+            // No need to update users.walletBalance as it's calculated real-time
         }
     };
 

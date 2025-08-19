@@ -360,20 +360,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const userRoleNames = Array.isArray(user.roles) ? user.roles : [];
             console.log('🔍 User roles:', userRoleNames);
             
-            const allPermissions = userRoleNames.reduce((acc, roleName) => {
+            // Get permissions from roles
+            const permissions = userRoleNames.reduce((acc, roleName) => {
                 const role = rolesData.find(r => r.name === roleName);
                 if (role?.permissions) {
                     return [...acc, ...role.permissions];
                 }
                 return acc;
             }, [] as Permission[]);
-            const permissions = [...new Set(allPermissions)].sort();
-            console.log('🔐 User permissions:', permissions.length, 'permissions');
+            
+            // Remove duplicates and sort
+            const uniquePermissions = [...new Set(permissions)].sort();
+            
+            console.log('🔐 User permissions:', uniquePermissions.length, 'permissions');
 
             // Create the complete user object with permissions.
             const userWithPermissions = {
                 ...user,
-                permissions,
+                permissions: uniquePermissions,
             };
             
             // Set the complete user object.

@@ -263,6 +263,7 @@ export const Permission = {
     UPDATE_SHIPMENT_STATUS: 'update_shipment_status',
     VIEW_OWN_WALLET: 'view_own_wallet',
     VIEW_OWN_FINANCIALS: 'view_own_financials',
+    VIEW_CLIENT_REVENUE: 'view_client_revenue',
     VIEW_ADMIN_FINANCIALS: 'view_admin_financials',
     VIEW_CLIENT_ANALYTICS: 'view_client_analytics',
     VIEW_COURIER_PERFORMANCE: 'view_courier_performance',

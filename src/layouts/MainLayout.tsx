@@ -36,6 +36,7 @@ import DeliveredShipmentsView from '../views/DeliveredShipmentsView';
 import CouriersByZoneView from '../views/CouriersByZoneView';
 import PartnerTierManagement from '../views/PartnerTierManagement';
 import AdminDeliveryManagement from '../views/AdminDeliveryManagement';
+import ClientRevenue from '../views/ClientRevenue';
 
 const MainLayout: React.FC = () => {
     const { currentUser, logout, users, reassignCourier, getCourierName, hasPermission, setShipmentFilter } = useAppContext();
@@ -111,6 +112,7 @@ const MainLayout: React.FC = () => {
             case 'couriers-by-zone': return <CouriersByZoneView />;
             case 'partner-tier-management': return <PartnerTierManagement />;
             case 'admin-delivery-management': return <AdminDeliveryManagement />;
+            case 'client-revenue': return <ClientRevenue />;
             default: return <Dashboard setActiveView={setActiveView} />;
         }
     }
