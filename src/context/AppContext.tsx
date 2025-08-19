@@ -325,13 +325,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             // Set the complete user object.
             setCurrentUser(userWithPermissions);
             console.log('🎯 Current user set, this should trigger data fetching...');
+            console.log('🔍 User object created:', userWithPermissions);
+            console.log('🔍 Setting up manual trigger...');
             
             // TEMPORARY: Manual data fetch trigger to bypass potential useEffect issues
             setTimeout(() => {
                 console.log('⏰ Manual fetchAppData trigger (3 second delay)');
+                console.log('🔍 Current user in setTimeout:', currentUser);
                 fetchAppData();
             }, 3000);
             
+            console.log('📋 Manual trigger set, continuing with login...');
             addToast(`Welcome back, ${user.name}!`, 'success');
             console.log('🎉 Login completed successfully');
             return true;
