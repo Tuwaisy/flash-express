@@ -307,6 +307,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     }, [currentUser]); // Only depend on currentUser, not socket
 
+    // Sync currentUser with updated users data (e.g., when walletBalance changes)
+    useEffect(() => {
+        if (currentUser && users.length > 0) {
+            const updatedCurrentUser = users.find(user => user.id === currentUser.id);
+            if (updatedCurrentUser && updatedCurrentUser.walletBalance !== currentUser.walletBalance) {
+                console.log(`💰 Updating currentUser walletBalance: ${currentUser.walletBalance} → ${updatedCurrentUser.walletBalance}`);
+                setCurrentUser({ ...currentUser, walletBalance: updatedCurrentUser.walletBalance });
+            }
+        }
+    }, [users, currentUser]);
+
     const logout = useCallback(() => {
         // Clear any pending fetch timeout
         if (fetchTimeout.current) {
@@ -634,26 +645,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const processCourierPayout = async (transactionId: string, processedAmount: number, transferEvidence?: string) => {
         await apiFetch(`/api/payouts/${transactionId}/process`, { method: 'PUT', body: JSON.stringify({ transferEvidence, processedAmount }) });
+        // Refresh data to update balances after processing payout
+        setTimeout(() => fetchAppData(), 500);
     };
 
     const declineCourierPayout = async (transactionId: string) => {
         await apiFetch(`/api/payouts/${transactionId}/decline`, { method: 'PUT' });
+        // Refresh data to update balances after declining payout
+        setTimeout(() => fetchAppData(), 500);
     };
     
     const requestCourierPayout = async (courierId: number, amount: number, paymentMethod: 'Cash' | 'Bank Transfer') => {
         await apiFetch(`/api/couriers/payouts`, { method: 'POST', body: JSON.stringify({ courierId, amount, paymentMethod }) });
+        // Refresh data to update balances after payout request
+        setTimeout(() => fetchAppData(), 500);
     };
 
     const requestClientPayout = async (userId: number, amount: number) => {
         await apiFetch(`/api/clients/${userId}/payouts`, { method: 'POST', body: JSON.stringify({ amount }) });
+        // Refresh data to update balances after payout request
+        setTimeout(() => fetchAppData(), 500);
     };
 
     const processClientPayout = async (transactionId: string) => {
         await apiFetch(`/api/client-transactions/${transactionId}/process`, { method: 'PUT' });
+        // Refresh data to update balances after processing payout
+        setTimeout(() => fetchAppData(), 500);
     };
 
     const declineClientPayout = async (transactionId: string) => {
         await apiFetch(`/api/client-transactions/${transactionId}/decline`, { method: 'PUT' });
+        // Refresh data to update balances after declining payout
+        setTimeout(() => fetchAppData(), 500);
     };
 
     const updateClientFlatRate = async (clientId: number, flatRateFee: number) => {
