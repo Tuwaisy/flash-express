@@ -2060,7 +2060,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     courier_stats: await trx('courier_stats').count('courierId as count').first()
                 };
                 
-                // STEP 2: Delete ALL transactional data
+                // STEP 2: Delete ALL transactional data first (to remove foreign key dependencies)
                 console.log('🧹 Deleting all transactions and operational data...');
                 results.deleted.courier_transactions = await trx('courier_transactions').del();
                 results.deleted.client_transactions = await trx('client_transactions').del();
@@ -2068,40 +2068,146 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 results.deleted.in_app_notifications = await trx('in_app_notifications').del();
                 results.deleted.shipments = await trx('shipments').del();
                 
-                // STEP 3: Delete non-essential users (keep only Admin, Test Courier, Test Client)
+                // STEP 3: Handle user deletions carefully with foreign key constraints
                 console.log('👥 Removing non-essential users...');
                 const essentialEmails = ['admin@flash.com', 'testcourier@flash.com', 'testclient@flash.com'];
                 const essentialUsers = await trx('users').whereIn('email', essentialEmails).select('id', 'email');
                 const essentialUserIds = essentialUsers.map(u => u.id);
                 
-                // Delete courier_stats for non-essential users
-                results.deleted.courier_stats_non_essential = await trx('courier_stats').whereNotIn('courierId', essentialUserIds).del();
+                // First, get all non-essential user IDs
+                const nonEssentialUsers = await trx('users').whereNotIn('email', essentialEmails).select('id');
+                const nonEssentialUserIds = nonEssentialUsers.map(u => u.id);
                 
-                // Delete non-essential users
-                results.deleted.users_non_essential = await trx('users').whereNotIn('email', essentialEmails).del();
+                // Delete courier_stats for non-essential users (no foreign key constraints)
+                if (nonEssentialUserIds.length > 0) {
+                    results.deleted.courier_stats_non_essential = await trx('courier_stats').whereIn('courierId', nonEssentialUserIds).del();
+                } else {
+                    results.deleted.courier_stats_non_essential = 0;
+                }
                 
-                // STEP 4: Reset essential users' data
+                // Check for any remaining foreign key references and delete them
+                try {
+                    // Delete any asset assignments for non-essential users
+                    if (nonEssentialUserIds.length > 0) {
+                        const assetsTable = await trx.schema.hasTable('assets');
+                        if (assetsTable) {
+                            await trx('assets').whereIn('assignedTo', nonEssentialUserIds).update({ assignedTo: null });
+                        }
+                    }
+                } catch (e) {
+                    console.log('⚠️ No assets table or asset cleanup needed');
+                }
+                
+                // Finally, delete non-essential users
+                if (nonEssentialUserIds.length > 0) {
+                    results.deleted.users_non_essential = await trx('users').whereNotIn('email', essentialEmails).del();
+                } else {
+                    results.deleted.users_non_essential = 0;
+                }
+                
+                // STEP 4: Reset essential users' data or create them if they don't exist
                 console.log('🔄 Resetting essential users data...');
-                results.reset.user_balances = await trx('users').whereIn('email', essentialEmails).update({ 
-                    walletBalance: 0,
-                    currentTier: 'Bronze'
-                });
+                const existingEssentialUsers = await trx('users').whereIn('email', essentialEmails).select('id', 'email', 'roles');
                 
-                // STEP 5: Reset courier stats for essential couriers
+                // Reset existing essential users
+                if (existingEssentialUsers.length > 0) {
+                    results.reset.user_balances = await trx('users').whereIn('email', essentialEmails).update({ 
+                        walletBalance: 0,
+                        currentTier: 'Bronze'
+                    });
+                }
+                
+                // Create missing essential users if needed
+                const existingEmails = existingEssentialUsers.map(u => u.email);
+                const missingUsers = [];
+                
+                if (!existingEmails.includes('admin@flash.com')) {
+                    missingUsers.push({
+                        firstName: 'Admin',
+                        lastName: 'User',
+                        email: 'admin@flash.com',
+                        password: 'admin123', // Will be hashed by the system
+                        phone: '+201000000000',
+                        roles: '["Administrator"]',
+                        walletBalance: 0,
+                        currentTier: 'Bronze'
+                    });
+                }
+                
+                if (!existingEmails.includes('testcourier@flash.com')) {
+                    missingUsers.push({
+                        firstName: 'Test',
+                        lastName: 'Courier',
+                        email: 'testcourier@flash.com',
+                        password: 'courier123',
+                        phone: '+201000000001',
+                        roles: '["Courier"]',
+                        walletBalance: 0,
+                        currentTier: 'Bronze'
+                    });
+                }
+                
+                if (!existingEmails.includes('testclient@flash.com')) {
+                    missingUsers.push({
+                        firstName: 'Test',
+                        lastName: 'Client',
+                        email: 'testclient@flash.com',
+                        password: 'client123',
+                        phone: '+201000000002',
+                        roles: '["Client"]',
+                        walletBalance: 0,
+                        currentTier: 'Bronze'
+                    });
+                }
+                
+                if (missingUsers.length > 0) {
+                    results.recreated.essential_users = await trx('users').insert(missingUsers).returning('*');
+                } else {
+                    results.recreated.essential_users = [];
+                }
+                
+                // STEP 5: Reset/create courier stats for essential couriers
                 console.log('👤 Resetting courier stats...');
-                const courierUsers = await trx('users')
-                    .whereIn('email', essentialEmails)
-                    .whereRaw("roles LIKE '%Courier%'")
-                    .select('id');
+                const allEssentialUsers = await trx('users').whereIn('email', essentialEmails).select('id', 'roles');
+                const courierUsers = allEssentialUsers.filter(u => 
+                    u.roles && (u.roles.includes('Courier') || u.roles.includes('"Courier"'))
+                );
                 
                 if (courierUsers.length > 0) {
                     const courierIds = courierUsers.map(u => u.id);
-                    results.reset.courier_stats = await trx('courier_stats').whereIn('courierId', courierIds).update({
-                        currentBalance: 0,
-                        totalEarnings: 0,
-                        consecutiveFailures: 0,
-                        isRestricted: false
-                    });
+                    
+                    // Check which couriers already have stats
+                    const existingStats = await trx('courier_stats').whereIn('courierId', courierIds).select('courierId');
+                    const existingStatsCourierIds = existingStats.map(s => s.courierId);
+                    
+                    // Update existing stats
+                    if (existingStatsCourierIds.length > 0) {
+                        results.reset.courier_stats = await trx('courier_stats').whereIn('courierId', existingStatsCourierIds).update({
+                            currentBalance: 0,
+                            totalEarnings: 0,
+                            consecutiveFailures: 0,
+                            isRestricted: false
+                        });
+                    }
+                    
+                    // Create stats for couriers that don't have them
+                    const newStatsCourierIds = courierIds.filter(id => !existingStatsCourierIds.includes(id));
+                    if (newStatsCourierIds.length > 0) {
+                        const newStats = newStatsCourierIds.map(courierId => ({
+                            courierId,
+                            commissionType: 'flat',
+                            commissionValue: 30,
+                            consecutiveFailures: 0,
+                            isRestricted: false,
+                            performanceRating: 5.0,
+                            currentBalance: 0,
+                            totalEarnings: 0
+                        }));
+                        results.recreated.courier_stats = await trx('courier_stats').insert(newStats).returning('*');
+                    }
+                } else {
+                    results.reset.courier_stats = 0;
+                    results.recreated.courier_stats = [];
                 }
                 
                 // STEP 6: Reset sequences for clean numbering starting from 1
