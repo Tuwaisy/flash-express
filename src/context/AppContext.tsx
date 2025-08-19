@@ -143,6 +143,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Data fetching function
     const fetchAppData = useCallback(async () => {
+        console.log('🚀 fetchAppData called');
+        console.log('🔍 fetchAppData - currentUser check:', { 
+            hasCurrentUser: !!currentUser, 
+            userId: currentUser?.id,
+            userName: currentUser?.name 
+        });
+        
         if (!currentUser) {
             console.log('⚠️ fetchAppData called but no currentUser, skipping...');
             return;
@@ -197,6 +204,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Socket connection setup and initial data fetching
     useEffect(() => {
+        console.log('🔄 useEffect triggered:', { 
+            hasCurrentUser: !!currentUser, 
+            hasSocket: !!socket,
+            currentUserId: currentUser?.id,
+            currentUserName: currentUser?.name
+        });
+        
         if (currentUser && !socket) {
             console.log('🔌 Setting up WebSocket connection...');
             console.log('👤 User is logged in, fetching initial data...');
@@ -222,6 +236,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setSocket(newSocket);
             
             // Fetch initial data after setting up socket
+            console.log('🚀 About to call fetchAppData...');
             fetchAppData();
             
             return () => {
@@ -234,6 +249,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             console.log('🔌 User logged out, cleaning up WebSocket');
             socket.disconnect();
             setSocket(null);
+        } else {
+            console.log('⏸️ useEffect conditions not met:', {
+                hasCurrentUser: !!currentUser,
+                hasSocket: !!socket,
+                reason: !currentUser ? 'No current user' : socket ? 'Already has socket' : 'Unknown'
+            });
         }
     }, [currentUser, socket, fetchAppData]);
 
