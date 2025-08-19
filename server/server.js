@@ -430,22 +430,24 @@ async function main() {
                 await trx('courier_stats').where({ courierId: shipment.courierId }).update({ consecutiveFailures: 0 });
             }
 
-            // Referral commission
+            // Referral commission - company pays referrer for successful deliveries
             const deliveringCourier = await trx('users').where({ id: shipment.courierId }).first();
             if (deliveringCourier && deliveringCourier.referrerId) {
                 const referrer = await trx('users').where({ id: deliveringCourier.referrerId }).first();
-                const referralCommission = Number(referrer?.referralCommission) || 0;
-                if (referrer && referralCommission > 0) {
+                // Standard company-provided referral bonus: 15 EGP per successful delivery
+                const standardReferralBonus = 15;
+                if (referrer) {
                     await trx('courier_transactions').insert({
                         id: generateId('TRN_REF'),
                         courierId: referrer.id,
                         type: 'Referral Bonus',
-                        amount: referralCommission,
-                        description: `Referral bonus for shipment ${shipment.id} delivered by ${deliveringCourier.name}`,
+                        amount: standardReferralBonus,
+                        description: `Company referral bonus for shipment ${shipment.id} delivered by ${deliveringCourier.name}`,
                         shipmentId: shipment.id,
                         timestamp: new Date().toISOString(),
                         status: 'Processed'
                     });
+                    await createInAppNotification(trx, referrer.id, `You earned ${standardReferralBonus} EGP referral bonus for ${deliveringCourier.name}'s delivery.`, '/courier-financials');
                 }
             }
         }
