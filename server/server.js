@@ -2040,8 +2040,8 @@ app.get('/api/debug/users/:id', async (req, res) => {
         try {
             console.log('🚨 COMPLETE DATABASE RESET INITIATED by Admin');
             
-            const resetResults = await knex.transaction(async (trx) => {
-                const results = {
+            // Remove transaction wrapper to avoid PostgreSQL foreign key constraint abort issues
+            const results = {
                     backup: {},
                     deleted: {},
                     reset: {},
@@ -2052,35 +2052,35 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 // STEP 1: Backup current counts for reporting
                 console.log('📋 Taking backup count...');
                 results.backup = {
-                    users: await trx('users').count('id as count').first(),
-                    shipments: await trx('shipments').count('id as count').first(),
-                    courier_transactions: await trx('courier_transactions').count('id as count').first(),
-                    client_transactions: await trx('client_transactions').count('id as count').first(),
-                    notifications: await trx('notifications').count('id as count').first(),
-                    courier_stats: await trx('courier_stats').count('courierId as count').first()
+                    users: await knex('users').count('id as count').first(),
+                    shipments: await knex('shipments').count('id as count').first(),
+                    courier_transactions: await knex('courier_transactions').count('id as count').first(),
+                    client_transactions: await knex('client_transactions').count('id as count').first(),
+                    notifications: await knex('notifications').count('id as count').first(),
+                    courier_stats: await knex('courier_stats').count('courierId as count').first()
                 };
                 
                 // STEP 2: Delete ALL transactional data first (to remove foreign key dependencies)
                 console.log('🧹 Deleting all transactions and operational data...');
-                results.deleted.courier_transactions = await trx('courier_transactions').del();
-                results.deleted.client_transactions = await trx('client_transactions').del();
-                results.deleted.notifications = await trx('notifications').del();
-                results.deleted.in_app_notifications = await trx('in_app_notifications').del();
-                results.deleted.shipments = await trx('shipments').del();
+                results.deleted.courier_transactions = await knex('courier_transactions').del();
+                results.deleted.client_transactions = await knex('client_transactions').del();
+                results.deleted.notifications = await knex('notifications').del();
+                results.deleted.in_app_notifications = await knex('in_app_notifications').del();
+                results.deleted.shipments = await knex('shipments').del();
                 
                 // STEP 3: Handle user deletions carefully with foreign key constraints
                 console.log('👥 Removing non-essential users...');
                 const essentialEmails = ['admin@flash.com', 'testcourier@flash.com', 'testclient@flash.com'];
-                const essentialUsers = await trx('users').whereIn('email', essentialEmails).select('id', 'email');
+                const essentialUsers = await knex('users').whereIn('email', essentialEmails).select('id', 'email');
                 const essentialUserIds = essentialUsers.map(u => u.id);
                 
                 // First, get all non-essential user IDs
-                const nonEssentialUsers = await trx('users').whereNotIn('email', essentialEmails).select('id');
+                const nonEssentialUsers = await knex('users').whereNotIn('email', essentialEmails).select('id');
                 const nonEssentialUserIds = nonEssentialUsers.map(u => u.id);
                 
                 // Delete courier_stats for non-essential users (no foreign key constraints)
                 if (nonEssentialUserIds.length > 0) {
-                    results.deleted.courier_stats_non_essential = await trx('courier_stats').whereIn('courierId', nonEssentialUserIds).del();
+                    results.deleted.courier_stats_non_essential = await knex('courier_stats').whereIn('courierId', nonEssentialUserIds).del();
                 } else {
                     results.deleted.courier_stats_non_essential = 0;
                 }
@@ -2089,9 +2089,9 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 try {
                     // Delete any asset assignments for non-essential users
                     if (nonEssentialUserIds.length > 0) {
-                        const assetsTable = await trx.schema.hasTable('assets');
+                        const assetsTable = await knex.schema.hasTable('assets');
                         if (assetsTable) {
-                            await trx('assets').whereIn('assignedTo', nonEssentialUserIds).update({ assignedTo: null });
+                            await knex('assets').whereIn('assignedTo', nonEssentialUserIds).update({ assignedTo: null });
                         }
                     }
                 } catch (e) {
@@ -2100,18 +2100,18 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 
                 // Finally, delete non-essential users
                 if (nonEssentialUserIds.length > 0) {
-                    results.deleted.users_non_essential = await trx('users').whereNotIn('email', essentialEmails).del();
+                    results.deleted.users_non_essential = await knex('users').whereNotIn('email', essentialEmails).del();
                 } else {
                     results.deleted.users_non_essential = 0;
                 }
                 
                 // STEP 4: Reset essential users' data or create them if they don't exist
                 console.log('🔄 Resetting essential users data...');
-                const existingEssentialUsers = await trx('users').whereIn('email', essentialEmails).select('id', 'email', 'roles');
+                const existingEssentialUsers = await knex('users').whereIn('email', essentialEmails).select('id', 'email', 'roles');
                 
                 // Reset existing essential users
                 if (existingEssentialUsers.length > 0) {
-                    results.reset.user_balances = await trx('users').whereIn('email', essentialEmails).update({ 
+                    results.reset.user_balances = await knex('users').whereIn('email', essentialEmails).update({ 
                         walletBalance: 0,
                         currentTier: 'Bronze'
                     });
@@ -2168,7 +2168,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 
                 // STEP 5: Reset/create courier stats for essential couriers
                 console.log('👤 Resetting courier stats...');
-                const allEssentialUsers = await trx('users').whereIn('email', essentialEmails).select('id', 'roles');
+                const allEssentialUsers = await knex('users').whereIn('email', essentialEmails).select('id', 'roles');
                 const courierUsers = allEssentialUsers.filter(u => 
                     u.roles && (u.roles.includes('Courier') || u.roles.includes('"Courier"'))
                 );
@@ -2177,12 +2177,12 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     const courierIds = courierUsers.map(u => u.id);
                     
                     // Check which couriers already have stats
-                    const existingStats = await trx('courier_stats').whereIn('courierId', courierIds).select('courierId');
+                    const existingStats = await knex('courier_stats').whereIn('courierId', courierIds).select('courierId');
                     const existingStatsCourierIds = existingStats.map(s => s.courierId);
                     
                     // Update existing stats
                     if (existingStatsCourierIds.length > 0) {
-                        results.reset.courier_stats = await trx('courier_stats').whereIn('courierId', existingStatsCourierIds).update({
+                        results.reset.courier_stats = await knex('courier_stats').whereIn('courierId', existingStatsCourierIds).update({
                             currentBalance: 0,
                             totalEarnings: 0,
                             consecutiveFailures: 0,
@@ -2203,7 +2203,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                             currentBalance: 0,
                             totalEarnings: 0
                         }));
-                        results.recreated.courier_stats = await trx('courier_stats').insert(newStats).returning('*');
+                        results.recreated.courier_stats = await knex('courier_stats').insert(newStats).returning('*');
                     }
                 } else {
                     results.reset.courier_stats = 0;
@@ -2213,7 +2213,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 // STEP 6: Reset sequences for clean numbering starting from 1
                 console.log('🔢 Resetting all sequences to start from 1...');
                 try {
-                    const sequences = await trx.raw(`
+                    const sequences = await knex.raw(`
                         SELECT sequence_name 
                         FROM information_schema.sequences 
                         WHERE sequence_schema = 'public'
@@ -2221,7 +2221,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     
                     results.reset.sequences = [];
                     for (const seq of sequences.rows) {
-                        await trx.raw(`ALTER SEQUENCE ${seq.sequence_name} RESTART WITH 1`);
+                        await knex.raw(`ALTER SEQUENCE ${seq.sequence_name} RESTART WITH 1`);
                         results.reset.sequences.push(seq.sequence_name);
                         console.log(`🔢 Reset sequence: ${seq.sequence_name} → 1`);
                     }
@@ -2233,29 +2233,26 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 // STEP 7: Get final counts for verification
                 console.log('📊 Getting final counts...');
                 results.final = {
-                    users: await trx('users').count('id as count').first(),
-                    shipments: await trx('shipments').count('id as count').first(),
-                    courier_transactions: await trx('courier_transactions').count('id as count').first(),
-                    client_transactions: await trx('client_transactions').count('id as count').first(),
-                    notifications: await trx('notifications').count('id as count').first(),
-                    courier_stats: await trx('courier_stats').count('courierId as count').first(),
-                    essential_users: await trx('users').whereIn('email', essentialEmails).select('id', 'email', 'firstName', 'lastName', 'roles')
+                    users: await knex('users').count('id as count').first(),
+                    shipments: await knex('shipments').count('id as count').first(),
+                    courier_transactions: await knex('courier_transactions').count('id as count').first(),
+                    client_transactions: await knex('client_transactions').count('id as count').first(),
+                    notifications: await knex('notifications').count('id as count').first(),
+                    courier_stats: await knex('courier_stats').count('courierId as count').first(),
+                    essential_users: await knex('users').whereIn('email', essentialEmails).select('id', 'email', 'firstName', 'lastName', 'roles')
                 };
                 
-                return results;
-            });
-            
-            console.log('✅ COMPLETE DATABASE RESET FINISHED');
-            console.log('📊 Reset Summary:', resetResults);
-            
-            res.json({ 
-                success: true, 
-                message: 'Complete database reset successful - Ready for fresh start',
-                results: resetResults,
-                preserved: 'Only Admin, Test Courier, Test Client + Inventory + Tiers',
-                cleared: 'ALL shipments, transactions, notifications, non-essential users',
-                nextOrderNumber: 1
-            });
+                console.log('✅ COMPLETE DATABASE RESET FINISHED');
+                console.log('📊 Reset Summary:', results);
+                
+                res.json({ 
+                    success: true, 
+                    message: 'Complete database reset successful - Ready for fresh start',
+                    results: results,
+                    preserved: 'Only Admin, Test Courier, Test Client + Inventory + Tiers',
+                    cleared: 'ALL shipments, transactions, notifications, non-essential users',
+                    nextOrderNumber: 1
+                });
             
         } catch (error) {
             console.error('❌ Complete database reset failed:', error);
