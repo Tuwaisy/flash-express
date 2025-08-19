@@ -174,7 +174,7 @@ async function main() {
         // If enough time has passed, emit immediately
         if (now - lastDataUpdateEmit >= DATA_UPDATE_THROTTLE_MS) {
             lastDataUpdateEmit = now;
-            throttledDataUpdate();
+            io.emit('data_updated');
             console.log('🔄 data_updated emitted immediately');
             return;
         }
@@ -185,7 +185,7 @@ async function main() {
             console.log(`⏳ data_updated throttled, will emit in ${delay}ms`);
             pendingDataUpdate = setTimeout(() => {
                 lastDataUpdateEmit = Date.now();
-                throttledDataUpdate();
+                io.emit('data_updated');
                 pendingDataUpdate = null;
                 console.log('🔄 data_updated emitted after throttle delay');
             }, delay);

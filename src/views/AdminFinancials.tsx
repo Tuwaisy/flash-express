@@ -52,6 +52,21 @@ const AdminFinancials: React.FC<AdminFinancialsProps> = ({ setActiveView }) => {
     const adminFinancials = getAdminFinancials();
     const clientFinancials = getClientFinancials();
 
+    // Add safety checks for undefined values
+    const safeAdminFinancials = {
+        cashToCollect: adminFinancials?.cashToCollect || 0,
+        totalCODCollected: adminFinancials?.totalCODCollected || 0,
+        undeliveredPackagesValue: adminFinancials?.undeliveredPackagesValue || 0,
+        totalFees: adminFinancials?.totalFees || 0,
+        totalRevenue: adminFinancials?.totalRevenue || 0,
+        totalCommission: adminFinancials?.totalCommission || 0,
+        netRevenue: adminFinancials?.netRevenue || 0,
+        totalOrders: adminFinancials?.totalOrders || 0,
+        totalCollectedMoney: adminFinancials?.totalCollectedMoney || 0,
+        uncollectedTransferFees: adminFinancials?.uncollectedTransferFees || 0,
+        totalOwedToCouriers: adminFinancials?.totalOwedToCouriers || 0,
+    };
+
     const openClientRateModal = (client: ClientFinancialSummary) => {
         setSelectedClient(client);
         setTempFlatRate(client.flatRateFee);
@@ -80,14 +95,14 @@ const AdminFinancials: React.FC<AdminFinancialsProps> = ({ setActiveView }) => {
     const handleExportFinancials = () => {
         const headers = ['Metric', 'Value'];
         const data = [
-            ['Cash to Collect (In Transit COD)', `${adminFinancials.cashToCollect.toFixed(2)} EGP`],
-            ['Total COD Collected (Delivered)', `${adminFinancials.totalCODCollected.toFixed(2)} EGP`],
-            ['Undelivered Packages Value', `${adminFinancials.undeliveredPackagesValue.toFixed(2)} EGP`],
-            ['Potential Fees from Pending Orders', `${adminFinancials.totalFees.toFixed(2)} EGP`],
-            ['Total Revenue (Shipping Fees)', `${adminFinancials.totalRevenue.toFixed(2)} EGP`],
-            ['Total Commission (Paid to Couriers)', `${adminFinancials.totalCommission.toFixed(2)} EGP`],
-            ['Net Profit (Revenue - Commission)', `${adminFinancials.netRevenue.toFixed(2)} EGP`],
-            ['Total Delivered Orders', adminFinancials.totalOrders.toString()]
+            ['Cash to Collect (In Transit COD)', `${safeAdminFinancials.cashToCollect.toFixed(2)} EGP`],
+            ['Total COD Collected (Delivered)', `${safeAdminFinancials.totalCODCollected.toFixed(2)} EGP`],
+            ['Undelivered Packages Value', `${safeAdminFinancials.undeliveredPackagesValue.toFixed(2)} EGP`],
+            ['Potential Fees from Pending Orders', `${safeAdminFinancials.totalFees.toFixed(2)} EGP`],
+            ['Total Revenue (Shipping Fees)', `${safeAdminFinancials.totalRevenue.toFixed(2)} EGP`],
+            ['Total Commission (Paid to Couriers)', `${safeAdminFinancials.totalCommission.toFixed(2)} EGP`],
+            ['Net Profit (Revenue - Commission)', `${safeAdminFinancials.netRevenue.toFixed(2)} EGP`],
+            ['Total Delivered Orders', safeAdminFinancials.totalOrders.toString()]
         ];
         exportToCsv(headers, data, 'Admin_Financial_Report');
     };
@@ -134,7 +149,7 @@ const AdminFinancials: React.FC<AdminFinancialsProps> = ({ setActiveView }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                  <StatCard 
                     title="Cash to Collect" 
-                    value={`${adminFinancials.cashToCollect.toFixed(2)} EGP`} 
+                    value={`${safeAdminFinancials.cashToCollect.toFixed(2)} EGP`} 
                     icon={<WalletIcon className="w-7 h-7"/>} 
                     color="#f59e0b"
                     subtitle="COD for packages out for delivery"
@@ -142,7 +157,7 @@ const AdminFinancials: React.FC<AdminFinancialsProps> = ({ setActiveView }) => {
                 />
                 <StatCard 
                     title="Total COD Collected" 
-                    value={`${adminFinancials.totalCODCollected.toFixed(2)} EGP`} 
+                    value={`${safeAdminFinancials.totalCODCollected.toFixed(2)} EGP`} 
                     icon={<WalletIcon className="w-7 h-7"/>} 
                     color="#16a34a"
                     subtitle="From delivered packages"
@@ -150,7 +165,7 @@ const AdminFinancials: React.FC<AdminFinancialsProps> = ({ setActiveView }) => {
                 />
                 <StatCard 
                     title="Undelivered Packages" 
-                    value={`${adminFinancials.undeliveredPackagesValue.toFixed(2)} EGP`} 
+                    value={`${safeAdminFinancials.undeliveredPackagesValue.toFixed(2)} EGP`} 
                     icon={<PackageIcon className="w-7 h-7"/>} 
                     color="#f59e0b"
                     subtitle="Value of pending deliveries"
@@ -158,7 +173,7 @@ const AdminFinancials: React.FC<AdminFinancialsProps> = ({ setActiveView }) => {
                 />
                 <StatCard
                     title="Uncollected Transfer Fees"
-                    value={`${adminFinancials.uncollectedTransferFees.toFixed(2)} EGP`}
+                    value={`${safeAdminFinancials.uncollectedTransferFees.toFixed(2)} EGP`}
                     icon={<XCircleIcon className="w-7 h-7"/>}
                     color="#ef4444"
                     subtitle="Shipping fees for pending transfers"
@@ -170,7 +185,7 @@ const AdminFinancials: React.FC<AdminFinancialsProps> = ({ setActiveView }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard 
                     title="Total Revenue" 
-                    value={`${adminFinancials.totalRevenue.toFixed(2)} EGP`} 
+                    value={`${safeAdminFinancials.totalRevenue.toFixed(2)} EGP`} 
                     icon={<WalletIcon className="w-7 h-7"/>} 
                     color="#16a34a"
                     subtitle="Shipping fees earned"
@@ -178,7 +193,7 @@ const AdminFinancials: React.FC<AdminFinancialsProps> = ({ setActiveView }) => {
                 />
                 <StatCard 
                     title="Total Commission" 
-                    value={`${adminFinancials.totalCommission.toFixed(2)} EGP`} 
+                    value={`${safeAdminFinancials.totalCommission.toFixed(2)} EGP`} 
                     icon={<TruckIcon className="w-7 h-7"/>} 
                     color="#f97316"
                     subtitle="Paid to couriers"
@@ -186,7 +201,7 @@ const AdminFinancials: React.FC<AdminFinancialsProps> = ({ setActiveView }) => {
                 />
                 <StatCard 
                     title="Net Profit" 
-                    value={`${adminFinancials.netRevenue.toFixed(2)} EGP`} 
+                    value={`${safeAdminFinancials.netRevenue.toFixed(2)} EGP`} 
                     icon={<CheckCircleIcon className="w-7 h-7"/>} 
                     color="#3b82f6"
                     subtitle="Revenue - Commission"
@@ -194,7 +209,7 @@ const AdminFinancials: React.FC<AdminFinancialsProps> = ({ setActiveView }) => {
                 />
                  <StatCard 
                     title="Total Owed to Couriers" 
-                    value={`${adminFinancials.totalOwedToCouriers.toFixed(2)} EGP`} 
+                    value={`${safeAdminFinancials.totalOwedToCouriers.toFixed(2)} EGP`} 
                     icon={<TruckIcon className="w-7 h-7"/>} 
                     color="#8b5cf6"
                     subtitle="Current balance across all couriers"
