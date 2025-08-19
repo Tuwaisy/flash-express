@@ -164,7 +164,7 @@ const InventoryManagement = () => {
             
             {/* KPI Stat Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {canSeeFinancials && <StatCard title="Total Inventory Value" value={`${totalInventoryValue.toFixed(2)} EGP`} icon={<WalletIcon />} color="#3b82f6" />}
+                {canSeeFinancials && <StatCard title="Total Inventory Value" value={`${(Number(totalInventoryValue) || 0).toFixed(2)} EGP`} icon={<WalletIcon />} color="#3b82f6" />}
                 <StatCard title="Items in Stock" value={totalItems} icon={<ArchiveBoxIcon />} color="#10b981" />
                 <div 
                     onClick={() => setShowLowStockOnly(prev => !prev)} 

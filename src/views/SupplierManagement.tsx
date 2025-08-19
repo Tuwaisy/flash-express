@@ -142,9 +142,9 @@ const SupplierManagement = () => {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <StatCard title="Total Owed to Suppliers" value={`${globalTotals.totalOwed.toFixed(2)} EGP`} icon={<WalletIcon />} color="#f59e0b" />
-                <StatCard title="Total Paid to Suppliers" value={`${globalTotals.totalPaid.toFixed(2)} EGP`} icon={<WalletIcon />} color="#10b981" />
-                <StatCard title="Total Outstanding Balance" value={`${globalTotals.outstandingBalance.toFixed(2)} EGP`} icon={<WalletIcon />} color="#ef4444" />
+                <StatCard title="Total Owed to Suppliers" value={`${(Number(globalTotals.totalOwed) || 0).toFixed(2)} EGP`} icon={<WalletIcon />} color="#f59e0b" />
+                <StatCard title="Total Paid to Suppliers" value={`${(Number(globalTotals.totalPaid) || 0).toFixed(2)} EGP`} icon={<WalletIcon />} color="#10b981" />
+                <StatCard title="Total Outstanding Balance" value={`${(Number(globalTotals.outstandingBalance) || 0).toFixed(2)} EGP`} icon={<WalletIcon />} color="#ef4444" />
             </div>
             
             {/* Sorting and Filtering Controls */}
@@ -207,10 +207,10 @@ const SupplierManagement = () => {
                             <tr key={supplier.id}>
                                 <td className="p-4 font-semibold text-foreground">{supplier.name}</td>
                                 <td className="p-4 text-sm text-muted-foreground">{supplier.contact_person} ({supplier.phone})</td>
-                                <td className="p-4 font-mono text-muted-foreground">{supplier.totalOwed.toFixed(2)}</td>
-                                <td className="p-4 font-mono text-green-600 dark:text-green-400">{supplier.totalPaid.toFixed(2)}</td>
+                                <td className="p-4 font-mono text-muted-foreground">{(Number(supplier.totalOwed) || 0).toFixed(2)}</td>
+                                <td className="p-4 font-mono text-green-600 dark:text-green-400">{(Number(supplier.totalPaid) || 0).toFixed(2)}</td>
                                 <td className={`p-4 font-mono font-bold ${supplier.outstandingBalance > 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>
-                                    {supplier.outstandingBalance.toFixed(2)} EGP
+                                    {(Number(supplier.outstandingBalance) || 0).toFixed(2)} EGP
                                 </td>
                                 <td className="p-4">
                                     <div className="flex gap-2">

@@ -76,13 +76,13 @@ const Wallet = () => {
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <StatCard 
                     title="Available Balance" 
-                    value={`${availableBalance.toFixed(2)} EGP`} 
+                    value={`${(Number(availableBalance) || 0).toFixed(2)} EGP`} 
                     icon={<WalletIcon className="w-7 h-7"/>} 
                     color="#22c55e" 
                 />
                  <StatCard 
                     title="Pending Payouts" 
-                    value={`${(-pendingAmount).toFixed(2)} EGP`} 
+                    value={`${(Number(-pendingAmount) || 0).toFixed(2)} EGP`} 
                     icon={<ClockIcon className="w-7 h-7"/>} 
                     color="#3b82f6" 
                 />
@@ -136,7 +136,7 @@ const Wallet = () => {
             
             <Modal isOpen={isPayoutModalOpen} onClose={() => setPayoutModalOpen(false)} title="Request a Payout">
                 <div className="space-y-4">
-                    <p className="text-foreground">Your current available balance is <strong className="text-green-600">{availableBalance.toFixed(2)} EGP</strong>.</p>
+                    <p className="text-foreground">Your current available balance is <strong className="text-green-600">{(Number(availableBalance) || 0).toFixed(2)} EGP</strong>.</p>
                     <div>
                         <label htmlFor="payout-amount" className="block text-sm font-medium text-foreground mb-1">
                             Amount to withdraw (EGP)
@@ -146,7 +146,7 @@ const Wallet = () => {
                             type="number"
                             value={payoutAmount}
                             onChange={e => setPayoutAmount(e.target.value)}
-                            placeholder={`Max ${availableBalance.toFixed(2)}`}
+                            placeholder={`Max ${(Number(availableBalance) || 0).toFixed(2)}`}
                             className="w-full px-4 py-2 border border-border rounded-lg"
                             min="0.01"
                             step="0.01"

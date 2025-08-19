@@ -63,7 +63,7 @@ const Financials = () => {
                 new Date(s.deliveryDate!).toLocaleDateString(),
                 s.clientName,
                 s.paymentMethod,
-                (s.clientFlatRateFee || 0).toFixed(2)
+                (Number(s.clientFlatRateFee) || 0).toFixed(2)
             ]);
         
         exportToCsv(headers, body, 'Financial_Report');
@@ -98,9 +98,9 @@ const Financials = () => {
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <StatCard title="Total Revenue" value={`${totalRevenue.toFixed(2)} EGP`} icon={<ChartBarIcon className="w-7 h-7"/>} color="#16a34a" />
+                <StatCard title="Total Revenue" value={`${(Number(totalRevenue) || 0).toFixed(2)} EGP`} icon={<ChartBarIcon className="w-7 h-7"/>} color="#16a34a" />
                 <StatCard title="Shipments Delivered" value={totalDelivered} icon={<CheckCircleIcon className="w-7 h-7"/>} color="#3b82f6" />
-                <StatCard title="COD Collected" value={`${totalCOD.toFixed(2)} EGP`} icon={<WalletIcon className="w-7 h-7"/>} color="#f97316"/>
+                <StatCard title="COD Collected" value={`${(Number(totalCOD) || 0).toFixed(2)} EGP`} icon={<WalletIcon className="w-7 h-7"/>} color="#f97316"/>
             </div>
 
             {/* Revenue Chart */}
@@ -112,7 +112,7 @@ const Financials = () => {
                             <div 
                                 className="w-full bg-primary/60 hover:bg-primary/80 transition-colors rounded-t-md"
                                 style={{ height: `${(revenue / maxRevenue) * 100}%` }}
-                                title={`Day ${date}: ${revenue.toFixed(2)} EGP`}
+                                title={`Day ${date}: ${(Number(revenue) || 0).toFixed(2)} EGP`}
                             ></div>
                             <span className="text-xs text-muted-foreground mt-1">{date}</span>
                        </div>
@@ -144,7 +144,7 @@ const Financials = () => {
                                    <td className="px-6 py-4 text-foreground">{new Date(s.deliveryDate!).toLocaleDateString()}</td>
                                    <td className="px-6 py-4 text-muted-foreground">{s.clientName}</td>
                                    <td className="px-6 py-4 text-muted-foreground">{s.paymentMethod}</td>
-                                   <td className="px-6 py-4 font-semibold text-foreground text-right">{(s.clientFlatRateFee || 0).toFixed(2)} EGP</td>
+                                   <td className="px-6 py-4 font-semibold text-foreground text-right">{(Number(s.clientFlatRateFee) || 0).toFixed(2)} EGP</td>
                                </tr>
                            ))}
                         </tbody>
@@ -156,7 +156,7 @@ const Financials = () => {
                         <div key={s.id} className="responsive-card !bg-card">
                             <div className="responsive-card-header">
                                 <span className="font-mono text-sm text-muted-foreground">{s.id}</span>
-                                <span className="font-semibold text-foreground">{(s.clientFlatRateFee || 0).toFixed(2)} EGP</span>
+                                <span className="font-semibold text-foreground">{(Number(s.clientFlatRateFee) || 0).toFixed(2)} EGP</span>
                             </div>
                             <div className="responsive-card-item">
                                 <span className="responsive-card-label">Client</span>

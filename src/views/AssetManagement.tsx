@@ -129,7 +129,7 @@ const AssetManagement = () => {
                 asset.status,
                 getAssigneeName(asset.assignedToUserId),
                 asset.assignmentDate ? new Date(asset.assignmentDate).toLocaleDateString() : 'N/A',
-                currentValue !== null ? currentValue.toFixed(2) : 'N/A'
+                currentValue !== null ? (Number(currentValue) || 0).toFixed(2) : 'N/A'
             ];
         });
         exportToCsv(headers, data, 'Asset_Report');

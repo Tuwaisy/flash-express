@@ -76,7 +76,7 @@ export const TotalShipments = () => {
             const row: (string | number)[] = [
                 s.id, s.clientName, s.recipientName,
                 new Date(s.creationDate).toLocaleDateString(), s.status,
-                getCourierName(s.courierId), price.toFixed(2), packageValue.toFixed(2)
+                getCourierName(s.courierId), (Number(price) || 0).toFixed(2), (Number(packageValue) || 0).toFixed(2)
             ];
 
             if (canSeeAdminFinancials) {
@@ -86,7 +86,7 @@ export const TotalShipments = () => {
                 if (s.courierId && s.clientFlatRateFee && s.courierCommission) {
                     netProfit = clientFee - courierCommission;
                 }
-                row.push(clientFee.toFixed(2), courierCommission.toFixed(2), netProfit.toFixed(2));
+                row.push((Number(clientFee) || 0).toFixed(2), (Number(courierCommission) || 0).toFixed(2), (Number(netProfit) || 0).toFixed(2));
             }
             return row;
         });

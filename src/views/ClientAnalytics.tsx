@@ -143,7 +143,7 @@ const ClientAnalytics: React.FC<ClientAnalyticsProps> = ({ onSelectShipment, set
             new Date(p.date).toLocaleString(),
             p.clientName,
             p.clientEmail,
-            Math.abs(p.amount).toFixed(2),
+            Math.abs(Number(p.amount) || 0).toFixed(2),
             p.description,
         ]);
         exportToCsv(headers, data, 'Pending_Client_Payouts');
@@ -290,7 +290,7 @@ const ClientAnalytics: React.FC<ClientAnalyticsProps> = ({ onSelectShipment, set
                                             <p className="font-semibold">{payout.clientName}</p>
                                             <p className="text-xs text-muted-foreground">{payout.clientEmail}</p>
                                         </td>
-                                        <td className="p-4 font-bold text-red-600">-{Math.abs(payout.amount).toFixed(2)} EGP</td>
+                                        <td className="p-4 font-bold text-red-600">-{Math.abs(Number(payout.amount) || 0).toFixed(2)} EGP</td>
                                         <td className="p-4">
                                             <button onClick={() => handleProcessPayout(payout.id)} className="px-3 py-1.5 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 text-sm">Process Payout</button>
                                         </td>

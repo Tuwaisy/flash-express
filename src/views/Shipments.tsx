@@ -100,11 +100,11 @@ const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
                 const row: (string | number)[] = [
                     s.id, s.clientName, s.recipientName, s.recipientPhone,
                     new Date(s.creationDate).toLocaleDateString(), s.status,
-                    courierName, price.toFixed(2), packageValue.toFixed(2)
+                    courierName, (Number(price) || 0).toFixed(2), (Number(packageValue) || 0).toFixed(2)
                 ];
                 
                 if (!isSuperUser) {
-                    row.push(clientFee.toFixed(2));
+                    row.push((Number(clientFee) || 0).toFixed(2));
                 }
 
                 if (canSeeAdminFinancials) {
@@ -112,7 +112,7 @@ const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
                     if (s.courierId && s.clientFlatRateFee && s.courierCommission) {
                         netProfit = clientFee - courierCommission;
                     }
-                    row.push(courierCommission.toFixed(2), netProfit.toFixed(2));
+                    row.push((Number(courierCommission) || 0).toFixed(2), (Number(netProfit) || 0).toFixed(2));
                 }
                 return row;
             });
@@ -120,7 +120,7 @@ const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
         } else if (canViewOwn) {
             const headers = ['ID', 'Recipient', 'Date', 'Status', 'Price (EGP)'];
             const body = shipmentsToExport.map(s => [
-                s.id, s.recipientName, new Date(s.creationDate).toLocaleDateString(), s.status, s.price.toFixed(2)
+                s.id, s.recipientName, new Date(s.creationDate).toLocaleDateString(), s.status, (Number(s.price) || 0).toFixed(2)
             ]);
             exportToCsv(headers, body, `Client_Shipments_${currentUser.name.replace(/\s/g, '_')}`);
         }
