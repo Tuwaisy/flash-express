@@ -470,14 +470,13 @@ async function main() {
                         status: 'Processed'
                     });
                     
-                    // Update courier stats with new balance and total earnings
-                    const currentBalance = (Number(courierStats.currentBalance) || 0) + commissionAmount;
-                    const totalEarnings = (Number(courierStats.totalEarnings) || 0) + commissionAmount;
+                    // Note: currentBalance and totalEarnings are now calculated automatically from transactions
+                    // Only update non-calculated fields
                     await trx('courier_stats').where({ courierId: shipment.courierId }).update({
-                        currentBalance,
-                        totalEarnings,
                         consecutiveFailures: 0
                     });
+                    
+                    console.log(`💰 Commission added: Courier ${shipment.courierId} earned ${commissionAmount.toFixed(2)} EGP - balance will be updated automatically`);
                     
                      await createInAppNotification(trx, shipment.courierId, `You earned ${commissionAmount.toFixed(2)} EGP for delivering shipment ${shipment.id}.`, '/courier-financials');
                 } else {
@@ -503,16 +502,9 @@ async function main() {
                         status: 'Processed'
                     });
                     
-                    // Update referrer's courier stats as well
-                    const referrerStats = await trx('courier_stats').where({ courierId: referrer.id }).first();
-                    if (referrerStats) {
-                        const currentBalance = (Number(referrerStats.currentBalance) || 0) + standardReferralBonus;
-                        const totalEarnings = (Number(referrerStats.totalEarnings) || 0) + standardReferralBonus;
-                        await trx('courier_stats').where({ courierId: referrer.id }).update({
-                            currentBalance,
-                            totalEarnings
-                        });
-                    }
+                    // Note: currentBalance and totalEarnings are now calculated automatically from transactions
+                    // No manual updates needed for referrer stats
+                    console.log(`💰 Referral bonus added: Courier ${referrer.id} earned ${standardReferralBonus} EGP - balance will be updated automatically`);
                     
                     await createInAppNotification(trx, referrer.id, `You earned ${standardReferralBonus} EGP referral bonus for ${deliveringCourier.name}'s delivery.`, '/courier-financials');
                 }
@@ -777,19 +769,30 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 return sum + amount;
             }, 0);
             
+            // Calculate total earnings (sum of all positive earnings, excluding withdrawals)
+            const totalEarnings = courierTransactions
+                .filter(t => 
+                    t.courierId === stats.courierId && 
+                    t.status === 'Processed' &&
+                    !['Withdrawal Request', 'Withdrawal Processed', 'Withdrawal Declined'].includes(t.type) &&
+                    Number(t.amount) > 0 // Only positive earnings
+                )
+                .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+            
             // Update stored balance if it differs from calculated balance
-            if (Math.abs(calculatedBalance - (Number(stats.currentBalance) || 0)) > 0.01) {
-                console.log(`🔄 Updating courier ${stats.courierId} stored balance: ${stats.currentBalance} → ${calculatedBalance.toFixed(2)}`);
+            if (Math.abs(calculatedBalance - (Number(stats.currentBalance) || 0)) > 0.01 || 
+                Math.abs(totalEarnings - (Number(stats.totalEarnings) || 0)) > 0.01) {
+                console.log(`🔄 Updating courier ${stats.courierId}: balance ${stats.currentBalance} → ${calculatedBalance.toFixed(2)}, earnings ${stats.totalEarnings} → ${totalEarnings.toFixed(2)}`);
                 await knex('courier_stats').where({ courierId: stats.courierId }).update({ 
                     currentBalance: calculatedBalance,
-                    totalEarnings: Math.max(calculatedBalance, Number(stats.totalEarnings) || 0)
+                    totalEarnings: totalEarnings
                 });
             }
             
             return {
                 ...stats,
                 currentBalance: calculatedBalance,
-                totalEarnings: Math.max(calculatedBalance, Number(stats.totalEarnings) || 0)
+                totalEarnings: totalEarnings
             };
         }));
         
@@ -1471,14 +1474,9 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     shipmentId: shipmentId || null, timestamp: new Date().toISOString(), status: 'Processed' 
                 });
                 
-                // Update courier stats
-                const courierStats = await trx('courier_stats').where({ courierId: id }).first();
-                if (courierStats) {
-                    const newBalance = (Number(courierStats.currentBalance) || 0) + penaltyAmount;
-                    await trx('courier_stats').where({ courierId: id }).update({ 
-                        currentBalance: newBalance 
-                    });
-                }
+                // Note: currentBalance is now calculated automatically from transactions
+                // No manual balance update needed
+                console.log(`⚠️  Penalty applied: Courier ${id} penalized ${amount} EGP - balance will be updated automatically`);
                 
                 await createInAppNotification(trx, id, `A penalty of ${amount} EGP was applied to your account. Reason: ${description}`, '/courier-financials');
             });
@@ -1506,14 +1504,9 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     shipmentId: shipmentId, timestamp: new Date().toISOString(), status: 'Processed' 
                 });
                 
-                // Update courier stats
-                const courierStats = await trx('courier_stats').where({ courierId: id }).first();
-                if (courierStats) {
-                    const newBalance = (Number(courierStats.currentBalance) || 0) + negativePenalty;
-                    await trx('courier_stats').where({ courierId: id }).update({ 
-                        currentBalance: newBalance 
-                    });
-                }
+                // Note: currentBalance is now calculated automatically from transactions
+                // No manual balance update needed
+                console.log(`⚠️  Failed delivery penalty: Courier ${id} penalized ${penaltyAmount} EGP for shipment ${shipmentId} - balance will be updated automatically`);
                 
                 await createInAppNotification(trx, id, `A penalty of ${penaltyAmount} EGP was applied for failed delivery of ${shipmentId}.`, '/courier-financials');
             });
@@ -1624,26 +1617,13 @@ app.get('/api/debug/users/:id', async (req, res) => {
 
                 const [payout] = await trx('courier_transactions').where({ id }).update(updatePayload).returning('*');
                 
-                // Update courier's stored balance by deducting the processed amount
-                const courierStats = await trx('courier_stats').where({ courierId: payout.courierId }).first();
-                if (courierStats) {
-                    const currentBalance = Number(courierStats.currentBalance) || 0;
-                    const deductionAmount = Math.abs(Number(finalAmount)); // Make sure it's positive for deduction
-                    const newBalance = currentBalance - deductionAmount;
-                    
-                    await trx('courier_stats').where({ courierId: payout.courierId }).update({ 
-                        currentBalance: newBalance
-                    });
-                    
-                    console.log(`💸 Payout processed: Courier ${payout.courierId} balance: ${currentBalance.toFixed(2)} - ${deductionAmount.toFixed(2)} = ${newBalance.toFixed(2)}`);
-                }
-                
                 console.log(`✅ Payout processed: ID ${id}, Type changed from 'Withdrawal Request' to 'Withdrawal Processed'`);
+                console.log(`💸 Courier ${payout.courierId} payout of ${Math.abs(Number(finalAmount)).toFixed(2)} EGP processed - balance will be updated automatically`);
                 
-                // Since processed withdrawals are excluded from balance calculation, 
-                // the balance will be automatically updated on next data fetch
+                // Note: Balance is calculated automatically by excluding 'Withdrawal Processed' transactions
+                // No manual balance deduction needed as the transaction type change handles this
                 
-                await createInAppNotification(trx, payout.courierId, `Your payout request for ${-payout.amount} EGP has been processed.`, '/courier-financials');
+                await createInAppNotification(trx, payout.courierId, `Your payout request for ${Math.abs(Number(payout.amount)).toFixed(2)} EGP has been processed.`, '/courier-financials');
             });
             res.status(200).json({ success: true });
             throttledDataUpdate();
@@ -1664,35 +1644,14 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     description: `Payout request for ${(-payoutRequest.amount).toFixed(2)} EGP declined by admin.`
                 };
                 
-                // Create refund transaction to restore the balance (refund is a positive commission)
-                const refundAmount = -payoutRequest.amount; // Positive amount to credit back
-                await trx('courier_transactions').insert({
-                    id: generateId('TRN_REFUND'),
-                    courierId: payoutRequest.courierId,
-                    type: 'Commission',
-                    amount: refundAmount,
-                    description: `Refund for declined payout request ${id}`,
-                    timestamp: new Date().toISOString(),
-                    status: 'Processed'
-                });
-                
-                // Update courier stats to restore the balance immediately
-                const courierStats = await trx('courier_stats').where({ courierId: payoutRequest.courierId }).first();
-                if (courierStats) {
-                    const currentBalance = Number(courierStats.currentBalance) || 0;
-                    const refundAmountNum = Number(refundAmount);
-                    const newBalance = currentBalance + refundAmountNum;
-                    const newTotalEarnings = Math.max(newBalance, Number(courierStats.totalEarnings) || 0);
-                    await trx('courier_stats').where({ courierId: payoutRequest.courierId }).update({ 
-                        currentBalance: newBalance,
-                        totalEarnings: newTotalEarnings
-                    });
-                    console.log(`🔄 Restored courier ${payoutRequest.courierId} balance: +${refundAmountNum} = ${newBalance.toFixed(2)}`);
-                }
+                // When declining, we just change the transaction type to 'Withdrawal Declined'
+                // The balance will be automatically restored because 'Withdrawal Declined' transactions are excluded from balance calculation
+                // No need for manual refund transaction or balance update
                 
                 const [payout] = await trx('courier_transactions').where({ id }).update(updatePayload).returning('*');
                 console.log(`❌ Payout declined: ID ${id}, Type changed from 'Withdrawal Request' to 'Withdrawal Declined'`);
-                await createInAppNotification(trx, payout.courierId, `Your payout request for ${(-payout.amount).toFixed(2)} EGP has been declined.`, '/courier-financials');
+                console.log(`🔄 Courier ${payoutRequest.courierId} balance will be automatically restored on next data refresh`);
+                await createInAppNotification(trx, payout.courierId, `Your payout request for ${Math.abs(Number(payout.amount)).toFixed(2)} EGP has been declined.`, '/courier-financials');
             });
             res.status(200).json({ success: true });
             throttledDataUpdate();
