@@ -2,7 +2,7 @@
 
 
 
-import React, { useState, useCallback, useMemo, useEffect, ReactNode } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef, ReactNode } from 'react';
 import { User, Shipment, Toast, ClientTransaction, Notification, CourierStats, CourierTransaction, FinancialSettings, AdminFinancials, ClientFinancialSummary, Address, CustomRole, Permission, InventoryItem, Asset, PackagingLogEntry, TransactionType, Supplier, SupplierTransaction, InAppNotification, TierSetting, PartnerTier } from '../types';
 import { UserRole, ShipmentStatus, CommissionType, CourierTransactionType, CourierTransactionStatus, ShipmentPriority, PaymentMethod } from '../types';
 import { apiFetch } from '../api/client';
@@ -141,14 +141,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setToasts(prev => prev.filter(t => t.id !== toastId));
     }, []);
 
-    // Data fetching function
-    const fetchAppData = useCallback(async () => {
+    // Data fetching function with throttling and debouncing
+    const lastFetchTime = useRef<number>(0);
+    const fetchTimeout = useRef<NodeJS.Timeout | null>(null);
+    const FETCH_THROTTLE_MS = 5000; // Only allow fetching every 5 seconds
+    const FETCH_DEBOUNCE_MS = 1000; // Wait 1 second after last request before fetching
+    
+    const fetchAppData = useCallback(async (force = false) => {
         if (!currentUser) {
             return;
         }
         
+        const now = Date.now();
+        
+        // If not forced and within throttle period, queue a debounced fetch
+        if (!force && now - lastFetchTime.current < FETCH_THROTTLE_MS) {
+            console.log('Data fetch throttled - scheduling debounced fetch');
+            
+            // Clear existing timeout
+            if (fetchTimeout.current) {
+                clearTimeout(fetchTimeout.current);
+            }
+            
+            // Schedule a debounced fetch
+            fetchTimeout.current = setTimeout(() => {
+                fetchAppData(true); // Force fetch after debounce
+            }, FETCH_DEBOUNCE_MS);
+            return;
+        }
+        
+        // Clear any pending debounced fetch
+        if (fetchTimeout.current) {
+            clearTimeout(fetchTimeout.current);
+            fetchTimeout.current = null;
+        }
+        
         try {
             setIsLoading(true);
+            lastFetchTime.current = now;
+            console.log('Fetching application data...');
             const data = await apiFetch('/api/data');
             
             // Update all state with fetched data
@@ -166,6 +197,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setInAppNotifications(data.inAppNotifications || []);
             setTierSettings(data.tierSettings || []);
             
+            console.log('Application data fetched successfully');
         } catch (error: any) {
             console.error('Failed to fetch application data:', error);
             addToast(`Failed to load data: ${error.message}`, 'error');
@@ -187,7 +219,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             });
 
             newSocket.on('data_updated', () => {
-                fetchAppData();
+                console.log('Received data_updated event - fetching with throttling');
+                fetchAppData(); // Throttled by the function itself
             });
 
             newSocket.on('disconnect', () => {
@@ -196,8 +229,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             setSocket(newSocket);
             
-            // Fetch initial data after setting up socket
-            fetchAppData();
+            // Fetch initial data after setting up socket (force fetch)
+            fetchAppData(true);
             
             return () => {
                 newSocket.disconnect();
@@ -211,6 +244,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, [currentUser, socket]); // Removed fetchAppData from dependencies
 
     const logout = useCallback(() => {
+        // Clear any pending fetch timeout
+        if (fetchTimeout.current) {
+            clearTimeout(fetchTimeout.current);
+            fetchTimeout.current = null;
+        }
+        
         setCurrentUser(null);
         setUsers([]);
         setShipments([]);
