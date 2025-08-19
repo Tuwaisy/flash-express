@@ -130,7 +130,7 @@ const ClientAnalytics: React.FC<ClientAnalyticsProps> = ({ onSelectShipment, set
             c.name,
             c.publicId,
             c.shipmentCount,
-            c.flatRateFee.toFixed(2),
+            (Number(c.flatRateFee) || 0).toFixed(2),
             c.partnerTier || 'N/A',
             c.payoutRequestCount,
         ]);
@@ -248,7 +248,7 @@ const ClientAnalytics: React.FC<ClientAnalyticsProps> = ({ onSelectShipment, set
                                                 {client.partnerTier || 'N/A'}
                                             </span>
                                         </td>
-                                        <td className="p-4 text-primary font-semibold">{client.flatRateFee.toFixed(2)} EGP</td>
+                                        <td className="p-4 text-primary font-semibold">{(Number(client.flatRateFee) || 0).toFixed(2)} EGP</td>
                                         <td className="p-4 text-blue-600 font-semibold">{client.payoutRequestCount}</td>
                                         <td className="p-4">
                                             <button onClick={() => handleViewShipments(client.id)} className="px-3 py-1.5 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 text-sm">View Shipments</button>

@@ -155,7 +155,7 @@ const CourierPerformance: React.FC<CourierPerformanceProps> = ({ onSelectShipmen
             </div>
             <StatCard
                 title="Total Owed to Couriers"
-                value={`${adminFinancials.totalOwedToCouriers.toFixed(2)} EGP`}
+                value={`${(Number(adminFinancials.totalOwedToCouriers) || 0).toFixed(2)} EGP`}
                 icon={<TruckIcon className="w-7 h-7" />}
                 color="#8b5cf6"
                 subtitle="Sum of all courier current balances"
@@ -222,7 +222,7 @@ const CourierPerformance: React.FC<CourierPerformanceProps> = ({ onSelectShipmen
                                         </button>
                                     </td>
                                     <td className="p-4 font-mono text-sm">
-                                        {stats ? `${stats.totalEarnings.toFixed(2)} / ${stats.currentBalance.toFixed(2)}` : 'N/A'}
+                                        {stats ? `${(Number(stats.totalEarnings) || 0).toFixed(2)} / ${(Number(stats.currentBalance) || 0).toFixed(2)}` : 'N/A'}
                                     </td>
                                     <td className="p-4 text-sm">
                                         {stats?.commissionType === 'flat' ? `${stats.commissionValue} EGP` : `${stats?.commissionValue}%`}
@@ -278,7 +278,7 @@ const CourierPerformance: React.FC<CourierPerformanceProps> = ({ onSelectShipmen
                             </div>
                             <div className="responsive-card-item">
                                 <span className="responsive-card-label">Earnings (Balance)</span>
-                                <span className="responsive-card-value font-mono">{stats ? `${stats.currentBalance.toFixed(2)} EGP` : 'N/A'}</span>
+                                <span className="responsive-card-value font-mono">{stats ? `${(Number(stats.currentBalance) || 0).toFixed(2)} EGP` : 'N/A'}</span>
                             </div>
                              <div className="responsive-card-item">
                                 <span className="responsive-card-label">Commission</span>
@@ -409,7 +409,7 @@ const ManageCourierModal: React.FC<ManageCourierModalProps> = ({ isOpen, onClose
                                 <div key={payout.id} className="bg-background p-3 rounded-lg border border-border">
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <p className="font-semibold text-foreground">{(-payout.amount).toFixed(2)} EGP</p>
+                                            <p className="font-semibold text-foreground">{(Number(-payout.amount) || 0).toFixed(2)} EGP</p>
                                             <p className="text-xs text-muted-foreground">{new Date(payout.timestamp).toLocaleString()}</p>
                                             <p className="text-xs text-muted-foreground">{payout.paymentMethod}</p>
                                         </div>

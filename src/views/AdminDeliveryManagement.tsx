@@ -104,7 +104,7 @@ const AdminDeliveryManagement = () => {
                 <p className="text-lg font-bold text-foreground">To: {task.recipientName}</p>
                 <p className="text-muted-foreground">{task.toAddress.street}, {task.toAddress.zone}</p>
                 <p className="text-sm font-semibold text-foreground mt-1">Courier: {getCourierName(task.courierId)}</p>
-                <p className="text-sm font-semibold text-foreground mt-1">Payment: {task.paymentMethod} ({task.price > 0 ? `${task.price.toFixed(2)} EGP` : 'Pre-Paid'})</p>
+                <p className="text-sm font-semibold text-foreground mt-1">Payment: {task.paymentMethod} ({(Number(task.price) || 0) > 0 ? `${(Number(task.price) || 0).toFixed(2)} EGP` : 'Pre-Paid'})</p>
             </div>
             <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full md:w-auto">
                 <div className="flex-grow"><ShipmentStatusBadge status={task.status} /></div>

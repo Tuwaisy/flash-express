@@ -31,7 +31,7 @@ const InventoryManagement = () => {
 
     // Memoized calculations for KPIs and filtering
     const { totalInventoryValue, totalItems, lowStockCount } = useMemo(() => {
-        const value = canSeeFinancials ? inventoryItems.reduce((acc, item) => acc + (item.quantity * (item.unitPrice || 0)), 0) : 0;
+        const value = canSeeFinancials ? inventoryItems.reduce((acc, item) => acc + (Number(item.quantity) * (Number(item.unitPrice) || 0)), 0) : 0;
         const lowStock = inventoryItems.filter(item => item.minStock && item.quantity <= item.minStock).length;
         return {
             totalInventoryValue: value,
@@ -111,7 +111,7 @@ const InventoryManagement = () => {
         const data = filteredItems.map(item => {
             const row: (string | number)[] = [item.id, item.name, item.quantity, item.unit, new Date(item.lastUpdated).toLocaleString()];
             if (canSeeFinancials) {
-                row.push(item.minStock || 0, (item.unitPrice || 0).toFixed(2), ((item.quantity || 0) * (item.unitPrice || 0)).toFixed(2));
+                row.push(item.minStock || 0, (Number(item.unitPrice) || 0).toFixed(2), ((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)).toFixed(2));
             }
             return row;
         });
@@ -209,8 +209,8 @@ const InventoryManagement = () => {
                                 <tr key={item.id}>
                                     <td className="p-4 font-semibold text-foreground">{item.name}</td>
                                     <td className="p-4"><StockLevelBar item={item} /></td>
-                                    {canSeeFinancials && <td className="p-4 font-mono text-green-600 dark:text-green-400">{(item.unitPrice || 0).toFixed(2)}</td>}
-                                    {canSeeFinancials && <td className="p-4 font-mono font-semibold text-foreground">{(item.quantity * (item.unitPrice || 0)).toFixed(2)}</td>}
+                                    {canSeeFinancials && <td className="p-4 font-mono text-green-600 dark:text-green-400">{(Number(item.unitPrice) || 0).toFixed(2)}</td>}
+                                    {canSeeFinancials && <td className="p-4 font-mono font-semibold text-foreground">{(Number(item.quantity) * (Number(item.unitPrice) || 0)).toFixed(2)}</td>}
                                     <td className="p-4 text-sm text-muted-foreground">{new Date(item.lastUpdated).toLocaleString()}</td>
                                     <td className="p-4">
                                         <div className="flex items-center gap-2">

@@ -22,19 +22,19 @@ const CourierEarningsSummary: React.FC<{ courierStats: CourierStats }> = ({ cour
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 <div>
                     <div className="text-sm text-muted-foreground">Total Earnings</div>
-                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">{courierStats.totalEarnings.toFixed(2)} EGP</div>
+                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">{(Number(courierStats.totalEarnings) || 0).toFixed(2)} EGP</div>
                 </div>
                 <div>
                     <div className="text-sm text-muted-foreground">Current Balance</div>
-                    <div className="text-2xl font-bold text-foreground">{courierStats.currentBalance.toFixed(2)} EGP</div>
+                    <div className="text-2xl font-bold text-foreground">{(Number(courierStats.currentBalance) || 0).toFixed(2)} EGP</div>
                 </div>
                 <div>
                     <div className="text-sm text-muted-foreground">Pending Payouts</div>
-                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{courierStats.pendingEarnings.toFixed(2)} EGP</div>
+                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{(Number(courierStats.pendingEarnings) || 0).toFixed(2)} EGP</div>
                 </div>
                  <div>
                     <div className="text-sm text-muted-foreground">Avg. Per Delivery</div>
-                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{avgEarningsPerDelivery.toFixed(2)} EGP</div>
+                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{(Number(avgEarningsPerDelivery) || 0).toFixed(2)} EGP</div>
                 </div>
             </div>
              <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
@@ -46,7 +46,7 @@ const CourierEarningsSummary: React.FC<{ courierStats: CourierStats }> = ({ cour
                     </div>
                 </div>
                  <div className="text-sm text-muted-foreground">
-                    Success Rate: <span className="font-bold text-foreground">{successRate.toFixed(1)}%</span>
+                    Success Rate: <span className="font-bold text-foreground">{(Number(successRate) || 0).toFixed(1)}%</span>
                 </div>
                 {courierStats.isRestricted && (
                     <span className="px-2 py-1 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 rounded-full text-xs font-medium">🚫 Restricted</span>
@@ -91,7 +91,7 @@ const TransactionHistory: React.FC<{ transactions: CourierTransaction[] }> = ({ 
                                     <span className={`px-2 py-1 font-semibold text-xs rounded-full ${t.amount >= 0 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'}`}>{t.type}</span>
                                     {(t.type === CourierTransactionType.WITHDRAWAL_REQUEST || t.type === CourierTransactionType.WITHDRAWAL_PROCESSED) && <span className={`ml-2 px-2 py-1 font-semibold text-xs rounded-full ${statusStyles[t.status]}`}>{t.status}</span>}
                                 </td>
-                                <td className={`px-6 py-4 text-right font-bold ${t.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{t.amount.toFixed(2)}</td>
+                                <td className={`px-6 py-4 text-right font-bold ${t.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{(Number(t.amount) || 0).toFixed(2)}</td>
                             </tr>
                         ))}
                         {transactions.length === 0 && (
@@ -162,7 +162,7 @@ const CourierFinancials = () => {
 
             <Modal isOpen={isPayoutModalOpen} onClose={() => setPayoutModalOpen(false)} title="Request a Payout">
                 <div className="space-y-4">
-                    <p>Your current balance is <strong className="text-green-600 dark:text-green-400">{myStats.currentBalance.toFixed(2)} EGP</strong>.</p>
+                    <p>Your current balance is <strong className="text-green-600 dark:text-green-400">{(Number(myStats.currentBalance) || 0).toFixed(2)} EGP</strong>.</p>
                     <div>
                         <label className="block text-sm font-medium text-muted-foreground mb-1">Payment Method</label>
                         <select
