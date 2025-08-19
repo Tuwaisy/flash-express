@@ -766,7 +766,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             );
             const calculatedBalance = courierTransactionsForCourier.reduce((sum, t) => {
                 const amount = Number(t.amount) || 0;
-                return sum + amount;
+                return Number(sum) + Number(amount);
             }, 0);
             
             // Debug: Always log balance calculation for courier
@@ -781,29 +781,35 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     !['Withdrawal Request', 'Withdrawal Processed', 'Withdrawal Declined'].includes(t.type) &&
                     Number(t.amount) > 0 // Only positive earnings
                 )
-                .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+                .reduce((sum, t) => Number(sum) + (Number(t.amount) || 0), 0);
             
             // Update stored balance if it differs from calculated balance
-            if (Math.abs(calculatedBalance - (Number(stats.currentBalance) || 0)) > 0.01 || 
-                Math.abs(totalEarnings - (Number(stats.totalEarnings) || 0)) > 0.01) {
-                console.log(`🔄 Updating courier ${stats.courierId}: balance ${stats.currentBalance} → ${calculatedBalance.toFixed(2)}, earnings ${stats.totalEarnings} → ${totalEarnings.toFixed(2)}`);
+            // CRITICAL: Ensure both values are numbers before comparison to prevent string concatenation
+            const currentBalanceNum = Number(stats.currentBalance) || 0;
+            const totalEarningsNum = Number(stats.totalEarnings) || 0;
+            const calculatedBalanceNum = Number(calculatedBalance) || 0;
+            const totalEarningsCalcNum = Number(totalEarnings) || 0;
+            
+            if (Math.abs(calculatedBalanceNum - currentBalanceNum) > 0.01 || 
+                Math.abs(totalEarningsCalcNum - totalEarningsNum) > 0.01) {
+                console.log(`🔄 Updating courier ${stats.courierId}: balance ${currentBalanceNum} → ${calculatedBalanceNum.toFixed(2)}, earnings ${totalEarningsNum} → ${totalEarningsCalcNum.toFixed(2)}`);
                 console.log(`📊 Transactions for courier ${stats.courierId}:`, courierTransactionsForCourier.map(t => `${t.type}: ${t.amount} (${t.status})`));
                 await knex('courier_stats').where({ courierId: stats.courierId }).update({ 
-                    currentBalance: calculatedBalance,
-                    totalEarnings: totalEarnings
+                    currentBalance: calculatedBalanceNum,
+                    totalEarnings: totalEarningsCalcNum
                 });
                 
                 // CRITICAL FIX: Also update the walletBalance in the users table so frontend displays correct balance
                 await knex('users').where({ id: stats.courierId }).update({ 
-                    walletBalance: calculatedBalance
+                    walletBalance: calculatedBalanceNum
                 });
-                console.log(`💰 Updated user ${stats.courierId} walletBalance to ${calculatedBalance.toFixed(2)}`);
+                console.log(`💰 Updated user ${stats.courierId} walletBalance to ${calculatedBalanceNum.toFixed(2)}`);
             }
             
             return {
                 ...stats,
-                currentBalance: calculatedBalance,
-                totalEarnings: totalEarnings
+                currentBalance: calculatedBalanceNum,
+                totalEarnings: totalEarningsCalcNum
             };
         }));
         
