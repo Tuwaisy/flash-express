@@ -1927,6 +1927,106 @@ app.get('/api/debug/users/:id', async (req, res) => {
         }
     });
 
+    // --- DEBUG ENDPOINT: Complete Database Reset ---
+    app.post('/api/debug/reset-database', async (req, res) => {
+        try {
+            console.log('🔄 Starting COMPLETE database reset...');
+            
+            const resetResults = {
+                backup: {},
+                deleted: {},
+                reset: {}
+            };
+            
+            await knex.transaction(async (trx) => {
+                // Create backup counts
+                console.log('📊 Recording current state...');
+                resetResults.backup = {
+                    users: await trx('users').count('id as count').first(),
+                    shipments: await trx('shipments').count('id as count').first(),
+                    courier_transactions: await trx('courier_transactions').count('id as count').first(),
+                    client_transactions: await trx('client_transactions').count('id as count').first(),
+                    courier_stats: await trx('courier_stats').count('courierId as count').first()
+                };
+                
+                // Get first 2 shipments to preserve
+                const shipmentsToKeep = await trx('shipments')
+                    .select('id', 'createdAt')
+                    .orderBy('createdAt')
+                    .limit(2);
+                    
+                const shipmentIds = shipmentsToKeep.map(s => s.id);
+                console.log('📦 Preserving shipments:', shipmentIds);
+                
+                // STEP 1: Clear all transactions
+                console.log('🗑️  Clearing all transactions...');
+                resetResults.deleted.courier_transactions = await trx('courier_transactions').del();
+                resetResults.deleted.client_transactions = await trx('client_transactions').del();
+                resetResults.deleted.notifications = await trx('in_app_notifications').del();
+                
+                // STEP 2: Remove excess shipments
+                if (shipmentIds.length > 0) {
+                    resetResults.deleted.shipments = await trx('shipments')
+                        .whereNotIn('id', shipmentIds)
+                        .del();
+                } else {
+                    resetResults.deleted.shipments = await trx('shipments').del();
+                }
+                
+                // STEP 3: Reset all courier stats
+                console.log('👤 Resetting courier stats...');
+                resetResults.reset.courier_stats = await trx('courier_stats').update({
+                    currentBalance: 0,
+                    totalEarnings: 0,
+                    consecutiveFailures: 0,
+                    totalDeliveries: 0,
+                    deliverySuccessRate: 100.00,
+                    averageDeliveryTime: 0,
+                    isRestricted: false
+                });
+                
+                // STEP 4: Reset user wallet balances
+                console.log('💰 Resetting user wallet balances...');
+                resetResults.reset.user_balances = await trx('users').update({ 
+                    walletBalance: 0 
+                });
+                
+                // STEP 5: Reset sequences for clean numbering
+                console.log('🔢 Resetting sequences...');
+                await trx.raw('SELECT setval(\'courier_transactions_id_seq\', 1, false)');
+                await trx.raw('SELECT setval(\'client_transactions_id_seq\', 1, false)');
+                await trx.raw('SELECT setval(\'in_app_notifications_id_seq\', 1, false)');
+                
+                // Get new counts for verification
+                resetResults.final = {
+                    users: await trx('users').count('id as count').first(),
+                    shipments: await trx('shipments').count('id as count').first(),
+                    courier_transactions: await trx('courier_transactions').count('id as count').first(),
+                    client_transactions: await trx('client_transactions').count('id as count').first()
+                };
+            });
+            
+            console.log('✅ Complete database reset finished');
+            console.log('📊 Reset Summary:', resetResults);
+            
+            res.json({ 
+                success: true, 
+                message: 'Complete database reset successful',
+                results: resetResults,
+                preserved: 'Users and first 2 shipments',
+                cleared: 'All transactions, excess shipments, balances reset'
+            });
+            
+        } catch (error) {
+            console.error('❌ Complete reset failed:', error);
+            res.status(500).json({ 
+                error: 'Reset failed', 
+                details: error.message,
+                suggestion: 'Try manual SQL reset using database-reset.sql file'
+            });
+        }
+    });
+
 
     // Notifications
     app.get('/api/notifications/user/:userId', async (req, res) => {
