@@ -425,9 +425,20 @@ async function main() {
                         timestamp: new Date().toISOString(),
                         status: 'Processed'
                     });
+                    
+                    // Update courier stats with new balance and total earnings
+                    const currentBalance = (courierStats.currentBalance || 0) + commissionAmount;
+                    const totalEarnings = (courierStats.totalEarnings || 0) + commissionAmount;
+                    await trx('courier_stats').where({ courierId: shipment.courierId }).update({
+                        currentBalance,
+                        totalEarnings,
+                        consecutiveFailures: 0
+                    });
+                    
                      await createInAppNotification(trx, shipment.courierId, `You earned ${commissionAmount.toFixed(2)} EGP for delivering shipment ${shipment.id}.`, '/courier-financials');
+                } else {
+                    await trx('courier_stats').where({ courierId: shipment.courierId }).update({ consecutiveFailures: 0 });
                 }
-                await trx('courier_stats').where({ courierId: shipment.courierId }).update({ consecutiveFailures: 0 });
             }
 
             // Referral commission - company pays referrer for successful deliveries
@@ -447,6 +458,18 @@ async function main() {
                         timestamp: new Date().toISOString(),
                         status: 'Processed'
                     });
+                    
+                    // Update referrer's courier stats as well
+                    const referrerStats = await trx('courier_stats').where({ courierId: referrer.id }).first();
+                    if (referrerStats) {
+                        const currentBalance = (referrerStats.currentBalance || 0) + standardReferralBonus;
+                        const totalEarnings = (referrerStats.totalEarnings || 0) + standardReferralBonus;
+                        await trx('courier_stats').where({ courierId: referrer.id }).update({
+                            currentBalance,
+                            totalEarnings
+                        });
+                    }
+                    
                     await createInAppNotification(trx, referrer.id, `You earned ${standardReferralBonus} EGP referral bonus for ${deliveringCourier.name}'s delivery.`, '/courier-financials');
                 }
             }
@@ -455,6 +478,7 @@ async function main() {
         const client = await trx('users').where({ id: shipment.clientId }).first();
         if (client) {
             const shippingFee = shipment.clientFlatRateFee || 0;
+            let walletChange = 0;
             
             if (shipment.paymentMethod === 'COD') {
                 // For COD: Credit package value, deduct shipping fee
@@ -464,6 +488,7 @@ async function main() {
                         { id: generateId('TRN'), userId: client.id, type: 'Deposit', amount: packageValue, date: new Date().toISOString(), description: `Package value collected for delivered shipment ${shipment.id}`, status: 'Processed' },
                         { id: generateId('TRN'), userId: client.id, type: 'Payment', amount: -shippingFee, date: new Date().toISOString(), description: `Shipping fee for ${shipment.id}`, status: 'Processed' }
                     ]);
+                    walletChange = packageValue - shippingFee;
                 }
             } else if (shipment.paymentMethod === 'Transfer') {
                 // For Transfer: Client already paid shipping fee, just get amount to collect if any
@@ -472,6 +497,7 @@ async function main() {
                     await trx('client_transactions').insert([
                         { id: generateId('TRN'), userId: client.id, type: 'Deposit', amount: amountToCollect, date: new Date().toISOString(), description: `Amount collected from recipient for delivered shipment ${shipment.id}`, status: 'Processed' }
                     ]);
+                    walletChange = amountToCollect;
                 }
             } else if (shipment.paymentMethod === 'Wallet') {
                 // For Wallet payments: Client already paid shipping fee, credit package value collected
@@ -480,7 +506,15 @@ async function main() {
                     await trx('client_transactions').insert([
                         { id: generateId('TRN'), userId: client.id, type: 'Deposit', amount: packageValue, date: new Date().toISOString(), description: `Package value collected for delivered shipment ${shipment.id}`, status: 'Processed' }
                     ]);
+                    walletChange = packageValue;
                 }
+            }
+            
+            // Update client wallet balance
+            if (walletChange !== 0) {
+                const currentWalletBalance = Number(client.walletBalance) || 0;
+                const newWalletBalance = currentWalletBalance + walletChange;
+                await trx('users').where({ id: client.id }).update({ walletBalance: newWalletBalance });
             }
         }
     };
@@ -1307,10 +1341,21 @@ app.get('/api/debug/users/:id', async (req, res) => {
         const { amount, description, shipmentId } = req.body;
         try { 
             await knex.transaction(async trx => {
+                const penaltyAmount = -Math.abs(amount);
                 await trx('courier_transactions').insert({ 
-                    id: generateId('TRN'), courierId: id, type: 'Penalty', amount: -Math.abs(amount), description, 
+                    id: generateId('TRN'), courierId: id, type: 'Penalty', amount: penaltyAmount, description, 
                     shipmentId: shipmentId || null, timestamp: new Date().toISOString(), status: 'Processed' 
                 });
+                
+                // Update courier stats
+                const courierStats = await trx('courier_stats').where({ courierId: id }).first();
+                if (courierStats) {
+                    const newBalance = (courierStats.currentBalance || 0) + penaltyAmount;
+                    await trx('courier_stats').where({ courierId: id }).update({ 
+                        currentBalance: newBalance 
+                    });
+                }
+                
                 await createInAppNotification(trx, id, `A penalty of ${amount} EGP was applied to your account. Reason: ${description}`, '/courier-financials');
             });
             res.status(200).json({ success: true });
@@ -1330,11 +1375,22 @@ app.get('/api/debug/users/:id', async (req, res) => {
             const finalDescription = description || `Penalty for failed delivery of ${shipmentId} - Package value: ${penaltyAmount} EGP`;
             
             await knex.transaction(async trx => {
+                const negativePenalty = -penaltyAmount;
                 await trx('courier_transactions').insert({ 
-                    id: generateId('TRN'), courierId: id, type: 'Penalty', amount: -penaltyAmount, 
+                    id: generateId('TRN'), courierId: id, type: 'Penalty', amount: negativePenalty, 
                     description: finalDescription,
                     shipmentId: shipmentId, timestamp: new Date().toISOString(), status: 'Processed' 
                 });
+                
+                // Update courier stats
+                const courierStats = await trx('courier_stats').where({ courierId: id }).first();
+                if (courierStats) {
+                    const newBalance = (courierStats.currentBalance || 0) + negativePenalty;
+                    await trx('courier_stats').where({ courierId: id }).update({ 
+                        currentBalance: newBalance 
+                    });
+                }
+                
                 await createInAppNotification(trx, id, `A penalty of ${penaltyAmount} EGP was applied for failed delivery of ${shipmentId}.`, '/courier-financials');
             });
             res.status(200).json({ success: true, penaltyAmount, message: `Penalty of ${penaltyAmount} EGP applied` });
@@ -1348,12 +1404,24 @@ app.get('/api/debug/users/:id', async (req, res) => {
     app.post('/api/couriers/payouts', async (req, res) => {
         const { courierId, amount, paymentMethod } = req.body;
         try {
-            await knex('courier_transactions').insert({ 
-                id: generateId('TRN'), courierId, type: 'Withdrawal Request', 
-                amount: -Math.abs(amount), 
-                description: `Payout request via ${paymentMethod}`, 
-                timestamp: new Date().toISOString(), status: 'Pending',
-                paymentMethod
+            await knex.transaction(async trx => {
+                const withdrawalAmount = -Math.abs(amount);
+                await trx('courier_transactions').insert({ 
+                    id: generateId('TRN'), courierId, type: 'Withdrawal Request', 
+                    amount: withdrawalAmount, 
+                    description: `Payout request via ${paymentMethod}`, 
+                    timestamp: new Date().toISOString(), status: 'Pending',
+                    paymentMethod
+                });
+                
+                // Update courier stats to subtract the requested amount from balance
+                const courierStats = await trx('courier_stats').where({ courierId }).first();
+                if (courierStats) {
+                    const newBalance = (courierStats.currentBalance || 0) + withdrawalAmount; // withdrawalAmount is negative
+                    await trx('courier_stats').where({ courierId }).update({ 
+                        currentBalance: newBalance 
+                    });
+                }
             });
             res.status(200).json({ success: true });
             throttledDataUpdate();
@@ -1394,6 +1462,16 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 }
 
                 const [payout] = await trx('courier_transactions').where({ id }).update(updatePayload).returning('*');
+                
+                // Update courier stats - subtract the payout amount from balance
+                const courierStats = await trx('courier_stats').where({ courierId: payout.courierId }).first();
+                if (courierStats) {
+                    const newBalance = (courierStats.currentBalance || 0) + finalAmount; // finalAmount is negative
+                    await trx('courier_stats').where({ courierId: payout.courierId }).update({ 
+                        currentBalance: newBalance 
+                    });
+                }
+                
                 await createInAppNotification(trx, payout.courierId, `Your payout request for ${-payout.amount} EGP has been processed.`, '/courier-financials');
             });
             res.status(200).json({ success: true });
@@ -1416,15 +1494,25 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 };
                 
                 // Return the money to courier's balance by creating a credit transaction
+                const refundAmount = -payoutRequest.amount; // Positive amount to credit back
                 await trx('courier_transactions').insert({
                     id: generateId('TRN_REFUND'),
                     courierId: payoutRequest.courierId,
                     type: 'Commission',
-                    amount: -payoutRequest.amount, // Positive amount to credit back
+                    amount: refundAmount,
                     description: `Refund for declined payout request ${id}`,
                     timestamp: new Date().toISOString(),
                     status: 'Processed'
                 });
+                
+                // Update courier stats to restore the balance
+                const courierStats = await trx('courier_stats').where({ courierId: payoutRequest.courierId }).first();
+                if (courierStats) {
+                    const newBalance = (courierStats.currentBalance || 0) + refundAmount;
+                    await trx('courier_stats').where({ courierId: payoutRequest.courierId }).update({ 
+                        currentBalance: newBalance 
+                    });
+                }
                 
                 const [payout] = await trx('courier_transactions').where({ id }).update(updatePayload).returning('*');
                 await createInAppNotification(trx, payout.courierId, `Your payout request for ${(-payout.amount).toFixed(2)} EGP has been declined.`, '/courier-financials');

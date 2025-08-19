@@ -580,7 +580,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const deliveredShipments = clientShipments.filter(s => s.status === ShipmentStatus.DELIVERED);
             const totalOrders = clientShipments.length; // Total orders placed
             const deliveredOrders = deliveredShipments.length; // Delivered orders count
-            const orderSum = deliveredShipments.reduce((sum, s) => sum + (Number(s.price) || 0), 0); // Revenue from delivered orders only
+            // Client revenue = package value minus shipping fees
+            const orderSum = deliveredShipments.reduce((sum, s) => {
+                const packageValue = Number(s.packageValue) || 0;
+                const shippingFee = Number(s.clientFlatRateFee) || 0;
+                return sum + Math.max(0, packageValue - shippingFee); // Net revenue for client
+            }, 0);
             return {
                 clientId: client.id,
                 clientName: client.name,

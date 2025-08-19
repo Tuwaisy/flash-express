@@ -214,11 +214,11 @@ const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
                 <ShipmentList 
                     shipments={visibleShipments} 
                     onSelect={onSelectShipment}
-                    showPackageValue={isAssigner}
-                    priceColumnTitle={isAssigner ? 'Total COD' : 'Price'}
-                    showClientFee={!isSuperUser}
+                    showPackageValue={true} // Always show package value
+                    priceColumnTitle={isAssigner ? 'Total COD' : (canViewOwn ? 'Package Value' : 'Price')}
+                    showClientFee={!isSuperUser || canViewOwn}
                     showCourierCommission={canSeeAdminFinancials}
-                    showNetProfit={canSeeAdminFinancials}
+                    showNetProfit={canSeeAdminFinancials || canViewOwn} // Show net profit for clients too
                     showEditableFees={canSeeAdminFinancials}
                     updateShipmentFees={canSeeAdminFinancials ? updateShipmentFees : undefined}
                 />

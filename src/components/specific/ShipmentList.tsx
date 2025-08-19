@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Shipment, ShipmentStatus, PartnerTier } from '../../types';
+import { Shipment, ShipmentStatus, PartnerTier, UserRole } from '../../types';
 import { ShipmentStatusBadge } from '../common/ShipmentStatusBadge';
 import { PencilIcon, ClockIcon } from '../Icons';
 import { useAppContext } from '../../context/AppContext';
@@ -174,17 +174,27 @@ export const ShipmentList: React.FC<ShipmentListProps> = ({
                             Duration
                         </th>
                         {showPackageValue && <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase">{priceColumnTitle}</th>}
-                        {showClientFee && <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase">Client Fee</th>}
+                        {showClientFee && <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase">Shipping Fee</th>}
                         {showCourierCommission && <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase">Courier Comm.</th>}
-                        {showNetProfit && <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase">Net Profit</th>}
+                        {showNetProfit && <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase">{currentUser?.roles?.includes(UserRole.CLIENT) ? 'Net Revenue' : 'Net Profit'}</th>}
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                     {sortedShipments.map(s => {
-                        // Safely calculate netProfit with null checks
+                        // Calculate both company net profit and client net revenue
                         const clientFee = Number(s.clientFlatRateFee) || 0;
                         const courierCommission = Number(s.courierCommission) || 0;
-                        const netProfit = clientFee - courierCommission;
+                        const packageValue = Number(s.packageValue) || 0;
+                        
+                        // Company net profit (revenue - commission)
+                        const companyNetProfit = clientFee - courierCommission;
+                        
+                        // Client net revenue (package value - shipping fee)
+                        const clientNetRevenue = Math.max(0, packageValue - clientFee);
+                        
+                        // Choose which value to display based on user role
+                        const displayValue = currentUser?.roles?.includes(UserRole.CLIENT) ? clientNetRevenue : companyNetProfit;
+                        
                         const days = getDaysInPhase(s);
                         const basePrice = Number(s.price) || 0;
                         const discountedPrice = calculateDiscountedPrice(s);
@@ -215,7 +225,7 @@ export const ShipmentList: React.FC<ShipmentListProps> = ({
                                 </td>}
                                 {showClientFee && <td className="px-4 py-3 font-mono text-green-600 dark:text-green-400">{renderFeeCell(s, 'clientFee', s.clientFlatRateFee)}</td>}
                                 {showCourierCommission && <td className="px-4 py-3 font-mono text-red-600 dark:text-red-400">{renderFeeCell(s, 'courierCommission', s.courierCommission)}</td>}
-                                {showNetProfit && <td className={`px-4 py-3 font-mono font-bold ${netProfit >= 0 ? 'text-foreground' : 'text-red-600 dark:text-red-400'}`}>{netProfit.toFixed(2)}</td>}
+                                {showNetProfit && <td className={`px-4 py-3 font-mono font-bold ${displayValue >= 0 ? 'text-foreground' : 'text-red-600 dark:text-red-400'}`}>{(Number(displayValue) || 0).toFixed(2)}</td>}
                             </tr>
                         );
                     })}

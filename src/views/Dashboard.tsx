@@ -20,13 +20,41 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
         setActiveView(view);
     };
 
-    const renderClientDashboard = () => (
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <StatCard title="Total Shipments" value={clientShipments.length} icon={<PackageIcon />} color="#3b82f6" onClick={() => setActiveView('shipments')} />
-            <StatCard title="Out for Delivery" value={clientShipments.filter(s => s.status === ShipmentStatus.OUT_FOR_DELIVERY).length} icon={<TruckIcon />} color="#8b5cf6" onClick={() => navigateWithFilter(s => s.clientId === currentUser.id && s.status === ShipmentStatus.OUT_FOR_DELIVERY, 'shipments')} />
-            <StatCard title="Wallet Balance" value={`${(Number(currentUser.walletBalance) || 0).toFixed(2)} EGP`} icon={<WalletIcon />} color="#22c55e" onClick={() => setActiveView('wallet')} />
-        </div>
-    );
+    const renderClientDashboard = () => {
+        const deliveredShipments = clientShipments.filter(s => s.status === ShipmentStatus.DELIVERED);
+        const pendingShipments = clientShipments.filter(s => ![ShipmentStatus.DELIVERED, ShipmentStatus.DELIVERY_FAILED].includes(s.status));
+        const outForDeliveryShipments = clientShipments.filter(s => s.status === ShipmentStatus.OUT_FOR_DELIVERY);
+        
+        // Calculate client revenue (package value minus shipping fees)
+        const clientRevenue = deliveredShipments.reduce((sum, s) => {
+            const packageValue = Number(s.packageValue) || 0;
+            const shippingFee = Number(s.clientFlatRateFee) || 0;
+            return sum + Math.max(0, packageValue - shippingFee);
+        }, 0);
+        
+        // Calculate total amount to be collected (for delivered orders)
+        const totalCollected = deliveredShipments.reduce((sum, s) => {
+            const packageValue = Number(s.packageValue) || 0;
+            return sum + packageValue;
+        }, 0);
+        
+        return (
+            <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <StatCard title="Total Shipments" value={clientShipments.length} icon={<PackageIcon />} color="#3b82f6" onClick={() => setActiveView('shipments')} />
+                    <StatCard title="Pending Orders" value={pendingShipments.length} icon={<ClockIcon />} color="#f59e0b" onClick={() => navigateWithFilter(s => s.clientId === currentUser.id && ![ShipmentStatus.DELIVERED, ShipmentStatus.DELIVERY_FAILED].includes(s.status), 'shipments')} />
+                    <StatCard title="Out for Delivery" value={outForDeliveryShipments.length} icon={<TruckIcon />} color="#8b5cf6" onClick={() => navigateWithFilter(s => s.clientId === currentUser.id && s.status === ShipmentStatus.OUT_FOR_DELIVERY, 'shipments')} />
+                    <StatCard title="Completed Orders" value={deliveredShipments.length} icon={<CheckCircleIcon />} color="#10b981" onClick={() => navigateWithFilter(s => s.clientId === currentUser.id && s.status === ShipmentStatus.DELIVERED, 'shipments')} />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <StatCard title="Wallet Balance" value={`${(Number(currentUser.walletBalance) || 0).toFixed(2)} EGP`} icon={<WalletIcon />} color="#22c55e" onClick={() => setActiveView('wallet')} />
+                    <StatCard title="Total Collected" value={`${(Number(totalCollected) || 0).toFixed(2)} EGP`} icon={<CurrencyDollarIcon />} color="#3b82f6" onClick={() => setActiveView('wallet')} />
+                    <StatCard title="Net Revenue" value={`${(Number(clientRevenue) || 0).toFixed(2)} EGP`} icon={<ChartBarIcon />} color="#16a34a" onClick={() => setActiveView('wallet')} />
+                </div>
+            </div>
+        );
+    };
     
     const renderCourierDashboard = () => {
         const myStats = courierStats.find(cs => cs.courierId === currentUser.id);
