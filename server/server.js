@@ -471,8 +471,8 @@ async function main() {
                     });
                     
                     // Update courier stats with new balance and total earnings
-                    const currentBalance = (courierStats.currentBalance || 0) + commissionAmount;
-                    const totalEarnings = (courierStats.totalEarnings || 0) + commissionAmount;
+                    const currentBalance = (Number(courierStats.currentBalance) || 0) + commissionAmount;
+                    const totalEarnings = (Number(courierStats.totalEarnings) || 0) + commissionAmount;
                     await trx('courier_stats').where({ courierId: shipment.courierId }).update({
                         currentBalance,
                         totalEarnings,
@@ -506,8 +506,8 @@ async function main() {
                     // Update referrer's courier stats as well
                     const referrerStats = await trx('courier_stats').where({ courierId: referrer.id }).first();
                     if (referrerStats) {
-                        const currentBalance = (referrerStats.currentBalance || 0) + standardReferralBonus;
-                        const totalEarnings = (referrerStats.totalEarnings || 0) + standardReferralBonus;
+                        const currentBalance = (Number(referrerStats.currentBalance) || 0) + standardReferralBonus;
+                        const totalEarnings = (Number(referrerStats.totalEarnings) || 0) + standardReferralBonus;
                         await trx('courier_stats').where({ courierId: referrer.id }).update({
                             currentBalance,
                             totalEarnings
@@ -1474,7 +1474,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 // Update courier stats
                 const courierStats = await trx('courier_stats').where({ courierId: id }).first();
                 if (courierStats) {
-                    const newBalance = (courierStats.currentBalance || 0) + penaltyAmount;
+                    const newBalance = (Number(courierStats.currentBalance) || 0) + penaltyAmount;
                     await trx('courier_stats').where({ courierId: id }).update({ 
                         currentBalance: newBalance 
                     });
@@ -1509,7 +1509,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 // Update courier stats
                 const courierStats = await trx('courier_stats').where({ courierId: id }).first();
                 if (courierStats) {
-                    const newBalance = (courierStats.currentBalance || 0) + negativePenalty;
+                    const newBalance = (Number(courierStats.currentBalance) || 0) + negativePenalty;
                     await trx('courier_stats').where({ courierId: id }).update({ 
                         currentBalance: newBalance 
                     });
@@ -1664,13 +1664,15 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 // Update courier stats to restore the balance immediately
                 const courierStats = await trx('courier_stats').where({ courierId: payoutRequest.courierId }).first();
                 if (courierStats) {
-                    const newBalance = (courierStats.currentBalance || 0) + refundAmount;
-                    const newTotalEarnings = Math.max(newBalance, courierStats.totalEarnings || 0);
+                    const currentBalance = Number(courierStats.currentBalance) || 0;
+                    const refundAmountNum = Number(refundAmount);
+                    const newBalance = currentBalance + refundAmountNum;
+                    const newTotalEarnings = Math.max(newBalance, Number(courierStats.totalEarnings) || 0);
                     await trx('courier_stats').where({ courierId: payoutRequest.courierId }).update({ 
                         currentBalance: newBalance,
                         totalEarnings: newTotalEarnings
                     });
-                    console.log(`🔄 Restored courier ${payoutRequest.courierId} balance: +${refundAmount} = ${newBalance.toFixed(2)}`);
+                    console.log(`🔄 Restored courier ${payoutRequest.courierId} balance: +${refundAmountNum} = ${newBalance.toFixed(2)}`);
                 }
                 
                 const [payout] = await trx('courier_transactions').where({ id }).update(updatePayload).returning('*');
