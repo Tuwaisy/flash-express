@@ -18,12 +18,17 @@ const SupplierManagement = () => {
     const [isTransactionModalOpen, setTransactionModalOpen] = useState(false);
     const [transactionData, setTransactionData] = useState<{ type: 'Payment' | 'Credit', amount: number, description: string }>({ type: 'Payment', amount: 0, description: '' });
     
+    // Sorting and filtering states
+    const [sortBy, setSortBy] = useState<'name' | 'balance' | 'totalPaid' | 'totalOwed'>('name');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    const [balanceFilter, setBalanceFilter] = useState<'all' | 'owes-money' | 'owed-money' | 'balanced'>('all');
+    
     if (!hasPermission(Permission.MANAGE_SUPPLIERS)) {
         return <div className="text-center p-8">Access Denied.</div>;
     }
 
     const supplierFinancials = useMemo(() => {
-        return suppliers.map(supplier => {
+        let result = suppliers.map(supplier => {
             const transactions = supplierTransactions.filter(t => t.supplier_id === supplier.id);
             const totalPaid = transactions.filter(t => t.type === 'Payment').reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
             const totalOwed = transactions.filter(t => t.type === 'Credit').reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
@@ -35,7 +40,48 @@ const SupplierManagement = () => {
                 outstandingBalance
             };
         });
-    }, [suppliers, supplierTransactions]);
+
+        // Apply balance filter
+        if (balanceFilter === 'owes-money') {
+            result = result.filter(s => s.outstandingBalance > 0);
+        } else if (balanceFilter === 'owed-money') {
+            result = result.filter(s => s.outstandingBalance < 0);
+        } else if (balanceFilter === 'balanced') {
+            result = result.filter(s => Math.abs(s.outstandingBalance) < 0.01); // Nearly zero balance
+        }
+
+        // Apply sorting
+        result.sort((a, b) => {
+            let aValue, bValue;
+            switch (sortBy) {
+                case 'balance':
+                    aValue = a.outstandingBalance;
+                    bValue = b.outstandingBalance;
+                    break;
+                case 'totalPaid':
+                    aValue = a.totalPaid;
+                    bValue = b.totalPaid;
+                    break;
+                case 'totalOwed':
+                    aValue = a.totalOwed;
+                    bValue = b.totalOwed;
+                    break;
+                case 'name':
+                default:
+                    aValue = a.name.toLowerCase();
+                    bValue = b.name.toLowerCase();
+                    break;
+            }
+            
+            if (typeof aValue === 'string') {
+                return sortOrder === 'asc' ? aValue.localeCompare(bValue as string) : (bValue as string).localeCompare(aValue);
+            } else {
+                return sortOrder === 'asc' ? (aValue as number) - (bValue as number) : (bValue as number) - (aValue as number);
+            }
+        });
+
+        return result;
+    }, [suppliers, supplierTransactions, sortBy, sortOrder, balanceFilter]);
 
     const globalTotals = useMemo(() => {
         const totalPaid = supplierFinancials.reduce((sum, s) => sum + (Number(s.totalPaid) || 0), 0);
@@ -99,6 +145,49 @@ const SupplierManagement = () => {
                 <StatCard title="Total Owed to Suppliers" value={`${globalTotals.totalOwed.toFixed(2)} EGP`} icon={<WalletIcon />} color="#f59e0b" />
                 <StatCard title="Total Paid to Suppliers" value={`${globalTotals.totalPaid.toFixed(2)} EGP`} icon={<WalletIcon />} color="#10b981" />
                 <StatCard title="Total Outstanding Balance" value={`${globalTotals.outstandingBalance.toFixed(2)} EGP`} icon={<WalletIcon />} color="#ef4444" />
+            </div>
+            
+            {/* Sorting and Filtering Controls */}
+            <div className="card p-4">
+                <div className="flex flex-col sm:flex-row gap-4 items-center">
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-muted-foreground">Sort by:</label>
+                        <select 
+                            value={sortBy} 
+                            onChange={(e) => setSortBy(e.target.value as any)}
+                            className="px-3 py-1 border border-border rounded-md bg-background text-sm"
+                        >
+                            <option value="name">Name</option>
+                            <option value="balance">Balance</option>
+                            <option value="totalPaid">Total Paid</option>
+                            <option value="totalOwed">Total Owed</option>
+                        </select>
+                        <button 
+                            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                            className="px-2 py-1 border border-border rounded-md bg-background text-sm hover:bg-secondary"
+                        >
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                        </button>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-muted-foreground">Filter:</label>
+                        <select 
+                            value={balanceFilter} 
+                            onChange={(e) => setBalanceFilter(e.target.value as any)}
+                            className="px-3 py-1 border border-border rounded-md bg-background text-sm"
+                        >
+                            <option value="all">All Suppliers</option>
+                            <option value="owes-money">We Owe Money</option>
+                            <option value="owed-money">They Owe Money</option>
+                            <option value="balanced">Balanced</option>
+                        </select>
+                    </div>
+                    
+                    <div className="text-sm text-muted-foreground ml-auto">
+                        Showing {supplierFinancials.length} of {suppliers.length} suppliers
+                    </div>
+                </div>
             </div>
             
             <div className="card overflow-hidden">

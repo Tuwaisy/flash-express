@@ -298,6 +298,8 @@ const CourierPerformance: React.FC<CourierPerformanceProps> = ({ onSelectShipmen
                     courierStats={selectedCourier}
                     courierUser={users.find(u => u.id === selectedCourier.courierId)!}
                     payoutRequests={courierTransactions.filter(t => t.courierId === selectedCourier.courierId && t.type === CourierTransactionType.WITHDRAWAL_REQUEST && t.status === CourierTransactionStatus.PENDING)}
+                    users={users}
+                    courierTransactions={courierTransactions}
                     onUpdateSettings={updateCourierSettings}
                     onApplyPenalty={applyManualPenalty}
                     onProcessPayout={processCourierPayout}
@@ -324,13 +326,15 @@ interface ManageCourierModalProps {
     courierStats: CourierStats;
     courierUser: User;
     payoutRequests: CourierTransaction[];
+    users: User[];
+    courierTransactions: CourierTransaction[];
     onUpdateSettings: (courierId: number, settings: Partial<Pick<CourierStats, 'commissionType'|'commissionValue'>>) => void;
     onApplyPenalty: (courierId: number, amount: number, description: string) => void;
     onProcessPayout: (transactionId: string, processedAmount: number, transferEvidence?: string) => void;
     onDeclinePayout: (transactionId: string) => void;
 }
 
-const ManageCourierModal: React.FC<ManageCourierModalProps> = ({ isOpen, onClose, courierStats, courierUser, payoutRequests, onUpdateSettings, onApplyPenalty, onProcessPayout, onDeclinePayout }) => {
+const ManageCourierModal: React.FC<ManageCourierModalProps> = ({ isOpen, onClose, courierStats, courierUser, payoutRequests, users, courierTransactions, onUpdateSettings, onApplyPenalty, onProcessPayout, onDeclinePayout }) => {
     const { shipments, addToast } = useAppContext();
     const [settings, setSettings] = useState({
         commissionType: courierStats.commissionType,
@@ -432,6 +436,92 @@ const ManageCourierModal: React.FC<ManageCourierModalProps> = ({ isOpen, onClose
                         </div>
                     </div>
                 )}
+                
+                {/* Referral Management */}
+                <div className="p-4 bg-secondary rounded-lg">
+                    <h3 className="font-bold text-foreground mb-3">Referral Management</h3>
+                    <div className="space-y-3">
+                        {/* Referrer Information */}
+                        {courierUser.referrerId && (
+                            <div className="bg-background p-3 rounded-lg border border-border">
+                                <h4 className="text-sm font-medium text-muted-foreground mb-2">Referred By</h4>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="font-semibold text-foreground">
+                                            {users.find(u => u.id === courierUser.referrerId)?.name || 'Unknown User'}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            ID: {users.find(u => u.id === courierUser.referrerId)?.publicId || 'N/A'}
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-sm font-medium text-green-600">
+                                            {(Number(users.find(u => u.id === courierUser.referrerId)?.referralCommission) || 0).toFixed(2)} EGP
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">per delivery</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* Referrals Made by This Courier */}
+                        {(() => {
+                            const referrals = users.filter(u => u.referrerId === courierUser.id && u.roles.includes(UserRole.COURIER));
+                            return referrals.length > 0 ? (
+                                <div className="bg-background p-3 rounded-lg border border-border">
+                                    <h4 className="text-sm font-medium text-muted-foreground mb-2">Referrals Made ({referrals.length})</h4>
+                                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                                        {referrals.map(referral => (
+                                            <div key={referral.id} className="flex items-center justify-between py-1">
+                                                <div>
+                                                    <p className="text-sm font-medium text-foreground">{referral.name}</p>
+                                                    <p className="text-xs text-muted-foreground">{referral.publicId}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-xs text-green-600">
+                                                        {courierTransactions.filter(t => 
+                                                            t.courierId === courierUser.id && 
+                                                            t.type === CourierTransactionType.REFERRAL_BONUS &&
+                                                            t.description?.includes(referral.name)
+                                                        ).length} bonuses earned
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="bg-background p-3 rounded-lg border border-border text-center">
+                                    <p className="text-sm text-muted-foreground">No referrals made yet</p>
+                                </div>
+                            );
+                        })()}
+                        
+                        {/* Referral Earnings Summary */}
+                        {(() => {
+                            const referralEarnings = courierTransactions
+                                .filter(t => t.courierId === courierUser.id && t.type === CourierTransactionType.REFERRAL_BONUS)
+                                .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+                            
+                            return (
+                                <div className="bg-background p-3 rounded-lg border border-border">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h4 className="text-sm font-medium text-muted-foreground">Total Referral Earnings</h4>
+                                            <p className="text-lg font-bold text-green-600">{referralEarnings.toFixed(2)} EGP</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-sm text-muted-foreground">Commission Rate</p>
+                                            <p className="text-sm font-medium text-foreground">
+                                                {(Number(courierUser.referralCommission) || 0).toFixed(2)} EGP/delivery
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                    </div>
+                </div>
             </div>
         </Modal>
     );
