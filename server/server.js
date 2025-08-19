@@ -1863,6 +1863,70 @@ app.get('/api/debug/users/:id', async (req, res) => {
         }
     });
 
+    // --- DEBUG ENDPOINT: Database cleanup ---
+    app.delete('/api/debug/cleanup-database', async (req, res) => {
+        try {
+            console.log('🧹 Starting database cleanup...');
+            
+            await knex.transaction(async (trx) => {
+                // Get first 2 shipments by creation date
+                const shipmentsToKeep = await trx('shipments')
+                    .select('id')
+                    .orderBy('createdAt')
+                    .limit(2);
+                    
+                const shipmentIds = shipmentsToKeep.map(s => s.id);
+                console.log('📦 Keeping shipments:', shipmentIds);
+                
+                if (shipmentIds.length === 0) {
+                    return res.json({ success: true, message: 'No shipments to clean' });
+                }
+                
+                // Delete shipments beyond first 2
+                const deletedShipments = await trx('shipments')
+                    .whereNotIn('id', shipmentIds)
+                    .del();
+                console.log(`📦 Deleted ${deletedShipments} shipments`);
+                
+                // Delete all courier transactions and let system recalculate from remaining shipments
+                const deletedCourierTxn = await trx('courier_transactions').del();
+                console.log(`💰 Deleted ${deletedCourierTxn} courier transactions`);
+                
+                // Delete all client transactions and let system recalculate from remaining shipments  
+                const deletedClientTxn = await trx('client_transactions').del();
+                console.log(`🧾 Deleted ${deletedClientTxn} client transactions`);
+                
+                // Reset all courier stats
+                const resetCourierStats = await trx('courier_stats').update({
+                    currentBalance: 0,
+                    totalEarnings: 0,
+                    consecutiveFailures: 0,
+                    totalDeliveries: 0
+                });
+                console.log(`👤 Reset ${resetCourierStats} courier stats`);
+                
+                // Reset all user wallet balances
+                const resetUserBalances = await trx('users').update({ walletBalance: 0 });
+                console.log(`💰 Reset ${resetUserBalances} user wallet balances`);
+                
+                // Clear notifications
+                const deletedNotifications = await trx('in_app_notifications').del();
+                console.log(`🔔 Deleted ${deletedNotifications} notifications`);
+            });
+            
+            console.log('✅ Database cleanup completed');
+            res.json({ 
+                success: true, 
+                message: `Database cleaned - kept first 2 shipments, reset all balances and transactions`,
+                shipmentsKept: 2
+            });
+            
+        } catch (error) {
+            console.error('❌ Cleanup failed:', error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
 
     // Notifications
     app.get('/api/notifications/user/:userId', async (req, res) => {
