@@ -500,24 +500,12 @@ async function main() {
                     walletChange = amountToCollect;
                 }
             } else if (shipment.paymentMethod === 'Wallet') {
-                // For Wallet payments: Charge shipping fee and credit package value collected
+                // For Wallet payments: Shipping fee already charged at creation, just credit package value collected
                 const packageValue = shipment.packageValue || 0;
-                const transactions = [];
                 
-                // Debit shipping fee from client wallet
-                transactions.push({
-                    id: generateId('TRN'), 
-                    userId: client.id, 
-                    type: 'Payment', 
-                    amount: -shippingFee, 
-                    date: new Date().toISOString(), 
-                    description: `Shipping fee for delivered shipment ${shipment.id}`, 
-                    status: 'Processed'
-                });
-                
-                // Credit package value collected
+                // Credit package value collected from recipient (if any)
                 if (packageValue > 0) {
-                    transactions.push({
+                    await trx('client_transactions').insert({
                         id: generateId('TRN'), 
                         userId: client.id, 
                         type: 'Deposit', 
@@ -526,11 +514,7 @@ async function main() {
                         description: `Package value collected for delivered shipment ${shipment.id}`, 
                         status: 'Processed'
                     });
-                }
-                
-                if (transactions.length > 0) {
-                    await trx('client_transactions').insert(transactions);
-                    walletChange = packageValue - shippingFee;
+                    walletChange = packageValue; // Only package value, shipping fee already deducted at creation
                 }
             }
             
@@ -1009,6 +993,30 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 };
     
                 await trx('shipments').insert(newShipment);
+                
+                // For wallet payments, charge the client immediately at shipment creation
+                if (shipmentData.paymentMethod === 'Wallet') {
+                    // Check client wallet balance first
+                    const clientTransactions = await trx('client_transactions').where({ userId: client.id });
+                    const currentBalance = clientTransactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+                    
+                    if (currentBalance < clientFee) {
+                        throw new Error(`Insufficient wallet balance. Available: ${currentBalance.toFixed(2)} EGP, Required: ${clientFee.toFixed(2)} EGP`);
+                    }
+                    
+                    // Charge the shipping fee from wallet
+                    await trx('client_transactions').insert({
+                        id: generateId('TRN'),
+                        userId: client.id,
+                        type: 'Payment',
+                        amount: -clientFee,
+                        date: new Date().toISOString(),
+                        description: `Shipping fee for shipment ${newId}`,
+                        status: 'Processed'
+                    });
+                    
+                    console.log(`💳 Charged ${clientFee.toFixed(2)} EGP from client ${client.id} wallet for shipment ${newId}`);
+                }
             });
             
             const createdShipment = await knex('shipments').where({ id: newId }).first();
@@ -1462,10 +1470,20 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     throw new Error('You already have a pending payout request. Please wait for it to be processed before requesting another.');
                 }
                 
-                // Check if courier has sufficient balance
-                const courierStats = await trx('courier_stats').where({ courierId }).first();
-                if (!courierStats || (courierStats.currentBalance || 0) < amount) {
-                    throw new Error('Insufficient balance for payout request.');
+                // Calculate real-time balance from transactions instead of relying on stored balance
+                const courierTransactionsForBalance = await trx('courier_transactions')
+                    .where({ courierId })
+                    .whereIn('status', ['Processed', 'Pending']);
+                
+                const calculatedBalance = courierTransactionsForBalance.reduce((sum, transaction) => {
+                    const amount = Number(transaction.amount) || 0;
+                    return sum + amount;
+                }, 0);
+                
+                console.log(`💰 Courier ${courierId} balance check: calculated=${calculatedBalance.toFixed(2)}, requested=${amount}`);
+                
+                if (calculatedBalance < amount) {
+                    throw new Error(`Insufficient balance for payout request. Available: ${calculatedBalance.toFixed(2)} EGP, Requested: ${amount} EGP`);
                 }
                 
                 const withdrawalAmount = -Math.abs(amount);
@@ -1477,12 +1495,14 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     paymentMethod
                 });
                 
-                // Update courier stats to subtract the requested amount from balance
+                // Update courier stats with the new calculated balance
+                const courierStats = await trx('courier_stats').where({ courierId }).first();
                 if (courierStats) {
-                    const newBalance = (courierStats.currentBalance || 0) + withdrawalAmount; // withdrawalAmount is negative
+                    const newBalance = calculatedBalance + withdrawalAmount; // withdrawalAmount is negative
                     await trx('courier_stats').where({ courierId }).update({ 
                         currentBalance: newBalance 
                     });
+                    console.log(`📊 Updated courier ${courierId} stored balance to ${newBalance.toFixed(2)}`);
                 }
             });
             res.status(200).json({ success: true, message: 'Payout request submitted successfully' });
