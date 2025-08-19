@@ -451,6 +451,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 body: JSON.stringify({ courierId }),
             });
             addToast(`Shipment ${shipmentId} assigned successfully`, 'success');
+            // Trigger immediate refresh for better UX
+            setTimeout(() => fetchAppData(), 500);
             return true;
         } catch (error: any) {
             addToast(error.message, 'error');
@@ -477,6 +479,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 body: JSON.stringify(userData)
             });
             if (!silent) addToast('User updated successfully.', 'success');
+            // Trigger immediate refresh for better UX
+            setTimeout(() => fetchAppData(), 500);
         } catch (error: any) {
             addToast(error.message, 'error');
         }
@@ -582,6 +586,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const updateShipmentPackaging = async (shipmentId: string, packagingLog: PackagingLogEntry[], packagingNotes: string) => {
         await apiFetch(`/api/shipments/${shipmentId}/packaging`, { method: 'PUT', body: JSON.stringify({ packagingLog, packagingNotes }) });
+        // Trigger immediate refresh for better UX
+        setTimeout(() => fetchAppData(), 500);
     };
 
     const resendNotification = async (notificationId: string) => {
@@ -694,6 +700,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 body: JSON.stringify({ shipmentIds, materialsSummary, packagingNotes }),
             });
             addToast(result.message || 'Shipments packaged successfully.', 'success');
+            // Trigger immediate refresh for better UX
+            setTimeout(() => fetchAppData(), 500);
         } catch (error: any) {
             addToast(`Bulk packaging failed: ${error.message}`, 'error');
         }
@@ -706,6 +714,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 body: JSON.stringify({ shipmentIds, courierId }),
             });
             addToast(result.message || 'Shipments assigned successfully.', 'success');
+            // Trigger immediate refresh for better UX
+            setTimeout(() => fetchAppData(), 500);
         } catch (error: any) {
             addToast(`Bulk assignment failed: ${error.message}`, 'error');
         }
@@ -755,12 +765,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Suppliers
     const addSupplier = async (supplier: Omit<Supplier, 'id'>) => {
         await apiFetch('/api/suppliers', { method: 'POST', body: JSON.stringify(supplier) });
+        // Trigger immediate refresh for better UX
+        setTimeout(() => fetchAppData(), 500);
     };
     const updateSupplier = async (supplierId: string, data: Partial<Supplier>) => {
         await apiFetch(`/api/suppliers/${supplierId}`, { method: 'PUT', body: JSON.stringify(data) });
+        // Trigger immediate refresh for better UX
+        setTimeout(() => fetchAppData(), 500);
     };
     const deleteSupplier = async (supplierId: string) => {
         await apiFetch(`/api/suppliers/${supplierId}`, { method: 'DELETE' });
+        // Trigger immediate refresh for better UX
+        setTimeout(() => fetchAppData(), 500);
     };
     const addSupplierTransaction = async (transaction: Omit<SupplierTransaction, 'id'>) => {
         await apiFetch('/api/supplier-transactions', { method: 'POST', body: JSON.stringify(transaction) });
