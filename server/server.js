@@ -472,11 +472,9 @@ async function main() {
                     ]);
                 }
             } else if (shipment.paymentMethod === 'Wallet') {
-                // For Wallet payments, credit the total amount collected (package value + shipping fee)
-                const totalAmountCollected = shipment.price || (shipment.packageValue + shippingFee);
+                // For Wallet payments: Client already paid upfront, deduct shipping fee only
                 await trx('client_transactions').insert([
-                    { id: generateId('TRN'), userId: client.id, type: 'Deposit', amount: totalAmountCollected, date: new Date().toISOString(), description: `Total amount collected for delivered shipment ${shipment.id}`, status: 'Processed' },
-                    { id: generateId('TRN'), userId: client.id, type: 'Payment', amount: -shippingFee, date: new Date().toISOString(), description: `Shipping fee for ${shipment.id}`, status: 'Processed' }
+                    { id: generateId('TRN'), userId: client.id, type: 'Payment', amount: -shippingFee, date: new Date().toISOString(), description: `Shipping fee for delivered shipment ${shipment.id}`, status: 'Processed' }
                 ]);
             }
         }
@@ -1693,9 +1691,20 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     if (!shipment || shipment.status !== 'Packaged and Waiting for Assignment') continue;
 
                     const client = await trx('users').where({ id: shipment.clientId }).first();
-                    const commission = courierStats.commissionType === 'flat' 
-                        ? courierStats.commissionValue 
-                        : shipment.price * (courierStats.commissionValue / 100);
+                    
+                    // Calculate commission based on shipment priority (consistent with other endpoints)
+                    let commission;
+                    if (courierStats.commissionType === 'flat') {
+                        // Priority-based commission rates
+                        const priorityCommissions = {
+                            'Standard': 30,
+                            'Express': 50,
+                            'Urgent': 70
+                        };
+                        commission = priorityCommissions[shipment.priority] || 30;
+                    } else {
+                        commission = shipment.price * (courierStats.commissionValue / 100);
+                    }
                     
                     const currentHistory = safeJsonParse(shipment.statusHistory, []);
                     currentHistory.push({ status: newStatus, timestamp });
