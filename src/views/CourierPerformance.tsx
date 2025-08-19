@@ -384,6 +384,16 @@ const ManageCourierModal: React.FC<ManageCourierModalProps> = ({ isOpen, onClose
     };
 
     useEffect(() => { setSettings({ commissionType: courierStats.commissionType, commissionValue: courierStats.commissionValue }); }, [courierStats]);
+    
+    // Auto-close modal when all payouts are processed
+    useEffect(() => {
+        if (payoutRequests.length === 0 && isOpen) {
+            const timer = setTimeout(() => {
+                onClose();
+            }, 1000); // Give a small delay to let users see the change
+            return () => clearTimeout(timer);
+        }
+    }, [payoutRequests.length, isOpen, onClose]);
     const handleSettingsSave = () => { onUpdateSettings(courierUser.id, settings); onClose(); };
     const handlePenaltyApply = () => { if (penaltyAmount > 0 && penaltyReason) { onApplyPenalty(courierUser.id, penaltyAmount, penaltyReason); setPenaltyAmount(0); setPenaltyReason(''); onClose(); }};
     const handleProcessClick = (payout: CourierTransaction) => {
@@ -394,14 +404,16 @@ const ManageCourierModal: React.FC<ManageCourierModalProps> = ({ isOpen, onClose
         
         if (confirm(`Are you sure you want to approve this payout of ${Math.abs(payout.amount).toFixed(2)} EGP for ${courierUser.name}?`)) {
             onProcessPayout(payout.id, Math.abs(payout.amount), transferEvidence[payout.id]);
-            onClose(); // Close modal after processing
+            addToast('Payout processed successfully! The request has been removed from pending payouts.', 'success');
+            // Don't close modal immediately - let data refresh remove the payout from the list
         }
     };
 
     const handleDeclineClick = (payout: CourierTransaction) => {
         if (confirm(`Are you sure you want to decline this payout request of ${Math.abs(payout.amount).toFixed(2)} EGP for ${courierUser.name}?`)) {
             onDeclinePayout(payout.id);
-            onClose(); // Close modal after declining
+            addToast('Payout declined successfully! The request has been removed from pending payouts.', 'success');
+            // Don't close modal immediately - let data refresh remove the payout from the list
         }
     };
 

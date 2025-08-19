@@ -15,8 +15,17 @@ try {
         connectionString: process.env.DATABASE_URL,
         ssl: { rejectUnauthorized: false }
       },
-      pool: { min: 2, max: 10 },
+      pool: { 
+        min: 1, 
+        max: 5,
+        acquireTimeoutMillis: 60000,
+        createTimeoutMillis: 30000,
+        destroyTimeoutMillis: 5000,
+        idleTimeoutMillis: 30000
+      },
+      acquireConnectionTimeout: 60000
     });
+    
   } else {
     console.log("Development environment detected. Using local SQLite database...");
     knex = require('knex')({
@@ -77,8 +86,17 @@ async function setupDatabase() {
         table.decimal('referralCommission', 10, 2);
         table.string('partnerTier');
         table.boolean('manualTierAssignment').defaultTo(false);
-        // Note: walletBalance removed - calculated from client_transactions
+        table.decimal('walletBalance', 10, 2).defaultTo(0); // Store calculated wallet balance
       });
+    } else {
+        // Migration: Add walletBalance column if it doesn't exist
+        const hasWalletBalance = await knex.schema.hasColumn('users', 'walletBalance');
+        if (!hasWalletBalance) {
+            console.log('Adding walletBalance column to users table...');
+            await knex.schema.alterTable('users', table => {
+                table.decimal('walletBalance', 10, 2).defaultTo(0);
+            });
+        }
     }
 
     // Table: tier_settings

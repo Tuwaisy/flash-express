@@ -106,8 +106,39 @@ const validateUserRoles = async () => {
     }
 };
 async function main() {
-    // Wait for database setup to complete
-    await setupDatabase();
+    try {
+        // Test database connection first
+        console.log('Testing database connection... (attempt 1/3)');
+        try {
+            await knex.raw('SELECT 1+1 as result');
+            console.log('✅ Database connection successful');
+        } catch (connectionError) {
+            console.log('❌ Database connection attempt 1 failed:', connectionError.message);
+            console.log('Waiting 3 seconds before retry...');
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            console.log('Testing database connection... (attempt 2/3)');
+            try {
+                await knex.raw('SELECT 1+1 as result');
+                console.log('✅ Database connection successful on retry');
+            } catch (retryError) {
+                console.log('❌ Database connection attempt 2 failed:', retryError.message);
+                console.log('Waiting 5 seconds before final retry...');
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                
+                console.log('Testing database connection... (attempt 3/3)');
+                await knex.raw('SELECT 1+1 as result');
+                console.log('✅ Database connection successful on final retry');
+            }
+        }
+
+        // Wait for database setup to complete
+        await setupDatabase();
+    } catch (error) {
+        console.error('❌ Database initialization failed:', error);
+        console.error('Exiting application due to database connection failure');
+        process.exit(1);
+    }
 
     // 2. Initialize Express app
     const app = express();
@@ -346,6 +377,19 @@ async function main() {
         });
     };
 
+    // Helper to update client wallet balance after transaction changes
+    const updateClientWalletBalance = async (trx, clientId) => {
+        const clientTransactions = await trx('client_transactions').where({ userId: clientId });
+        const newBalance = clientTransactions.reduce((sum, t) => {
+            const amount = Number(t.amount) || 0;
+            return sum + amount;
+        }, 0);
+        
+        await trx('users').where({ id: clientId }).update({ walletBalance: newBalance });
+        console.log(`💰 Updated client ${clientId} wallet balance: ${newBalance.toFixed(2)} EGP`);
+        return newBalance;
+    };
+
 
     // --- Internal Business Logic ---
     const updateStatusAndHistory = async (trx, shipmentId, newStatus) => {
@@ -481,23 +525,34 @@ async function main() {
             let walletChange = 0;
             
             if (shipment.paymentMethod === 'COD') {
-                // For COD: Credit package value, deduct shipping fee
+                // For COD: Credit package value collected, deduct shipping fee
                 const packageValue = shipment.packageValue || 0;
-                if (packageValue > 0) {
-                    await trx('client_transactions').insert([
-                        { id: generateId('TRN'), userId: client.id, type: 'Deposit', amount: packageValue, date: new Date().toISOString(), description: `Package value collected for delivered shipment ${shipment.id}`, status: 'Processed' },
-                        { id: generateId('TRN'), userId: client.id, type: 'Payment', amount: -shippingFee, date: new Date().toISOString(), description: `Shipping fee for ${shipment.id}`, status: 'Processed' }
-                    ]);
-                    walletChange = packageValue - shippingFee;
-                }
+                const transactions = [];
+                
+                // Always credit package value (even if 0) and deduct shipping fee
+                transactions.push(
+                    { id: generateId('TRN'), userId: client.id, type: 'Deposit', amount: packageValue, date: new Date().toISOString(), description: `Package value collected for delivered shipment ${shipment.id}`, status: 'Processed' },
+                    { id: generateId('TRN'), userId: client.id, type: 'Payment', amount: -shippingFee, date: new Date().toISOString(), description: `Shipping fee for delivered shipment ${shipment.id}`, status: 'Processed' }
+                );
+                
+                await trx('client_transactions').insert(transactions);
+                walletChange = packageValue - shippingFee;
+                console.log(`💳 COD delivery: Client ${client.id} wallet change: +${packageValue} - ${shippingFee} = ${walletChange.toFixed(2)} EGP`);
+                
+                // Update stored wallet balance
+                await updateClientWalletBalance(trx, client.id);
             } else if (shipment.paymentMethod === 'Transfer') {
-                // For Transfer: Client already paid shipping fee, just get amount to collect if any
+                // For Transfer: Client already paid shipping fee, credit amount collected from recipient
                 const amountToCollect = shipment.amountToCollect || 0;
                 if (amountToCollect > 0) {
-                    await trx('client_transactions').insert([
-                        { id: generateId('TRN'), userId: client.id, type: 'Deposit', amount: amountToCollect, date: new Date().toISOString(), description: `Amount collected from recipient for delivered shipment ${shipment.id}`, status: 'Processed' }
-                    ]);
+                    await trx('client_transactions').insert({
+                        id: generateId('TRN'), userId: client.id, type: 'Deposit', amount: amountToCollect, date: new Date().toISOString(), description: `Amount collected from recipient for delivered shipment ${shipment.id}`, status: 'Processed'
+                    });
                     walletChange = amountToCollect;
+                    console.log(`💳 Transfer delivery: Client ${client.id} wallet change: +${amountToCollect.toFixed(2)} EGP`);
+                    
+                    // Update stored wallet balance
+                    await updateClientWalletBalance(trx, client.id);
                 }
             } else if (shipment.paymentMethod === 'Wallet') {
                 // For Wallet payments: Shipping fee already charged at creation, just credit package value collected
@@ -515,6 +570,10 @@ async function main() {
                         status: 'Processed'
                     });
                     walletChange = packageValue; // Only package value, shipping fee already deducted at creation
+                    console.log(`💳 Wallet delivery: Client ${client.id} wallet change: +${packageValue.toFixed(2)} EGP`);
+                    
+                    // Update stored wallet balance
+                    await updateClientWalletBalance(trx, client.id);
                 }
             }
             
@@ -684,42 +743,55 @@ app.get('/api/debug/users/:id', async (req, res) => {
           knex('tier_settings').select(),
         ]);
 
-        const safeUsers = users.map(user => {
+        const safeUsers = await Promise.all(users.map(async (user) => {
             const parsedUser = parseUser(user);
-            // Calculate wallet balance from client transactions
+            // Calculate and store wallet balance from client transactions
             if (parsedUser.roles.includes('Client')) {
                 const userTransactions = clientTransactions.filter(t => t.userId === user.id);
                 const balance = userTransactions.reduce((sum, t) => {
                     const amount = Number(t.amount) || 0;
                     return sum + amount;
                 }, 0);
+                
+                // Update stored wallet balance if it differs from calculated balance
+                if (Math.abs(balance - (Number(user.walletBalance) || 0)) > 0.01) {
+                    console.log(`🔄 Updating client ${user.id} wallet balance: ${user.walletBalance} → ${balance.toFixed(2)}`);
+                    await knex('users').where({ id: user.id }).update({ walletBalance: balance });
+                }
+                
                 parsedUser.walletBalance = balance;
             }
             return parsedUser;
-        });
+        }));
         
-        // Recalculate courier balances from transactions to ensure consistency
-        const correctedCourierStats = courierStats.map(stats => {
+        // Recalculate courier balances from transactions and update stored balances to ensure consistency
+        const correctedCourierStats = await Promise.all(courierStats.map(async (stats) => {
             const courierTransactionsForCourier = courierTransactions.filter(t => 
-                t.courierId === stats.courierId && t.status !== 'Declined'
+                t.courierId === stats.courierId && 
+                t.status !== 'Declined' &&
+                // Exclude withdrawal transactions (both pending and processed) from balance calculation
+                !['Withdrawal Request', 'Withdrawal Processed', 'Withdrawal Declined'].includes(t.type)
             );
             const calculatedBalance = courierTransactionsForCourier.reduce((sum, t) => {
                 const amount = Number(t.amount) || 0;
                 return sum + amount;
             }, 0);
             
-            // If calculated balance differs significantly from stored balance, log and use calculated
+            // Update stored balance if it differs from calculated balance
             if (Math.abs(calculatedBalance - (Number(stats.currentBalance) || 0)) > 0.01) {
-                console.log(`⚠️  Courier ${stats.courierId} balance mismatch: stored=${stats.currentBalance}, calculated=${calculatedBalance.toFixed(2)}`);
+                console.log(`🔄 Updating courier ${stats.courierId} stored balance: ${stats.currentBalance} → ${calculatedBalance.toFixed(2)}`);
+                await knex('courier_stats').where({ courierId: stats.courierId }).update({ 
+                    currentBalance: calculatedBalance,
+                    totalEarnings: Math.max(calculatedBalance, Number(stats.totalEarnings) || 0)
+                });
             }
             
             return {
                 ...stats,
-                currentBalance: calculatedBalance, // Use calculated balance for consistency
-                // Keep totalEarnings as the maximum of calculated balance and stored totalEarnings
+                currentBalance: calculatedBalance,
                 totalEarnings: Math.max(calculatedBalance, Number(stats.totalEarnings) || 0)
             };
-        });
+        }));
         
         const parsedShipments = shipments.map(parseShipment);
         const parsedRoles = customRoles.map(parseRole);
@@ -1503,15 +1575,10 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     paymentMethod
                 });
                 
-                // Update courier stats with the new calculated balance
-                const courierStats = await trx('courier_stats').where({ courierId }).first();
-                if (courierStats) {
-                    const newBalance = calculatedBalance + withdrawalAmount; // withdrawalAmount is negative
-                    await trx('courier_stats').where({ courierId }).update({ 
-                        currentBalance: newBalance 
-                    });
-                    console.log(`📊 Updated courier ${courierId} stored balance to ${newBalance.toFixed(2)}`);
-                }
+                console.log(`💸 Payout request created: Courier ${courierId}, Amount: ${amount} EGP, Method: ${paymentMethod}`);
+                
+                // Note: Payout requests don't affect current balance until processed/declined
+                // The negative amount in the transaction will be excluded from balance calculation
             });
             res.status(200).json({ success: true, message: 'Payout request submitted successfully' });
             throttledDataUpdate();
@@ -1556,14 +1623,10 @@ app.get('/api/debug/users/:id', async (req, res) => {
 
                 const [payout] = await trx('courier_transactions').where({ id }).update(updatePayload).returning('*');
                 
-                // Update courier stats - subtract the payout amount from balance
-                const courierStats = await trx('courier_stats').where({ courierId: payout.courierId }).first();
-                if (courierStats) {
-                    const newBalance = (courierStats.currentBalance || 0) + finalAmount; // finalAmount is negative
-                    await trx('courier_stats').where({ courierId: payout.courierId }).update({ 
-                        currentBalance: newBalance 
-                    });
-                }
+                console.log(`✅ Payout processed: ID ${id}, Type changed from 'Withdrawal Request' to 'Withdrawal Processed'`);
+                
+                // Since processed withdrawals are excluded from balance calculation, 
+                // the balance will be automatically updated on next data fetch
                 
                 await createInAppNotification(trx, payout.courierId, `Your payout request for ${-payout.amount} EGP has been processed.`, '/courier-financials');
             });
@@ -1586,7 +1649,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     description: `Payout request for ${(-payoutRequest.amount).toFixed(2)} EGP declined by admin.`
                 };
                 
-                // Return the money to courier's balance by creating a credit transaction
+                // Create refund transaction to restore the balance (refund is a positive commission)
                 const refundAmount = -payoutRequest.amount; // Positive amount to credit back
                 await trx('courier_transactions').insert({
                     id: generateId('TRN_REFUND'),
@@ -1598,16 +1661,20 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     status: 'Processed'
                 });
                 
-                // Update courier stats to restore the balance
+                // Update courier stats to restore the balance immediately
                 const courierStats = await trx('courier_stats').where({ courierId: payoutRequest.courierId }).first();
                 if (courierStats) {
                     const newBalance = (courierStats.currentBalance || 0) + refundAmount;
+                    const newTotalEarnings = Math.max(newBalance, courierStats.totalEarnings || 0);
                     await trx('courier_stats').where({ courierId: payoutRequest.courierId }).update({ 
-                        currentBalance: newBalance 
+                        currentBalance: newBalance,
+                        totalEarnings: newTotalEarnings
                     });
+                    console.log(`🔄 Restored courier ${payoutRequest.courierId} balance: +${refundAmount} = ${newBalance.toFixed(2)}`);
                 }
                 
                 const [payout] = await trx('courier_transactions').where({ id }).update(updatePayload).returning('*');
+                console.log(`❌ Payout declined: ID ${id}, Type changed from 'Withdrawal Request' to 'Withdrawal Declined'`);
                 await createInAppNotification(trx, payout.courierId, `Your payout request for ${(-payout.amount).toFixed(2)} EGP has been declined.`, '/courier-financials');
             });
             res.status(200).json({ success: true });
@@ -1618,7 +1685,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
         }
     });
 
-    // --- NEW: Client Payouts ---
+    // --- Client Payouts ---
     app.post('/api/clients/:id/payouts', async (req, res) => {
         const { id } = req.params;
         const { amount } = req.body;
@@ -1626,20 +1693,53 @@ app.get('/api/debug/users/:id', async (req, res) => {
             return res.status(400).json({ error: 'Invalid payout amount.' });
         }
         try {
-            await knex('client_transactions').insert({
-                id: generateId('TRN_PAYOUT'),
-                userId: id,
-                type: 'Withdrawal Request',
-                amount: -Math.abs(amount),
-                date: new Date().toISOString(),
-                description: 'Client payout request',
-                status: 'Pending'
+            await knex.transaction(async trx => {
+                // Check for existing pending payout requests
+                const existingPendingPayout = await trx('client_transactions')
+                    .where({ 
+                        userId: id, 
+                        type: 'Withdrawal Request', 
+                        status: 'Pending' 
+                    })
+                    .first();
+                
+                if (existingPendingPayout) {
+                    throw new Error('You already have a pending payout request. Please wait for it to be processed before requesting another.');
+                }
+                
+                // Check client's current available balance
+                const clientTransactions = await trx('client_transactions').where({ userId: id });
+                const availableBalance = clientTransactions.reduce((sum, t) => {
+                    const transactionAmount = Number(t.amount) || 0;
+                    return sum + transactionAmount;
+                }, 0);
+                
+                if (amount > availableBalance) {
+                    throw new Error(`Insufficient balance for payout request. Available: ${availableBalance.toFixed(2)} EGP, Requested: ${amount} EGP`);
+                }
+                
+                // Create withdrawal request transaction
+                await trx('client_transactions').insert({
+                    id: generateId('TRN_PAYOUT'),
+                    userId: id,
+                    type: 'Withdrawal Request',
+                    amount: -Math.abs(amount),
+                    date: new Date().toISOString(),
+                    description: 'Client payout request',
+                    status: 'Pending'
+                });
+                
+                // Update client's stored wallet balance immediately
+                await updateClientWalletBalance(trx, id);
+                
+                console.log(`💸 Client payout request created: Client ${id}, Amount: ${amount} EGP`);
             });
-            res.status(200).json({ success: true });
+            
+            res.status(200).json({ success: true, message: 'Payout request submitted successfully' });
             throttledDataUpdate();
         } catch (error) {
-            console.error('Client payout request error:', error);
-            res.status(500).json({ error: 'Server error processing payout request.' });
+            console.error('Client payout request error:', error.message);
+            res.status(400).json({ error: error.message });
         }
     });
 
@@ -2220,11 +2320,38 @@ app.get('/api/debug/users/:id', async (req, res) => {
 
     // Start the server
     const PORT = process.env.PORT || 8080;
-    httpServer.listen(PORT, '0.0.0.0', () => {
+    const server = httpServer.listen(PORT, '0.0.0.0', () => {
       console.log(`Backend and WebSocket server listening on port ${PORT}`);
       console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     });
+
+    // Graceful shutdown handling
+    const gracefulShutdown = async (signal) => {
+        console.log(`\n${signal} received. Shutting down gracefully...`);
+        
+        // Close HTTP server
+        server.close(() => {
+            console.log('HTTP server closed.');
+        });
+        
+        // Close database connections
+        try {
+            await knex.destroy();
+            console.log('Database connections closed.');
+        } catch (error) {
+            console.error('Error closing database connections:', error);
+        }
+        
+        process.exit(0);
+    };
+
+    // Listen for shutdown signals
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 }
 
 // Start the application
-main();
+main().catch((error) => {
+    console.error('Fatal error starting application:', error);
+    process.exit(1);
+});
