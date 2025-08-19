@@ -57,6 +57,7 @@ export type AppContextType = {
     requestClientPayout: (userId: number, amount: number) => Promise<void>;
     processClientPayout: (transactionId: string) => Promise<void>;
     declineClientPayout: (transactionId: string) => Promise<void>;
+    resetDatabaseComplete: () => Promise<boolean>;
     updateClientFlatRate: (clientId: number, flatRate: number) => Promise<void>;
     updateClientTaxCard: (clientId: number, taxCardNumber: string) => Promise<void>;
     updateTierSettings: (settings: TierSetting[]) => Promise<void>;
@@ -679,6 +680,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setTimeout(() => fetchAppData(), 500);
     };
 
+    const resetDatabaseComplete = async (): Promise<boolean> => {
+        try {
+            const result = await apiFetch('/api/admin/reset-database-complete', { method: 'POST' });
+            if (result.success) {
+                addToast('Database reset completed successfully! All data cleared except Admin, Test Courier, and Test Client.', 'success', 5000);
+                // Force refresh all data after reset
+                setTimeout(() => fetchAppData(true), 1000);
+                return true;
+            } else {
+                addToast(`Database reset failed: ${result.error || 'Unknown error'}`, 'error', 5000);
+                return false;
+            }
+        } catch (error: any) {
+            console.error('Database reset error:', error);
+            addToast(`Database reset failed: ${error.message || 'Network error'}`, 'error', 5000);
+            return false;
+        }
+    };
+
     const updateClientFlatRate = async (clientId: number, flatRateFee: number) => {
         await apiFetch(`/api/clients/${clientId}/flatrate`, { method: 'PUT', body: JSON.stringify({ flatRateFee }) });
     };
@@ -881,6 +901,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         requestClientPayout,
         processClientPayout,
         declineClientPayout,
+        resetDatabaseComplete,
         updateClientFlatRate,
         updateClientTaxCard,
         updateTierSettings,

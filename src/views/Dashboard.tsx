@@ -2,14 +2,16 @@ import React from 'react';
 import { useAppContext } from '../context/AppContext';
 import { UserRole, ShipmentStatus, PaymentMethod, Permission, Shipment } from '../types';
 import { StatCard } from '../components/common/StatCard';
-import { PackageIcon, TruckIcon, WalletIcon, ClipboardListIcon, UsersIcon, ChartBarIcon, CurrencyDollarIcon, CheckCircleIcon, SwitchHorizontalIcon, UserCircleIcon, ArchiveBoxIcon, ClockIcon } from '../components/Icons';
+import { PackageIcon, TruckIcon, WalletIcon, ClipboardListIcon, UsersIcon, ChartBarIcon, CurrencyDollarIcon, CheckCircleIcon, SwitchHorizontalIcon, UserCircleIcon, ArchiveBoxIcon, ClockIcon, DatabaseResetIcon } from '../components/Icons';
 
 interface DashboardProps {
     setActiveView: (view: string) => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
-    const { currentUser, shipments, users, courierStats, hasPermission, setShipmentFilter } = useAppContext();
+    const { currentUser, shipments, users, courierStats, hasPermission, setShipmentFilter, resetDatabaseComplete, addToast } = useAppContext();
+    const [showResetConfirm, setShowResetConfirm] = React.useState(false);
+    const [isResetting, setIsResetting] = React.useState(false);
     
     if (!currentUser) return null;
     
@@ -18,6 +20,25 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
     const navigateWithFilter = (filter: (shipment: Shipment) => boolean, view: string = 'total-shipments') => {
         setShipmentFilter(() => filter);
         setActiveView(view);
+    };
+
+    const handleDatabaseReset = async () => {
+        if (!confirm('⚠️ WARNING: This will permanently delete ALL data except Admin, Test Courier, and Test Client!\n\nThis action cannot be undone. Are you absolutely sure?')) {
+            return;
+        }
+        
+        setIsResetting(true);
+        try {
+            const success = await resetDatabaseComplete();
+            if (success) {
+                setActiveView('dashboard'); // Return to dashboard
+            }
+        } catch (error) {
+            console.error('Reset failed:', error);
+        } finally {
+            setIsResetting(false);
+            setShowResetConfirm(false);
+        }
     };
 
     const renderClientDashboard = () => {
@@ -133,7 +154,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
                 {/* Quick Actions */}
                 <div className="card">
                     <h2 className="text-xl font-bold text-foreground mb-4">Quick Actions</h2>
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                         <button 
                             onClick={() => setActiveView('users')} 
                             className="p-4 bg-secondary hover:bg-accent rounded-lg border border-border transition-colors text-center group"
@@ -161,6 +182,16 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
                         >
                             <ClipboardListIcon className="w-8 h-8 text-primary mx-auto mb-2 group-hover:scale-110 transition-transform"/>
                             <span className="text-sm font-semibold text-foreground">Notifications Log</span>
+                        </button>
+                        <button 
+                            onClick={handleDatabaseReset}
+                            disabled={isResetting}
+                            className="p-4 bg-red-50 hover:bg-red-100 border-red-200 hover:border-red-300 rounded-lg border transition-colors text-center group disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <DatabaseResetIcon className={`w-8 h-8 text-red-600 mx-auto mb-2 group-hover:scale-110 transition-transform ${isResetting ? 'animate-spin' : ''}`}/>
+                            <span className="text-sm font-semibold text-red-700">
+                                {isResetting ? 'Resetting...' : 'Reset Database'}
+                            </span>
                         </button>
                     </div>
                 </div>

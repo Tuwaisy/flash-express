@@ -761,8 +761,8 @@ app.get('/api/debug/users/:id', async (req, res) => {
             const courierTransactionsForCourier = courierTransactions.filter(t => 
                 t.courierId === stats.courierId && 
                 t.status !== 'Declined' &&
-                // Exclude withdrawal transactions (both pending and processed) from balance calculation
-                !['Withdrawal Request', 'Withdrawal Processed', 'Withdrawal Declined'].includes(t.type)
+                // Exclude only pending and declined withdrawals (processed withdrawals should reduce balance)
+                !['Withdrawal Request', 'Withdrawal Declined'].includes(t.type)
             );
             const calculatedBalance = courierTransactionsForCourier.reduce((sum, t) => {
                 const amount = Number(t.amount) || 0;
@@ -773,7 +773,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             console.log(`🧮 Courier ${stats.courierId} balance calculation: ${calculatedBalance.toFixed(2)} from ${courierTransactionsForCourier.length} transactions`);
             console.log(`📝 Included transactions:`, courierTransactionsForCourier.map(t => `${t.type}: ${t.amount} (${t.status}, ${t.timestamp || t.date})`));
             
-            // Calculate total earnings (sum of all positive earnings, excluding withdrawals)
+            // Calculate total earnings (sum of all positive earnings, excluding all withdrawal types)
             const totalEarnings = courierTransactions
                 .filter(t => 
                     t.courierId === stats.courierId && 
@@ -1552,16 +1552,16 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     throw new Error('You already have a pending payout request. Please wait for it to be processed before requesting another.');
                 }
                 
-                // Calculate real-time balance from transactions (exclude all withdrawal types)
+                // Calculate real-time balance from transactions (exclude pending and declined withdrawals only)
                 const courierTransactions = await trx('courier_transactions').where({ courierId });
                 const calculatedBalance = courierTransactions.reduce((sum, transaction) => {
                     const amount = Number(transaction.amount) || 0;
-                    // Exclude withdrawal transactions (both pending and processed) from available balance
-                    if (['Withdrawal Request', 'Withdrawal Processed', 'Withdrawal Declined'].includes(transaction.type)) {
-                        return sum; // Don't add withdrawal transactions to available balance
+                    // Exclude only pending and declined withdrawals (processed withdrawals should affect balance)
+                    if (['Withdrawal Request', 'Withdrawal Declined'].includes(transaction.type)) {
+                        return sum; // Don't add pending/declined withdrawal transactions to available balance
                     }
-                    // Only include processed transactions or non-withdrawal pending transactions
-                    if (transaction.status === 'Processed' || (transaction.status === 'Pending' && transaction.type !== 'Withdrawal Request')) {
+                    // Include all processed transactions (including processed withdrawals which reduce balance)
+                    if (transaction.status === 'Processed') {
                         return sum + amount;
                     }
                     return sum;
@@ -1569,8 +1569,8 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 
                 console.log(`💰 Courier ${courierId} balance check: calculated=${calculatedBalance.toFixed(2)}, requested=${amount}`);
                 console.log(`📊 Transactions used for balance:`, courierTransactions.filter(t => 
-                    !['Withdrawal Request', 'Withdrawal Processed', 'Withdrawal Declined'].includes(t.type) &&
-                    (t.status === 'Processed' || (t.status === 'Pending' && t.type !== 'Withdrawal Request'))
+                    !['Withdrawal Request', 'Withdrawal Declined'].includes(t.type) &&
+                    t.status === 'Processed'
                 ).map(t => `${t.type}: ${t.amount} (${t.status})`));
                 
                 if (calculatedBalance < amount) {
@@ -2031,6 +2031,132 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 error: 'Reset failed', 
                 details: error.message,
                 suggestion: 'Try manual SQL reset using database-reset.sql file'
+            });
+        }
+    });
+
+    // Complete Database Reset Endpoint - Admin Only with Full Cleanup
+    app.post('/api/admin/reset-database-complete', async (req, res) => {
+        try {
+            console.log('🚨 COMPLETE DATABASE RESET INITIATED by Admin');
+            
+            const resetResults = await knex.transaction(async (trx) => {
+                const results = {
+                    backup: {},
+                    deleted: {},
+                    reset: {},
+                    recreated: {},
+                    final: {}
+                };
+                
+                // STEP 1: Backup current counts for reporting
+                console.log('📋 Taking backup count...');
+                results.backup = {
+                    users: await trx('users').count('id as count').first(),
+                    shipments: await trx('shipments').count('id as count').first(),
+                    courier_transactions: await trx('courier_transactions').count('id as count').first(),
+                    client_transactions: await trx('client_transactions').count('id as count').first(),
+                    notifications: await trx('notifications').count('id as count').first(),
+                    courier_stats: await trx('courier_stats').count('courierId as count').first()
+                };
+                
+                // STEP 2: Delete ALL transactional data
+                console.log('🧹 Deleting all transactions and operational data...');
+                results.deleted.courier_transactions = await trx('courier_transactions').del();
+                results.deleted.client_transactions = await trx('client_transactions').del();
+                results.deleted.notifications = await trx('notifications').del();
+                results.deleted.in_app_notifications = await trx('in_app_notifications').del();
+                results.deleted.shipments = await trx('shipments').del();
+                
+                // STEP 3: Delete non-essential users (keep only Admin, Test Courier, Test Client)
+                console.log('👥 Removing non-essential users...');
+                const essentialEmails = ['admin@flash.com', 'testcourier@flash.com', 'testclient@flash.com'];
+                const essentialUsers = await trx('users').whereIn('email', essentialEmails).select('id', 'email');
+                const essentialUserIds = essentialUsers.map(u => u.id);
+                
+                // Delete courier_stats for non-essential users
+                results.deleted.courier_stats_non_essential = await trx('courier_stats').whereNotIn('courierId', essentialUserIds).del();
+                
+                // Delete non-essential users
+                results.deleted.users_non_essential = await trx('users').whereNotIn('email', essentialEmails).del();
+                
+                // STEP 4: Reset essential users' data
+                console.log('🔄 Resetting essential users data...');
+                results.reset.user_balances = await trx('users').whereIn('email', essentialEmails).update({ 
+                    walletBalance: 0,
+                    currentTier: 'Bronze'
+                });
+                
+                // STEP 5: Reset courier stats for essential couriers
+                console.log('👤 Resetting courier stats...');
+                const courierUsers = await trx('users')
+                    .whereIn('email', essentialEmails)
+                    .whereRaw("roles LIKE '%Courier%'")
+                    .select('id');
+                
+                if (courierUsers.length > 0) {
+                    const courierIds = courierUsers.map(u => u.id);
+                    results.reset.courier_stats = await trx('courier_stats').whereIn('courierId', courierIds).update({
+                        currentBalance: 0,
+                        totalEarnings: 0,
+                        consecutiveFailures: 0,
+                        isRestricted: false
+                    });
+                }
+                
+                // STEP 6: Reset sequences for clean numbering starting from 1
+                console.log('🔢 Resetting all sequences to start from 1...');
+                try {
+                    const sequences = await trx.raw(`
+                        SELECT sequence_name 
+                        FROM information_schema.sequences 
+                        WHERE sequence_schema = 'public'
+                    `);
+                    
+                    results.reset.sequences = [];
+                    for (const seq of sequences.rows) {
+                        await trx.raw(`ALTER SEQUENCE ${seq.sequence_name} RESTART WITH 1`);
+                        results.reset.sequences.push(seq.sequence_name);
+                        console.log(`🔢 Reset sequence: ${seq.sequence_name} → 1`);
+                    }
+                } catch (error) {
+                    console.log('⚠️ Sequence reset skipped:', error.message);
+                    results.reset.sequences = ['Error: ' + error.message];
+                }
+                
+                // STEP 7: Get final counts for verification
+                console.log('📊 Getting final counts...');
+                results.final = {
+                    users: await trx('users').count('id as count').first(),
+                    shipments: await trx('shipments').count('id as count').first(),
+                    courier_transactions: await trx('courier_transactions').count('id as count').first(),
+                    client_transactions: await trx('client_transactions').count('id as count').first(),
+                    notifications: await trx('notifications').count('id as count').first(),
+                    courier_stats: await trx('courier_stats').count('courierId as count').first(),
+                    essential_users: await trx('users').whereIn('email', essentialEmails).select('id', 'email', 'firstName', 'lastName', 'roles')
+                };
+                
+                return results;
+            });
+            
+            console.log('✅ COMPLETE DATABASE RESET FINISHED');
+            console.log('📊 Reset Summary:', resetResults);
+            
+            res.json({ 
+                success: true, 
+                message: 'Complete database reset successful - Ready for fresh start',
+                results: resetResults,
+                preserved: 'Only Admin, Test Courier, Test Client + Inventory + Tiers',
+                cleared: 'ALL shipments, transactions, notifications, non-essential users',
+                nextOrderNumber: 1
+            });
+            
+        } catch (error) {
+            console.error('❌ Complete database reset failed:', error);
+            res.status(500).json({ 
+                error: 'Complete reset failed', 
+                details: error.message,
+                suggestion: 'Check logs for detailed error information'
             });
         }
     });
