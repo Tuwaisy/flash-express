@@ -1471,9 +1471,16 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 }
                 
                 // Calculate real-time balance from transactions instead of relying on stored balance
+                // Exclude pending withdrawal requests to get available balance
                 const courierTransactionsForBalance = await trx('courier_transactions')
                     .where({ courierId })
-                    .whereIn('status', ['Processed', 'Pending']);
+                    .where(function() {
+                        this.where('status', 'Processed')
+                            .orWhere(function() {
+                                this.where('status', 'Pending')
+                                    .whereNot('type', 'Withdrawal Request');
+                            });
+                    });
                 
                 const calculatedBalance = courierTransactionsForBalance.reduce((sum, transaction) => {
                     const amount = Number(transaction.amount) || 0;
@@ -1481,6 +1488,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 }, 0);
                 
                 console.log(`💰 Courier ${courierId} balance check: calculated=${calculatedBalance.toFixed(2)}, requested=${amount}`);
+                console.log(`📊 Transactions used for balance:`, courierTransactionsForBalance.map(t => `${t.type}: ${t.amount} (${t.status})`));
                 
                 if (calculatedBalance < amount) {
                     throw new Error(`Insufficient balance for payout request. Available: ${calculatedBalance.toFixed(2)} EGP, Requested: ${amount} EGP`);
