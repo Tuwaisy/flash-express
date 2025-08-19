@@ -113,7 +113,7 @@ const AdminFinancials: React.FC<AdminFinancialsProps> = ({ setActiveView }) => {
             client.clientName,
             client.totalOrders.toString(),
             client.orderSum.toFixed(2),
-            client.flatRateFee.toFixed(2)
+            (Number(client.flatRateFee) || 0).toFixed(2)
         ]);
         exportToCsv(headers, data, 'Client_Financial_Summary');
     };
@@ -255,7 +255,7 @@ const AdminFinancials: React.FC<AdminFinancialsProps> = ({ setActiveView }) => {
                                         </button>
                                     </td>
                                     <td className="px-6 py-4 text-muted-foreground">{client.orderSum.toFixed(2)} EGP</td>
-                                    <td className="px-6 py-4 font-semibold text-primary">{client.flatRateFee.toFixed(2)} EGP</td>
+                                    <td className="px-6 py-4 font-semibold text-primary">{(Number(client.flatRateFee) || 0).toFixed(2)} EGP</td>
                                     <td className="px-6 py-4">
                                         {client.partnerTier ? (
                                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getTierBadgeColor(client.partnerTier)}`}>
@@ -296,7 +296,7 @@ const AdminFinancials: React.FC<AdminFinancialsProps> = ({ setActiveView }) => {
                             </div>
                              <div className="responsive-card-item">
                                 <span className="responsive-card-label">Flat Rate</span>
-                                <span className="responsive-card-value font-semibold text-primary">{client.flatRateFee.toFixed(2)} EGP</span>
+                                <span className="responsive-card-value font-semibold text-primary">{(Number(client.flatRateFee) || 0).toFixed(2)} EGP</span>
                             </div>
                             <div className="responsive-card-item">
                                 <span className="responsive-card-label">Partner Tier</span>

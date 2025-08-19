@@ -11,11 +11,15 @@ import { DownloadIcon } from '../components/Icons';
 // --- Reusable Components (could be moved to /components/specific) ---
 
 const CourierEarningsSummary: React.FC<{ courierStats: CourierStats }> = ({ courierStats }) => {
-    const successRate = (courierStats.deliveriesCompleted + courierStats.deliveriesFailed) > 0 ?
-        (courierStats.deliveriesCompleted / (courierStats.deliveriesCompleted + courierStats.deliveriesFailed)) * 100 : 100;
+    const deliveriesCompleted = Number(courierStats.deliveriesCompleted) || 0;
+    const deliveriesFailed = Number(courierStats.deliveriesFailed) || 0;
+    const totalEarnings = Number(courierStats.totalEarnings) || 0;
+    
+    const successRate = (deliveriesCompleted + deliveriesFailed) > 0 ?
+        (deliveriesCompleted / (deliveriesCompleted + deliveriesFailed)) * 100 : 100;
 
-    const avgEarningsPerDelivery = courierStats.deliveriesCompleted > 0 ?
-        courierStats.totalEarnings / courierStats.deliveriesCompleted : 0;
+    const avgEarningsPerDelivery = deliveriesCompleted > 0 ?
+        totalEarnings / deliveriesCompleted : 0;
 
     return (
         <div className="card p-6">
@@ -34,7 +38,7 @@ const CourierEarningsSummary: React.FC<{ courierStats: CourierStats }> = ({ cour
                 </div>
                  <div>
                     <div className="text-sm text-muted-foreground">Avg. Per Delivery</div>
-                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{(Number(avgEarningsPerDelivery) || 0).toFixed(2)} EGP</div>
+                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{avgEarningsPerDelivery.toFixed(2)} EGP</div>
                 </div>
             </div>
              <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
@@ -46,7 +50,7 @@ const CourierEarningsSummary: React.FC<{ courierStats: CourierStats }> = ({ cour
                     </div>
                 </div>
                  <div className="text-sm text-muted-foreground">
-                    Success Rate: <span className="font-bold text-foreground">{(Number(successRate) || 0).toFixed(1)}%</span>
+                    Success Rate: <span className="font-bold text-foreground">{successRate.toFixed(1)}%</span>
                 </div>
                 {courierStats.isRestricted && (
                     <span className="px-2 py-1 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 rounded-full text-xs font-medium">🚫 Restricted</span>

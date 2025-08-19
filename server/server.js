@@ -413,7 +413,7 @@ async function main() {
             // Standard commission for delivery
             const courierStats = await trx('courier_stats').where({ courierId: shipment.courierId }).first();
             if (courierStats) {
-                const commissionAmount = shipment.courierCommission || 0;
+                const commissionAmount = Number(shipment.courierCommission) || 0;
                 if (commissionAmount > 0) {
                     await trx('courier_transactions').insert({
                         id: generateId('TRN'),
@@ -434,12 +434,13 @@ async function main() {
             const deliveringCourier = await trx('users').where({ id: shipment.courierId }).first();
             if (deliveringCourier && deliveringCourier.referrerId) {
                 const referrer = await trx('users').where({ id: deliveringCourier.referrerId }).first();
-                if (referrer && referrer.referralCommission > 0) {
+                const referralCommission = Number(referrer?.referralCommission) || 0;
+                if (referrer && referralCommission > 0) {
                     await trx('courier_transactions').insert({
                         id: generateId('TRN_REF'),
                         courierId: referrer.id,
                         type: 'Referral Bonus',
-                        amount: referrer.referralCommission,
+                        amount: referralCommission,
                         description: `Referral bonus for shipment ${shipment.id} delivered by ${deliveringCourier.name}`,
                         shipmentId: shipment.id,
                         timestamp: new Date().toISOString(),
@@ -1799,12 +1800,22 @@ app.get('/api/debug/users/:id', async (req, res) => {
         if (!supplier_id || !date || !type || amount === undefined) {
             return res.status(400).json({ error: 'Missing required transaction fields' });
         }
+        
+        // Validate amount is a valid number
+        const numericAmount = Number(amount);
+        if (isNaN(numericAmount) || numericAmount <= 0) {
+            return res.status(400).json({ error: 'Amount must be a valid positive number' });
+        }
+        
         try {
-            const newTransaction = { id: generateId('stran'), supplier_id, date, description, type, amount };
+            const newTransaction = { id: generateId('stran'), supplier_id, date, description, type, amount: numericAmount };
             await knex('supplier_transactions').insert(newTransaction);
             res.status(201).json(newTransaction);
             throttledDataUpdate();
-        } catch (e) { res.status(500).json({ error: 'Server error creating transaction' }); }
+        } catch (e) { 
+            console.error('Supplier transaction error:', e);
+            res.status(500).json({ error: 'Server error creating transaction' }); 
+        }
     });
 
     app.delete('/api/supplier-transactions/:id', async (req, res) => {

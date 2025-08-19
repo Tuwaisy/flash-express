@@ -69,16 +69,23 @@ const SupplierManagement = () => {
     const handleTransactionSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const amount = Number(transactionData.amount) || 0;
-        if (currentSupplier && amount > 0) {
-            addSupplierTransaction({
-                supplier_id: currentSupplier.id,
-                date: new Date().toISOString(),
-                ...transactionData,
-                amount
-            });
-            setTransactionModalOpen(false);
-            setTransactionData({ type: 'Payment', amount: 0, description: '' });
+        if (!currentSupplier) {
+            alert('No supplier selected');
+            return;
         }
+        if (amount <= 0 || isNaN(amount)) {
+            alert('Please enter a valid positive amount');
+            return;
+        }
+        
+        addSupplierTransaction({
+            supplier_id: currentSupplier.id,
+            date: new Date().toISOString(),
+            ...transactionData,
+            amount
+        });
+        setTransactionModalOpen(false);
+        setTransactionData({ type: 'Payment', amount: 0, description: '' });
     };
     
     return (
