@@ -1615,6 +1615,31 @@ app.get('/api/debug/users/:id', async (req, res) => {
         }
     });
 
+    // Client wallet top-up endpoint
+    app.post('/api/clients/:id/topup', async (req, res) => {
+        const { id } = req.params;
+        const { amount, description } = req.body;
+        if (!amount || amount <= 0) {
+            return res.status(400).json({ error: 'Invalid top-up amount.' });
+        }
+        try {
+            await knex('client_transactions').insert({
+                id: generateId('TRN'),
+                userId: parseInt(id),
+                type: 'Deposit',
+                amount: Math.abs(amount),
+                date: new Date().toISOString(),
+                description: description || 'Wallet top-up',
+                status: 'Processed'
+            });
+            res.status(200).json({ success: true, message: 'Wallet topped up successfully' });
+            throttledDataUpdate();
+        } catch (error) {
+            console.error('Client wallet top-up error:', error);
+            res.status(500).json({ error: 'Server error processing wallet top-up.' });
+        }
+    });
+
     app.put('/api/client-transactions/:id/process', async (req, res) => {
         const { id } = req.params;
         try {

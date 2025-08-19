@@ -39,8 +39,14 @@ const CourierPerformance: React.FC<CourierPerformanceProps> = ({ onSelectShipmen
             ).length;
 
             const totalAssigned = shipments.filter(s => s.courierId === user.id).length;
-            const totalCompleted = stats?.deliveriesCompleted || 0;
-            const totalFailed = stats?.deliveriesFailed || 0;
+            // Calculate completed deliveries from actual shipment statuses, not stored stats
+            const totalCompleted = shipments.filter(s => 
+                s.courierId === user.id && s.status === ShipmentStatus.DELIVERED
+            ).length;
+            // Calculate failed deliveries from actual shipment statuses
+            const totalFailed = shipments.filter(s => 
+                s.courierId === user.id && s.status === ShipmentStatus.DELIVERY_FAILED
+            ).length;
 
             return {
                 user,
@@ -229,10 +235,32 @@ const CourierPerformance: React.FC<CourierPerformanceProps> = ({ onSelectShipmen
                                     </td>
                                     <td className="p-4">
                                         {stats?.isRestricted ? <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">Restricted</span> : <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">Active</span>}
-                                        {pendingPayouts.length > 0 && <span className="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">Payout Pending</span>}
+                                        {pendingPayouts.length > 0 && (
+                                            <div className="mt-1">
+                                                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
+                                                    {pendingPayouts.length} Payout{pendingPayouts.length > 1 ? 's' : ''} Pending
+                                                </span>
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="p-4">
-                                        <button onClick={() => handleManageClick(user.id)} className="px-3 py-1.5 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 text-sm">Manage</button>
+                                        <div className="flex gap-2">
+                                            <button 
+                                                onClick={() => handleManageClick(user.id)} 
+                                                className="px-3 py-1.5 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 text-sm"
+                                            >
+                                                Manage
+                                            </button>
+                                            {pendingPayouts.length > 0 && (
+                                                <button 
+                                                    onClick={() => handleManageClick(user.id)} 
+                                                    className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-lg text-sm"
+                                                    title={`${pendingPayouts.length} payout request${pendingPayouts.length > 1 ? 's' : ''} pending approval`}
+                                                >
+                                                    Review Payouts
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
