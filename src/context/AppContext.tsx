@@ -141,14 +141,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setToasts(prev => prev.filter(t => t.id !== toastId));
     }, []);
 
-    // Data fetching function with throttling and debouncing
+    // Data fetching function with aggressive throttling and deduplication
     const lastFetchTime = useRef<number>(0);
     const fetchTimeout = useRef<NodeJS.Timeout | null>(null);
-    const FETCH_THROTTLE_MS = 5000; // Only allow fetching every 5 seconds
-    const FETCH_DEBOUNCE_MS = 1000; // Wait 1 second after last request before fetching
+    const isFetching = useRef<boolean>(false);
+    const FETCH_THROTTLE_MS = 10000; // Only allow fetching every 10 seconds (increased from 5)
+    const FETCH_DEBOUNCE_MS = 3000; // Wait 3 seconds after last request before fetching (increased from 1)
     
     const fetchAppData = useCallback(async (force = false) => {
         if (!currentUser) {
+            console.log('No current user - skipping data fetch');
+            return;
+        }
+
+        // Prevent concurrent fetches
+        if (isFetching.current && !force) {
+            console.log('Data fetch already in progress - skipping');
             return;
         }
         
@@ -156,17 +164,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         
         // If not forced and within throttle period, queue a debounced fetch
         if (!force && now - lastFetchTime.current < FETCH_THROTTLE_MS) {
-            console.log('Data fetch throttled - scheduling debounced fetch');
+            console.log(`Data fetch throttled - last fetch was ${now - lastFetchTime.current}ms ago, throttle is ${FETCH_THROTTLE_MS}ms`);
             
             // Clear existing timeout
             if (fetchTimeout.current) {
                 clearTimeout(fetchTimeout.current);
             }
             
-            // Schedule a debounced fetch
-            fetchTimeout.current = setTimeout(() => {
-                fetchAppData(true); // Force fetch after debounce
-            }, FETCH_DEBOUNCE_MS);
+            // Schedule a debounced fetch only if no fetch is currently running
+            if (!isFetching.current) {
+                fetchTimeout.current = setTimeout(() => {
+                    console.log('Executing debounced fetch after throttle period');
+                    fetchAppData(true); // Force fetch after debounce
+                }, FETCH_DEBOUNCE_MS);
+            }
             return;
         }
         
@@ -177,6 +188,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         
         try {
+            isFetching.current = true;
+            lastFetchTime.current = now;
+            console.log('Starting data fetch at', new Date(now).toISOString());
             setIsLoading(true);
             lastFetchTime.current = now;
             console.log('Fetching application data...');
@@ -202,46 +216,84 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             console.error('Failed to fetch application data:', error);
             addToast(`Failed to load data: ${error.message}`, 'error');
         } finally {
+            isFetching.current = false;
             setIsLoading(false);
+            console.log('Data fetch completed, isFetching reset to false');
         }
     }, [currentUser, addToast]);
 
     // Socket connection setup and initial data fetching
     useEffect(() => {
         if (currentUser && !socket) {
+            console.log('Setting up WebSocket connection for user:', currentUser.id);
             const newSocket = io({
                 autoConnect: true,
                 timeout: 10000,
+                reconnection: true,
+                reconnectionAttempts: 5,
+                reconnectionDelay: 1000,
             });
 
             newSocket.on('connect', () => {
-                console.log('WebSocket connected');
+                console.log('WebSocket connected successfully');
             });
 
+            // Debounce socket events to prevent excessive calls
+            let socketEventTimeout: NodeJS.Timeout | null = null;
             newSocket.on('data_updated', () => {
-                console.log('Received data_updated event - fetching with throttling');
-                fetchAppData(); // Throttled by the function itself
+                console.log('Received data_updated event - scheduling throttled fetch');
+                
+                // Clear existing timeout
+                if (socketEventTimeout) {
+                    clearTimeout(socketEventTimeout);
+                }
+                
+                // Debounce socket events for 2 seconds
+                socketEventTimeout = setTimeout(() => {
+                    console.log('Executing debounced data fetch from socket event');
+                    fetchAppData(); // This is already throttled internally
+                }, 2000);
             });
 
             newSocket.on('disconnect', () => {
                 console.log('WebSocket disconnected');
+                // Clear socket event timeout on disconnect
+                if (socketEventTimeout) {
+                    clearTimeout(socketEventTimeout);
+                    socketEventTimeout = null;
+                }
+            });
+
+            newSocket.on('reconnect', (attemptNumber) => {
+                console.log(`WebSocket reconnected after ${attemptNumber} attempts`);
+                // Fetch data after reconnection with a delay
+                setTimeout(() => {
+                    fetchAppData(true);
+                }, 1000);
             });
 
             setSocket(newSocket);
             
             // Fetch initial data after setting up socket (force fetch)
-            fetchAppData(true);
+            setTimeout(() => {
+                fetchAppData(true);
+            }, 500);
             
             return () => {
+                console.log('Cleaning up WebSocket connection');
+                if (socketEventTimeout) {
+                    clearTimeout(socketEventTimeout);
+                }
                 newSocket.disconnect();
                 setSocket(null);
             };
         } else if (!currentUser && socket) {
             // User logged out, clean up socket
+            console.log('User logged out - cleaning up socket');
             socket.disconnect();
             setSocket(null);
         }
-    }, [currentUser, socket]); // Removed fetchAppData from dependencies
+    }, [currentUser]); // Only depend on currentUser, not socket
 
     const logout = useCallback(() => {
         // Clear any pending fetch timeout

@@ -163,7 +163,35 @@ async function main() {
     app.use('/uploads', express.static(uploadsDir));
 
 
-    // WebSocket connection handler
+    // WebSocket connection handler with throttled data updates
+    let lastDataUpdateEmit = 0;
+    const DATA_UPDATE_THROTTLE_MS = 3000; // Only emit data_updated every 3 seconds
+    let pendingDataUpdate = null;
+    
+    const throttledDataUpdate = () => {
+        const now = Date.now();
+        
+        // If enough time has passed, emit immediately
+        if (now - lastDataUpdateEmit >= DATA_UPDATE_THROTTLE_MS) {
+            lastDataUpdateEmit = now;
+            throttledDataUpdate();
+            console.log('🔄 data_updated emitted immediately');
+            return;
+        }
+        
+        // Otherwise, schedule a delayed emit if none is pending
+        if (!pendingDataUpdate) {
+            const delay = DATA_UPDATE_THROTTLE_MS - (now - lastDataUpdateEmit);
+            console.log(`⏳ data_updated throttled, will emit in ${delay}ms`);
+            pendingDataUpdate = setTimeout(() => {
+                lastDataUpdateEmit = Date.now();
+                throttledDataUpdate();
+                pendingDataUpdate = null;
+                console.log('🔄 data_updated emitted after throttle delay');
+            }, delay);
+        }
+    };
+
     io.on('connection', (socket) => {
         console.log(`WebSocket Client connected: ${socket.id}`);
         socket.on('disconnect', () => {
@@ -200,7 +228,7 @@ async function main() {
                         sent: true,
                     };
                     await knex('notifications').insert(notification);
-                    io.emit('data_updated'); // Notify admins
+                    throttledDataUpdate(); // Notify admins
                 }
             }
         } catch (error) {
@@ -253,7 +281,7 @@ async function main() {
                         } else {
                             await createInAppNotification(trx, client.id, `Your partner tier has been updated based on recent activity.`);
                         }
-                        io.emit('data_updated');
+                        throttledDataUpdate();
                     }
                 }
             });
@@ -500,7 +528,7 @@ async function main() {
             const newRoleData = { id: generateId('role'), name, permissions: JSON.stringify(permissions), isSystemRole: false };
             await knex('custom_roles').insert(newRoleData);
             res.status(201).json(parseRole(newRoleData));
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (error) {
             res.status(500).json({ error: 'Server error creating role' });
         }
@@ -516,7 +544,7 @@ async function main() {
         try {
             await knex('custom_roles').where({ id }).update(updatePayload);
             res.status(200).json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (error) {
             res.status(500).json({ error: 'Server error updating role' });
         }
@@ -531,7 +559,7 @@ async function main() {
             }
             await knex('custom_roles').where({ id }).del();
             res.status(200).json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (error) {
             res.status(500).json({ error: 'Server error deleting role' });
         }
@@ -686,7 +714,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             
             // The finalUser object from the DB is passed to the parser
             res.status(201).json(parseUser(newUser));
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (error) {
             console.error('Error creating user:', error);
             if (error.code === '23505' || (error.message && (error.message.includes('UNIQUE constraint failed') || error.message.includes('duplicate key')))) {
@@ -719,7 +747,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             delete userData.password;
             await knex('users').where({ id }).update(userData);
             res.status(200).json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } 
         catch (error) { res.status(500).json({ error: 'Server error updating user' }); }
     });
@@ -729,7 +757,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
         try {
             await knex('users').where({ id }).del();
             res.status(200).json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         }
         catch (error) { res.status(500).json({ error: 'Server error deleting user' }); }
     });
@@ -744,7 +772,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             const hashedPassword = await bcrypt.hash(password, saltRounds);
             await knex('users').where({ id }).update({ password: hashedPassword });
             res.status(200).json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         }
         catch (error) { res.status(500).json({ error: 'Server error resetting password' }); }
     });
@@ -767,7 +795,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     .update({ flatRateFee });
             }
             res.status(200).json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         }
         catch (error) { 
             console.error('Error updating client flat rate:', error);
@@ -793,7 +821,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     .update({ taxCardNumber });
             }
             res.status(200).json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         }
         catch (error) { 
             console.error('Error updating tax card:', error);
@@ -875,7 +903,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             const createdShipment = await knex('shipments').where({ id: newId }).first();
             // The newly created shipment is parsed before being sent back
             res.status(201).json(parseShipment(createdShipment));
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (error) {
             console.error("Error creating shipment:", error);
             res.status(500).json({ error: 'Server error creating shipment' });
@@ -987,7 +1015,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             });
     
             res.status(200).json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (error) {
             console.error("Error updating shipment status:", error);
             const statusCode = error.statusCode || 500;
@@ -1041,7 +1069,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 await createNotification(trx, shipment, newStatus);
             });
             res.status(200).json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (error) {
             console.error("Error in shipment assignment:", error);
             const statusCode = error.statusCode || 500;
@@ -1104,7 +1132,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 }
             });
             res.status(200).json({ success: true, message: `${assignmentsMade} shipments were auto-assigned.` });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (error) {
             console.error("Auto-assignment error:", error);
             res.status(500).json({ error: 'Failed to auto-assign shipments.' });
@@ -1121,7 +1149,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             if (courierCommission !== undefined) payload.courierCommission = courierCommission;
             await knex('shipments').where({ id }).update(payload);
             res.status(200).json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (error) { res.status(500).json({ error: 'Server error' }); }
     });
 
@@ -1157,7 +1185,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             console.log(`==== Delivery Verification for ${id} to ${shipment.recipientPhone} ====\nCode: ${code}\n=======================================`);
             
             res.json({ success: true, message: 'Delivery verification code sent to recipient.' });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (error) {
             console.error('Delivery code sending error:', error);
             res.status(500).json({ error: 'Failed to send delivery code.' });
@@ -1194,7 +1222,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 }
             });
             res.json({ success: true, message: 'Delivery confirmed successfully.' });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (error) {
             console.error('Delivery verification error:', error);
             const statusCode = error.statusCode || 500;
@@ -1210,7 +1238,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
         try {
             await knex('courier_stats').where({ courierId: id }).update({ commissionType, commissionValue });
             res.status(200).json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         }
         catch (error) { res.status(500).json({ error: 'Server error' }); }
     });
@@ -1227,7 +1255,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 await createInAppNotification(trx, id, `A penalty of ${amount} EGP was applied to your account. Reason: ${description}`, '/courier-financials');
             });
             res.status(200).json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         }
         catch (error) { res.status(500).json({ error: 'Server error' }); }
     });
@@ -1251,7 +1279,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 await createInAppNotification(trx, id, `A penalty of ${penaltyAmount} EGP was applied for failed delivery of ${shipmentId}.`, '/courier-financials');
             });
             res.status(200).json({ success: true, penaltyAmount, message: `Penalty of ${penaltyAmount} EGP applied` });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (error) { 
             console.error('Error applying failed delivery penalty:', error);
             res.status(500).json({ error: 'Server error applying penalty' }); 
@@ -1269,7 +1297,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 paymentMethod
             });
             res.status(200).json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         }
         catch (error) { res.status(500).json({ error: 'Server error' }); }
     });
@@ -1310,7 +1338,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 await createInAppNotification(trx, payout.courierId, `Your payout request for ${-payout.amount} EGP has been processed.`, '/courier-financials');
             });
             res.status(200).json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         }
         catch (error) { res.status(500).json({ error: 'Server error' }); }
     });
@@ -1332,7 +1360,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 await createInAppNotification(trx, payout.courierId, `Your payout request for ${(-payout.amount).toFixed(2)} EGP has been declined.`, '/courier-financials');
             });
             res.status(200).json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch(error) {
             console.error("Error declining payout:", error);
             res.status(500).json({ error: 'Server error declining payout request' });
@@ -1357,7 +1385,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 status: 'Pending'
             });
             res.status(200).json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (error) {
             console.error('Client payout request error:', error);
             res.status(500).json({ error: 'Server error processing payout request.' });
@@ -1371,7 +1399,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 .where({ id, type: 'Withdrawal Request' })
                 .update({ status: 'Processed', type: 'Withdrawal Processed', description: 'Payout processed by admin' });
             res.status(200).json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (error) {
             console.error('Client payout processing error:', error);
             res.status(500).json({ error: 'Server error processing payout.' });
@@ -1398,7 +1426,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
         try {
             await knex('in_app_notifications').where({ id }).update({ isRead: true });
             res.json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (error) {
             res.status(500).json({ error: 'Failed to mark notification as read.' });
         }
@@ -1417,7 +1445,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             
             await knex('notifications').where({ id }).update({ sent: emailSent });
             res.status(200).json({ success: true, sent: emailSent });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (error) {
             res.status(500).json({ error: 'Server error resending notification' });
         }
@@ -1452,7 +1480,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
         try {
             await knex('inventory_items').where({ id: req.params.id }).del();
             res.json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (e) { res.status(500).json({ error: 'Failed to delete inventory item' }); }
     });
 
@@ -1470,7 +1498,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             };
             await knex('inventory_items').insert(newItem);
             res.status(201).json(parseInventoryItem(newItem));
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (e) { res.status(500).json({ error: 'Failed to create inventory item' }); }
     });
     
@@ -1491,7 +1519,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             }
             
             res.status(200).json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (e) { res.status(500).json({ error: 'Failed to update inventory' }); }
     });
 
@@ -1520,7 +1548,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 await createNotification(trx, shipment, newStatus);
             });
             res.json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (e) {
             console.error('Error updating packaging:', e);
             res.status(500).json({ error: 'Failed to update shipment packaging' });
@@ -1585,7 +1613,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             });
             
             res.json({ success: true, message: `${shipmentIds.length} shipments packaged successfully.` });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (e) {
             console.error('Error during bulk packaging:', e);
             res.status(500).json({ error: 'Failed to bulk package shipments.' });
@@ -1633,7 +1661,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 }
             });
             res.json({ success: true, message: `${shipmentIds.length} shipments assigned.` });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (e) {
             console.error('Error during bulk assignment:', e);
             res.status(500).json({ error: 'Failed to bulk assign shipments.' });
@@ -1665,7 +1693,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 }
             });
             res.json({ success: true, message: `${shipmentIds.length} shipments updated to ${status}.` });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (e) {
             console.error('Error during bulk status update:', e);
             res.status(500).json({ error: 'Failed to bulk update shipment statuses.' });
@@ -1677,7 +1705,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
         try {
             await knex('assets').where({ id: req.params.id }).del();
             res.json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (e) { res.status(500).json({ error: 'Failed to delete asset' }); }
     });
 
@@ -1696,7 +1724,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
         };
         await knex('assets').insert(newAsset);
         res.status(201).json(parseAsset(newAsset));
-        io.emit('data_updated');
+        throttledDataUpdate();
       } catch (e) { res.status(500).json({ error: 'Failed to create asset' }); }
     });
 
@@ -1705,7 +1733,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
         try {
             await knex('assets').where({ id }).update(req.body);
             res.json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (e) { res.status(500).json({ error: 'Failed to update asset' }); }
     });
 
@@ -1719,7 +1747,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 assignmentDate: new Date().toISOString()
             });
             res.json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (e) { res.status(500).json({ error: 'Failed to assign asset' }); }
     });
 
@@ -1732,7 +1760,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 assignmentDate: null
             });
             res.json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (e) { res.status(500).json({ error: 'Failed to unassign asset' }); }
     });
     
@@ -1744,7 +1772,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             const newSupplier = { id: generateId('sup'), name, contact_person, phone, email, address };
             await knex('suppliers').insert(newSupplier);
             res.status(201).json(newSupplier);
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (e) { res.status(500).json({ error: 'Server error creating supplier' }); }
     });
 
@@ -1753,7 +1781,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
         try {
             await knex('suppliers').where({ id }).update(req.body);
             res.json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (e) { res.status(500).json({ error: 'Server error updating supplier' }); }
     });
     
@@ -1762,7 +1790,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
         try {
             await knex('suppliers').where({ id }).del();
             res.json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (e) { res.status(500).json({ error: 'Server error deleting supplier' }); }
     });
 
@@ -1775,7 +1803,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             const newTransaction = { id: generateId('stran'), supplier_id, date, description, type, amount };
             await knex('supplier_transactions').insert(newTransaction);
             res.status(201).json(newTransaction);
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (e) { res.status(500).json({ error: 'Server error creating transaction' }); }
     });
 
@@ -1784,7 +1812,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
         try {
             await knex('supplier_transactions').where({ id }).del();
             res.json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (e) { res.status(500).json({ error: 'Server error deleting transaction' }); }
     });
 
@@ -1808,7 +1836,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 }
             });
             res.json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (e) { res.status(500).json({ error: 'Failed to update tier settings' }); }
     });
 
@@ -1822,7 +1850,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             };
             await knex('users').where({ id }).update(updatePayload);
             res.json({ success: true });
-            io.emit('data_updated');
+            throttledDataUpdate();
         } catch (e) { res.status(500).json({ error: 'Failed to assign tier' }); }
     });
 
@@ -1875,7 +1903,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                                 console.log(`Deleted file: ${fullPath}`);
                             }
                             await knex('shipments').where({ id: shipment.id }).update({ failurePhotoPath: null });
-                            io.emit('data_updated');
+                            throttledDataUpdate();
                         }
                     }
                 } catch (err) {

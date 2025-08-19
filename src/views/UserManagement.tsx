@@ -273,7 +273,7 @@ const UserManagement = () => {
             user.email,
             (user.roles || []).join(', '),
             user.zones?.join(', ') || 'N/A',
-            user.walletBalance != null ? user.walletBalance.toFixed(2) : 'N/A'
+            user.walletBalance != null ? (Number(user.walletBalance) || 0).toFixed(2) : 'N/A'
         ]);
         exportToCsv(headers, data, 'User_List_Export');
     };
@@ -585,7 +585,7 @@ const UserManagement = () => {
                                 </td>
                                 <td className="px-6 py-4 text-sm text-muted-foreground hidden md:table-cell">
                                     {(user.roles || []).includes(UserRole.COURIER) && `Zones: ${user.zones?.join(', ') || 'N/A'}`}
-                                    {(user.roles || []).includes(UserRole.CLIENT) && `Fee: ${user.flatRateFee?.toFixed(2)} EGP`}
+                                    {(user.roles || []).includes(UserRole.CLIENT) && `Fee: ${(Number(user.flatRateFee) || 0).toFixed(2)} EGP`}
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-2 flex-wrap">

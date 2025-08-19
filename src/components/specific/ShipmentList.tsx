@@ -129,9 +129,13 @@ export const ShipmentList: React.FC<ShipmentListProps> = ({
                 />
             );
         }
+        
+        // Safely convert to number and format
+        const numericValue = Number(value) || 0;
+        
         return (
             <span onClick={() => startEditing(shipment, field)} className={`flex items-center gap-1 ${isEditable(shipment.status) && showEditableFees ? 'cursor-pointer hover:text-primary' : ''}`}>
-                {(value || 0).toFixed(2)}
+                {numericValue.toFixed(2)}
                 {isEditable(shipment.status) && showEditableFees && <PencilIcon className="w-3 h-3 text-muted-foreground" />}
             </span>
         );
@@ -159,8 +163,13 @@ export const ShipmentList: React.FC<ShipmentListProps> = ({
                 </thead>
                 <tbody className="divide-y divide-border">
                     {sortedShipments.map(s => {
-                        const netProfit = (s.clientFlatRateFee || 0) - (s.courierCommission || 0);
+                        // Safely calculate netProfit with null checks
+                        const clientFee = Number(s.clientFlatRateFee) || 0;
+                        const courierCommission = Number(s.courierCommission) || 0;
+                        const netProfit = clientFee - courierCommission;
                         const days = getDaysInPhase(s);
+                        const price = Number(s.price) || 0;
+                        
                         return (
                             <tr key={s.id} onClick={() => onSelect?.(s)} className={`hover:bg-accent ${onSelect ? 'cursor-pointer' : ''}`}>
                                 <td className="px-4 py-3">
@@ -177,7 +186,7 @@ export const ShipmentList: React.FC<ShipmentListProps> = ({
                                         </div>
                                     )}
                                 </td>
-                                {showPackageValue && <td className="px-4 py-3 font-mono font-semibold text-primary">{(s.paymentMethod === 'Transfer' ? 0 : s.price).toFixed(2)}</td>}
+                                {showPackageValue && <td className="px-4 py-3 font-mono font-semibold text-primary">{(s.paymentMethod === 'Transfer' ? 0 : price).toFixed(2)}</td>}
                                 {showClientFee && <td className="px-4 py-3 font-mono text-green-600 dark:text-green-400">{renderFeeCell(s, 'clientFee', s.clientFlatRateFee)}</td>}
                                 {showCourierCommission && <td className="px-4 py-3 font-mono text-red-600 dark:text-red-400">{renderFeeCell(s, 'courierCommission', s.courierCommission)}</td>}
                                 {showNetProfit && <td className={`px-4 py-3 font-mono font-bold ${netProfit >= 0 ? 'text-foreground' : 'text-red-600 dark:text-red-400'}`}>{netProfit.toFixed(2)}</td>}

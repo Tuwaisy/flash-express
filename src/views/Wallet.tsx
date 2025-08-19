@@ -18,9 +18,9 @@ const Wallet = () => {
 
     const myTransactions = clientTransactions.filter(t => t.userId === currentUser.id);
     const pendingPayouts = myTransactions.filter(t => t.type === TransactionType.WITHDRAWAL_REQUEST && t.status === 'Pending');
-    const pendingAmount = pendingPayouts.reduce((sum, t) => sum + t.amount, 0);
+    const pendingAmount = pendingPayouts.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
-    const availableBalance = currentUser.walletBalance || 0;
+    const availableBalance = Number(currentUser.walletBalance) || 0;
     
     const handleRequestPayout = () => {
         const amount = parseFloat(payoutAmount);
@@ -122,7 +122,7 @@ const Wallet = () => {
                                    <td className={`px-6 py-4 font-semibold text-right ${
                                        t.amount >= 0 ? 'text-green-600' : 'text-red-600'
                                    }`}>
-                                       {t.amount.toFixed(2)} EGP
+                                       {(Number(t.amount) || 0).toFixed(2)} EGP
                                    </td>
                                </tr>
                            ))}

@@ -90,13 +90,17 @@ const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
             }
             const body = shipmentsToExport.map(s => {
                 const courierName = getCourierName(s.courierId);
-                const clientFee = s.clientFlatRateFee || 0;
-                const courierCommission = s.courierCommission || 0;
+                
+                // Safely convert to numbers with fallbacks
+                const clientFee = Number(s.clientFlatRateFee) || 0;
+                const courierCommission = Number(s.courierCommission) || 0;
+                const price = Number(s.price) || 0;
+                const packageValue = Number(s.packageValue) || 0;
                 
                 const row: (string | number)[] = [
                     s.id, s.clientName, s.recipientName, s.recipientPhone,
                     new Date(s.creationDate).toLocaleDateString(), s.status,
-                    courierName, s.price.toFixed(2), s.packageValue.toFixed(2)
+                    courierName, price.toFixed(2), packageValue.toFixed(2)
                 ];
                 
                 if (!isSuperUser) {

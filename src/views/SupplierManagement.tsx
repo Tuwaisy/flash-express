@@ -25,8 +25,8 @@ const SupplierManagement = () => {
     const supplierFinancials = useMemo(() => {
         return suppliers.map(supplier => {
             const transactions = supplierTransactions.filter(t => t.supplier_id === supplier.id);
-            const totalPaid = transactions.filter(t => t.type === 'Payment').reduce((sum, t) => sum + t.amount, 0);
-            const totalOwed = transactions.filter(t => t.type === 'Credit').reduce((sum, t) => sum + t.amount, 0);
+            const totalPaid = transactions.filter(t => t.type === 'Payment').reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+            const totalOwed = transactions.filter(t => t.type === 'Credit').reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
             const outstandingBalance = totalOwed - totalPaid;
             return {
                 ...supplier,
@@ -38,9 +38,9 @@ const SupplierManagement = () => {
     }, [suppliers, supplierTransactions]);
 
     const globalTotals = useMemo(() => {
-        const totalPaid = supplierFinancials.reduce((sum, s) => sum + s.totalPaid, 0);
-        const totalOwed = supplierFinancials.reduce((sum, s) => sum + s.totalOwed, 0);
-        const outstandingBalance = supplierFinancials.reduce((sum, s) => sum + s.outstandingBalance, 0);
+        const totalPaid = supplierFinancials.reduce((sum, s) => sum + (Number(s.totalPaid) || 0), 0);
+        const totalOwed = supplierFinancials.reduce((sum, s) => sum + (Number(s.totalOwed) || 0), 0);
+        const outstandingBalance = supplierFinancials.reduce((sum, s) => sum + (Number(s.outstandingBalance) || 0), 0);
         return { totalPaid, totalOwed, outstandingBalance };
     }, [supplierFinancials]);
     

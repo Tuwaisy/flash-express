@@ -69,15 +69,19 @@ export const TotalShipments = () => {
         }
         
         const body = filteredShipments.map(s => {
+            // Safely convert to numbers with fallbacks
+            const price = Number(s.price) || 0;
+            const packageValue = Number(s.packageValue) || 0;
+            
             const row: (string | number)[] = [
                 s.id, s.clientName, s.recipientName,
                 new Date(s.creationDate).toLocaleDateString(), s.status,
-                getCourierName(s.courierId), s.price.toFixed(2), s.packageValue.toFixed(2)
+                getCourierName(s.courierId), price.toFixed(2), packageValue.toFixed(2)
             ];
 
             if (canSeeAdminFinancials) {
-                const clientFee = s.clientFlatRateFee || 0;
-                const courierCommission = s.courierCommission || 0;
+                const clientFee = Number(s.clientFlatRateFee) || 0;
+                const courierCommission = Number(s.courierCommission) || 0;
                 let netProfit = 0;
                 if (s.courierId && s.clientFlatRateFee && s.courierCommission) {
                     netProfit = clientFee - courierCommission;
