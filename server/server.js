@@ -513,12 +513,12 @@ async function main() {
         // Client wallet transactions for delivered shipments
         const client = await trx('users').where({ id: shipment.clientId }).first();
         if (client) {
-            const shippingFee = shipment.clientFlatRateFee || 0;
+            const shippingFee = Number(shipment.clientFlatRateFee) || 0;
             let walletChange = 0;
             
             if (shipment.paymentMethod === 'COD') {
                 // For COD: Credit package value collected, deduct shipping fee
-                const packageValue = shipment.packageValue || 0;
+                const packageValue = Number(shipment.packageValue) || 0;
                 const transactions = [];
                 
                 // Always credit package value (even if 0) and deduct shipping fee
@@ -535,7 +535,7 @@ async function main() {
                 await updateClientWalletBalance(trx, client.id);
             } else if (shipment.paymentMethod === 'Transfer') {
                 // For Transfer: Client already paid shipping fee, credit amount collected from recipient
-                const amountToCollect = shipment.amountToCollect || 0;
+                const amountToCollect = Number(shipment.amountToCollect) || 0;
                 if (amountToCollect > 0) {
                     await trx('client_transactions').insert({
                         id: generateId('TRN'), userId: client.id, type: 'Deposit', amount: amountToCollect, date: new Date().toISOString(), description: `Amount collected from recipient for delivered shipment ${shipment.id}`, status: 'Processed'
@@ -548,7 +548,7 @@ async function main() {
                 }
             } else if (shipment.paymentMethod === 'Wallet') {
                 // For Wallet payments: Shipping fee already charged at creation, just credit package value collected
-                const packageValue = shipment.packageValue || 0;
+                const packageValue = Number(shipment.packageValue) || 0;
                 
                 // Credit package value collected from recipient (if any)
                 if (packageValue > 0) {
@@ -2126,7 +2126,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                         firstName: 'Admin',
                         lastName: 'User',
                         email: 'admin@flash.com',
-                        password: 'admin123', // Will be hashed by the system
+                        password: 'password123', // Will be hashed by the system
                         phone: '+201000000000',
                         roles: '["Administrator"]',
                         walletBalance: 0,
@@ -2139,7 +2139,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                         firstName: 'Test',
                         lastName: 'Courier',
                         email: 'testcourier@flash.com',
-                        password: 'courier123',
+                        password: 'password123',
                         phone: '+201000000001',
                         roles: '["Courier"]',
                         walletBalance: 0,
@@ -2152,7 +2152,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                         firstName: 'Test',
                         lastName: 'Client',
                         email: 'testclient@flash.com',
-                        password: 'client123',
+                        password: 'password123',
                         phone: '+201000000002',
                         roles: '["Client"]',
                         walletBalance: 0,
