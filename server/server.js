@@ -2331,6 +2331,207 @@ app.get('/api/debug/users/:id', async (req, res) => {
         }
     });
 
+    // --- Bulk Shipment Import Endpoint ---
+    app.post('/api/shipments/bulk-import', async (req, res) => {
+        const { shipments } = req.body;
+        
+        if (!shipments || !Array.isArray(shipments) || shipments.length === 0) {
+            return res.status(400).json({ error: 'Invalid shipments data. Expected an array of shipment objects.' });
+        }
+
+        try {
+            const results = {
+                successful: [],
+                failed: [],
+                total: shipments.length
+            };
+
+            await knex.transaction(async trx => {
+                for (let i = 0; i < shipments.length; i++) {
+                    const shipmentData = shipments[i];
+                    
+                    try {
+                        // Validate required fields
+                        const requiredFields = [
+                            'clientEmail', 'recipientName', 'recipientPhone', 'packageDescription',
+                            'packageValue', 'fromStreet', 'fromCity', 'fromZone', 
+                            'toStreet', 'toCity', 'toZone', 'paymentMethod'
+                        ];
+                        
+                        const missingFields = requiredFields.filter(field => 
+                            !shipmentData[field] || shipmentData[field].toString().trim() === ''
+                        );
+                        
+                        if (missingFields.length > 0) {
+                            throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+                        }
+
+                        // Find client by email
+                        const client = await trx('users')
+                            .where({ email: shipmentData.clientEmail.trim() })
+                            .whereRaw("roles::text LIKE '%Client%'")
+                            .first();
+                            
+                        if (!client) {
+                            throw new Error(`Client not found with email: ${shipmentData.clientEmail}`);
+                        }
+
+                        // Validate phone number format
+                        const phoneRegex = /^\+201[0-9]{9}$/;
+                        if (!phoneRegex.test(shipmentData.recipientPhone.trim())) {
+                            throw new Error('Invalid phone number format. Use +201XXXXXXXXX');
+                        }
+
+                        // Validate payment method
+                        const validPaymentMethods = ['COD', 'Transfer', 'Wallet'];
+                        if (!validPaymentMethods.includes(shipmentData.paymentMethod)) {
+                            throw new Error(`Invalid payment method: ${shipmentData.paymentMethod}`);
+                        }
+
+                        // Generate shipment ID
+                        const shipmentId = generateId('', shipmentData.fromCity);
+
+                        // Parse package value
+                        const packageValue = Number(shipmentData.packageValue) || 0;
+                        if (packageValue < 0) {
+                            throw new Error('Package value must be non-negative');
+                        }
+
+                        // Calculate price based on payment method
+                        let price = packageValue;
+                        let amountToCollect = 0;
+                        
+                        if (shipmentData.paymentMethod === 'COD') {
+                            // For COD, add shipping fee (use client's flat rate or default)
+                            const shippingFee = Number(client.flatRateFee) || 30;
+                            price = packageValue + shippingFee;
+                        } else if (shipmentData.paymentMethod === 'Transfer') {
+                            // For Transfer, client pays shipping separately, collect specified amount
+                            amountToCollect = Number(shipmentData.amountToCollect) || 0;
+                            price = packageValue; // Only package value
+                        } else if (shipmentData.paymentMethod === 'Wallet') {
+                            // For Wallet, deduct from wallet, collect only package value
+                            price = packageValue;
+                        }
+
+                        // Parse optional fields
+                        const isLargeOrder = shipmentData.isLargeOrder === 'TRUE' || shipmentData.isLargeOrder === true;
+                        const packageWeight = shipmentData.packageWeight ? Number(shipmentData.packageWeight) : null;
+
+                        // Create shipment object
+                        const newShipment = {
+                            id: shipmentId,
+                            clientId: client.id,
+                            clientName: `${client.firstName} ${client.lastName}`,
+                            recipientName: shipmentData.recipientName.trim(),
+                            recipientPhone: shipmentData.recipientPhone.trim(),
+                            packageDescription: shipmentData.packageDescription.trim(),
+                            packageValue: packageValue,
+                            price: price,
+                            paymentMethod: shipmentData.paymentMethod,
+                            amountToCollect: amountToCollect,
+                            isLargeOrder: isLargeOrder,
+                            packageWeight: packageWeight,
+                            packageDimensions: shipmentData.packageDimensions || null,
+                            specialInstructions: shipmentData.notes || null,
+                            fromAddress: JSON.stringify({
+                                street: shipmentData.fromStreet.trim(),
+                                details: shipmentData.fromDetails?.trim() || '',
+                                city: shipmentData.fromCity.trim(),
+                                zone: shipmentData.fromZone.trim()
+                            }),
+                            toAddress: JSON.stringify({
+                                street: shipmentData.toStreet.trim(),
+                                details: shipmentData.toDetails?.trim() || '',
+                                city: shipmentData.toCity.trim(),
+                                zone: shipmentData.toZone.trim()
+                            }),
+                            status: 'Waiting for Packaging',
+                            creationDate: new Date().toISOString(),
+                            statusHistory: JSON.stringify([{
+                                status: 'Waiting for Packaging',
+                                timestamp: new Date().toISOString()
+                            }]),
+                            clientFlatRateFee: Number(client.flatRateFee) || 30
+                        };
+
+                        // Handle wallet payment
+                        if (shipmentData.paymentMethod === 'Wallet') {
+                            const currentBalance = Number(client.walletBalance) || 0;
+                            const shippingFee = Number(client.flatRateFee) || 30;
+                            
+                            if (currentBalance < shippingFee) {
+                                throw new Error(`Insufficient wallet balance. Required: ${shippingFee} EGP, Available: ${currentBalance} EGP`);
+                            }
+
+                            // Deduct shipping fee from wallet
+                            await trx('users')
+                                .where({ id: client.id })
+                                .update({ walletBalance: currentBalance - shippingFee });
+
+                            // Create wallet transaction
+                            await trx('client_transactions').insert({
+                                id: generateId('TRN'),
+                                userId: client.id,
+                                type: 'Payment',
+                                amount: -shippingFee,
+                                date: new Date().toISOString(),
+                                description: `Shipping fee for shipment ${shipmentId}`,
+                                status: 'Processed'
+                            });
+                        }
+
+                        // Insert shipment
+                        await trx('shipments').insert(newShipment);
+
+                        // Create notification
+                        await trx('notifications').insert({
+                            id: generateId('NOT'),
+                            shipmentId: shipmentId,
+                            channel: 'Email',
+                            recipient: client.email,
+                            message: `New shipment created: ${shipmentId}\n\nRecipient: ${newShipment.recipientName}\nStatus: Waiting for Packaging`,
+                            date: new Date().toISOString(),
+                            status: 'Waiting for Packaging',
+                            sent: false
+                        });
+
+                        results.successful.push({
+                            rowIndex: i + 1,
+                            shipmentId: shipmentId,
+                            clientEmail: shipmentData.clientEmail,
+                            recipientName: shipmentData.recipientName
+                        });
+
+                    } catch (error) {
+                        results.failed.push({
+                            rowIndex: i + 1,
+                            error: error.message,
+                            data: shipmentData
+                        });
+                    }
+                }
+            });
+
+            console.log(`📦 Bulk import completed: ${results.successful.length} successful, ${results.failed.length} failed`);
+
+            res.json({
+                success: true,
+                message: `Bulk import completed: ${results.successful.length}/${results.total} shipments created successfully`,
+                results: results
+            });
+
+            throttledDataUpdate();
+
+        } catch (error) {
+            console.error('Bulk import error:', error);
+            res.status(500).json({ 
+                error: 'Server error during bulk import',
+                details: error.message 
+            });
+        }
+    });
+
     // --- Inventory & Asset Management Endpoints ---
 
     // Inventory

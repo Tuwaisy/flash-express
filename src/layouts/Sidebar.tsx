@@ -8,7 +8,7 @@ import { useAppContext } from '../context/AppContext';
 import { 
     LogoIcon, DashboardIcon, PackageIcon, UsersIcon, WalletIcon, 
     ChartBarIcon, TruckIcon, ClipboardListIcon, PlusCircleIcon,
-    UserCircleIcon, BellIcon, TrendingUpIcon, CurrencyDollarIcon, XIcon, CogIcon, CheckCircleIcon, ArchiveBoxIcon, TagIcon, SwitchHorizontalIcon, MapPinIcon, CrownIcon
+    UserCircleIcon, BellIcon, TrendingUpIcon, CurrencyDollarIcon, XIcon, CogIcon, CheckCircleIcon, ArchiveBoxIcon, TagIcon, SwitchHorizontalIcon, MapPinIcon, CrownIcon, UploadIcon
 } from '../components/Icons';
 
 interface NavItemConfig {
@@ -25,6 +25,7 @@ const ALL_NAV_ITEMS: NavItemConfig[] = [
     // Client
     { name: 'My Shipments', icon: <PackageIcon />, view: 'shipments', permission: Permission.VIEW_OWN_SHIPMENTS },
     { name: 'Create Shipment', icon: <PlusCircleIcon />, view: 'create', permission: Permission.CREATE_SHIPMENTS },
+    { name: 'Bulk Import', icon: <UploadIcon />, view: 'bulk-import', permission: Permission.CREATE_SHIPMENTS },
     { name: 'My Wallet', icon: <WalletIcon />, view: 'wallet', permission: Permission.VIEW_OWN_WALLET },
     { name: 'My Financials', icon: <ChartBarIcon />, view: 'financials', permission: Permission.VIEW_OWN_FINANCIALS },
     { name: 'Client Revenue', icon: <TrendingUpIcon />, view: 'client-revenue', permission: Permission.VIEW_CLIENT_REVENUE },

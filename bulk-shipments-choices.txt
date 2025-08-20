@@ -1,0 +1,139 @@
+Client Emails:
+admin@flash.com
+testclient@flash.com
+client@flash.com
+
+Payment Methods:
+COD
+Transfer
+Wallet
+
+Cities:
+Cairo
+Alexandria
+Giza
+Sharm El Sheikh
+Hurghada
+Luxor
+Aswan
+Port Said
+Suez
+Ismailia
+
+Cairo Zones:
+Nasr City
+Heliopolis
+Maadi
+Zamalek
+Downtown
+Dokki
+Mohandessin
+New Cairo
+6th of October
+Shoubra
+
+Alexandria Zones:
+Downtown
+Sidi Gaber
+Montaza
+Smouha
+Miami
+Gleem
+Sporting
+Stanley
+Camp Cesar
+Baccos
+
+Giza Zones:
+Dokki
+Mohandessin
+Agouza
+Haram
+6th of October
+Sheikh Zayed
+Smart Village
+Faisal
+Imbaba
+Bulaq
+
+Common Package Descriptions:
+Electronics - Smartphone
+Electronics - Laptop
+Electronics - Tablet
+Electronics - Headphones
+Electronics - Camera
+Clothing - T-Shirt
+Clothing - Jeans
+Clothing - Shoes
+Clothing - Dress
+Clothing - Jacket
+Books - Novel
+Books - Textbook
+Books - Magazine
+Home & Garden - Kitchen Appliances
+Home & Garden - Furniture
+Home & Garden - Decor
+Food & Beverages - Snacks
+Food & Beverages - Drinks
+Food & Beverages - Fresh Food
+Documents - Legal Papers
+Documents - Certificates
+Documents - Contracts
+Gifts - Birthday Gift
+Gifts - Wedding Gift
+Gifts - Anniversary Gift
+Medical - Medication
+Medical - Medical Equipment
+Medical - Health Supplements
+Beauty - Cosmetics
+Beauty - Skincare
+Beauty - Perfume
+Sports - Equipment
+Sports - Clothing
+Sports - Accessories
+
+Common Package Values (EGP):
+50
+100
+150
+200
+250
+300
+400
+500
+750
+1000
+1500
+2000
+3000
+5000
+
+Common Phone Number Formats:
++201000000000
++201100000000
++201200000000
++201500000000
+
+Street Examples:
+123 Main St
+456 Oak Ave
+789 Pine St
+321 Cedar Ln
+654 Elm Rd
+987 Maple Dr
+147 Birch Way
+258 Willow Ct
+369 Palm Blvd
+741 Rose Ave
+
+Building Details Examples:
+Apt 101
+Floor 3
+Building 5
+Suite 201
+Unit 12
+Villa 25
+Office 304
+Shop 15
+Penthouse
+Ground Floor

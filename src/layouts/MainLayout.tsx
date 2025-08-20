@@ -37,6 +37,7 @@ import CouriersByZoneView from '../views/CouriersByZoneView';
 import PartnerTierManagement from '../views/PartnerTierManagement';
 import AdminDeliveryManagement from '../views/AdminDeliveryManagement';
 import ClientRevenue from '../views/ClientRevenue';
+import { BulkShipmentImport } from '../views/BulkShipmentImport';
 
 const MainLayout: React.FC = () => {
     const { currentUser, logout, users, reassignCourier, getCourierName, hasPermission, setShipmentFilter } = useAppContext();
@@ -90,6 +91,7 @@ const MainLayout: React.FC = () => {
             case 'dashboard': return <Dashboard setActiveView={setActiveView} />;
             case 'shipments': return <ShipmentsView onSelectShipment={setSelectedShipment} />;
             case 'create': return <CreateShipment />;
+            case 'bulk-import': return <BulkShipmentImport />;
             case 'packaging-and-assignment': return <PackagingAndAssignment setLabelShipment={setLabelShipment} />;
             case 'tasks': return <CourierTasks setActiveView={setActiveView} />;
             case 'completed-orders': return <CourierCompleted onSelectShipment={setSelectedShipment} />;
