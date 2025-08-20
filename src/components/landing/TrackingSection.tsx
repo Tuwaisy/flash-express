@@ -11,53 +11,119 @@ const TrackingSection: React.FC<TrackingSectionProps> = ({ t }) => {
   const [trackingResult, setTrackingResult] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!trackingNumber.trim() || !phoneNumber.trim()) return;
 
     setIsLoading(true);
     setTrackingResult(null);
 
-    // Simulate API call
-    setTimeout(() => {
-      const statuses = [
-        { 
-          status: 'In Transit', 
-          location: 'Cairo Sorting Facility', 
-          details: 'Package has left the origin facility.',
-          icon: <Truck className="h-5 w-5" />,
-          color: 'text-blue-600'
+    try {
+      const response = await fetch('/api/track', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        { 
-          status: 'Out for Delivery', 
-          location: 'Alexandria Hub', 
-          details: 'Your package is on its way to the final destination.',
-          icon: <Package className="h-5 w-5" />,
-          color: 'text-orange-600'
-        },
-        { 
-          status: 'Delivered', 
-          location: 'Your City', 
-          details: 'Package delivered successfully.',
-          icon: <CheckCircle className="h-5 w-5" />,
-          color: 'text-green-600'
-        },
-        { 
-          status: 'Exception', 
-          location: 'Giza', 
-          details: 'Delivery attempt failed. Will retry next business day.',
+        body: JSON.stringify({
+          trackingId: trackingNumber.trim(),
+          phone: phoneNumber.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        const shipment = await response.json();
+        
+        // Map shipment status to tracking display
+        const getStatusInfo = (status: string) => {
+          switch (status) {
+            case 'Pending':
+              return {
+                status: 'Order Confirmed',
+                location: 'Processing Center',
+                details: 'Your order has been confirmed and is being prepared.',
+                icon: <Clock className="h-5 w-5" />,
+                color: 'text-blue-600'
+              };
+            case 'Assigned':
+              return {
+                status: 'Assigned to Courier',
+                location: 'Local Hub',
+                details: 'Your package has been assigned to a courier.',
+                icon: <Package className="h-5 w-5" />,
+                color: 'text-blue-600'
+              };
+            case 'In Transit':
+              return {
+                status: 'In Transit',
+                location: 'En Route',
+                details: 'Your package is on its way.',
+                icon: <Truck className="h-5 w-5" />,
+                color: 'text-blue-600'
+              };
+            case 'Out for Delivery':
+              return {
+                status: 'Out for Delivery',
+                location: 'Local Area',
+                details: 'Your package is out for delivery and will arrive soon.',
+                icon: <Truck className="h-5 w-5" />,
+                color: 'text-orange-600'
+              };
+            case 'Delivered':
+              return {
+                status: 'Delivered',
+                location: 'Destination',
+                details: 'Package delivered successfully.',
+                icon: <CheckCircle className="h-5 w-5" />,
+                color: 'text-green-600'
+              };
+            case 'Delivery Failed':
+              return {
+                status: 'Delivery Failed',
+                location: 'Local Hub',
+                details: 'Delivery attempt failed. Will retry next business day.',
+                icon: <AlertTriangle className="h-5 w-5" />,
+                color: 'text-red-600'
+              };
+            default:
+              return {
+                status: 'Processing',
+                location: 'Hub',
+                details: 'Your package is being processed.',
+                icon: <Package className="h-5 w-5" />,
+                color: 'text-blue-600'
+              };
+          }
+        };
+
+        const statusInfo = getStatusInfo(shipment.status);
+        setTrackingResult({
+          trackingId: shipment.id,
+          ...statusInfo
+        });
+      } else {
+        const errorData = await response.json();
+        setTrackingResult({
+          trackingId: trackingNumber.toUpperCase(),
+          status: 'Not Found',
+          location: 'N/A',
+          details: errorData.error || 'Shipment not found or incorrect phone number.',
           icon: <AlertTriangle className="h-5 w-5" />,
           color: 'text-red-600'
-        }
-      ];
-      
-      const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+        });
+      }
+    } catch (error) {
+      console.error('Tracking error:', error);
       setTrackingResult({
         trackingId: trackingNumber.toUpperCase(),
-        ...randomStatus
+        status: 'Error',
+        location: 'N/A',
+        details: 'Unable to track shipment. Please try again later.',
+        icon: <AlertTriangle className="h-5 w-5" />,
+        color: 'text-red-600'
       });
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (

@@ -85,9 +85,6 @@ const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
             if (!isSuperUser) {
                 headers.push('Client Fee (EGP)');
             }
-            if (canSeeAdminFinancials) {
-                 headers.push('Courier Commission (EGP)');
-            }
             const body = shipmentsToExport.map(s => {
                 // Safely convert to numbers with fallbacks
                 const clientFee = Number(s.clientFlatRateFee) || 0;
@@ -103,10 +100,6 @@ const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
                 
                 if (!isSuperUser) {
                     row.push((Number(clientFee) || 0).toFixed(2));
-                }
-
-                if (canSeeAdminFinancials) {
-                    row.push((Number(courierCommission) || 0).toFixed(2));
                 }
                 return row;
             });
@@ -211,7 +204,7 @@ const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
                     showPackageValue={isAssigner}
                     priceColumnTitle={isAssigner ? 'Total COD' : 'Price'}
                     showClientFee={!isSuperUser}
-                    showCourierCommission={canSeeAdminFinancials}
+                    showCourierCommission={false}
                     showNetProfit={false}
                     showEditableFees={canSeeAdminFinancials}
                     updateShipmentFees={canSeeAdminFinancials ? updateShipmentFees : undefined}

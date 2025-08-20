@@ -8,7 +8,11 @@ import { PackageIcon, CheckCircleIcon, ClockIcon, XCircleIcon, TruckIcon, Docume
 import { ShipmentList } from '../components/specific/ShipmentList';
 import { exportToCsv } from '../utils/pdf';
 
-export const TotalShipments = () => {
+interface TotalShipmentsProps {
+    onSelectShipment?: (shipment: Shipment) => void;
+}
+
+export const TotalShipments: React.FC<TotalShipmentsProps> = ({ onSelectShipment }) => {
     const { shipments, hasPermission, getCourierName, updateShipmentFees } = useAppContext();
     
     const [searchTerm, setSearchTerm] = useState('');
@@ -142,6 +146,7 @@ export const TotalShipments = () => {
                 </div>
                 <ShipmentList
                     shipments={filteredShipments}
+                    onSelect={onSelectShipment}
                     showPackageValue={true}
                     priceColumnTitle="Total COD"
                     showClientFee={canSeeAdminFinancials}

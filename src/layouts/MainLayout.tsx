@@ -103,7 +103,7 @@ const MainLayout: React.FC = () => {
             case 'profile': return <Profile />;
             case 'courier-financials': return <CourierFinancials />;
             case 'courier-performance': return <CourierPerformance onSelectShipment={setSelectedShipment} />;
-            case 'total-shipments': return <TotalShipments />;
+            case 'total-shipments': return <TotalShipments onSelectShipment={setSelectedShipment} />;
             case 'inventory': return <InventoryManagement />;
             case 'asset-management': return <AssetManagement />;
             case 'my-assets': return <MyAssets />;
