@@ -1,42 +1,42 @@
-Recipient Name,Recipient Phone (01xxxxxxxxx OR 1xxxxxxxxx),Recipient Street,City,Zone,Address Details,Package Description,Payment Method,Priority,Package Value,Amount to Collect For COD: amount + shipping if included | For Transfer: 0,Shipping Fee Included TRUE | FALSE (add shipping to collection amount)
-Abo Alaa,01000909899,123 Tahrir St,Cairo,Nasr City,"Apartment 5, Floor 3",Electronics,COD,Standard,500,575,TRUE
-Shahbandar,01000909899,456 Nile St,Cairo,Heliopolis,"Building 10, Floor 2",Books and Stationery,Transfer,Urgent,200,0,FALSE
-Abo Alaa,01000909899,124 Tahrir St,Cairo,New Cairo,"Apartment 5, Floor 3",Electronics,COD,Express,500,575,TRUE
-Shahbandar,01000909899,457 Nile St,Cairo,5th Settlement,"Building 10, Floor 2",Books and Stationery,Transfer,Urgent,200,0,FALSE
-Abo Alaa,1000909899,125 Tahrir St,Cairo,3rd Settlement,"Apartment 5, Floor 3",Electronics,COD,Standard,500,575,TRUE
-Shahbandar,1000909899,458 Nile St,Cairo,1st Settlement,"Building 10, Floor 2",Books and Stationery,Transfer,Urgent,200,0,FALSE
-Abo Alaa,1000909899,126 Tahrir St,Cairo,Rehab City,"Apartment 5, Floor 3",Electronics,COD,Standard,500,575,TRUE
-Shahbandar,1000909899,459 Nile St,Cairo,Madinty,"Building 10, Floor 2",Books and Stationery,Transfer,Urgent,200,0,FALSE
-Abo Alaa,1000909899,127 Tahrir St,Cairo,El Shorouk,"Apartment 5, Floor 3",Electronics,COD,Standard,500,575,TRUE
-Shahbandar,1000909899,460 Nile St,Cairo,El Obour,"Building 10, Floor 2",Books and Stationery,Transfer,Urgent,200,0,FALSE
-Abo Alaa,1000909899,128 Tahrir St,Cairo,Maadi,"Apartment 5, Floor 3",Electronics,COD,Standard,500,575,TRUE
-Shahbandar,1000909899,461 Nile St,Cairo,Zahraa El Maadi,"Building 10, Floor 2",Books and Stationery,Transfer,Urgent,200,0,FALSE
-Abo Alaa,1000909899,129 Tahrir St,Cairo,Katameya,"Apartment 5, Floor 3",Electronics,COD,Standard,500,575,TRUE
-Shahbandar,1000909899,462 Nile St,Cairo,Mokattam,"Building 10, Floor 2",Books and Stationery,Transfer,Urgent,200,0,FALSE
-Abo Alaa,1000909899,130 Tahrir St,Cairo,Downtown Cairo,"Apartment 5, Floor 3",Electronics,COD,Standard,500,575,TRUE
-Shahbandar,1000909899,463 Nile St,Cairo,Garden City,"Building 10, Floor 2",Books and Stationery,Transfer,Urgent,200,0,FALSE
-Abo Alaa,1000909899,131 Tahrir St,Cairo,Zamalek,"Building 10, Floor 3",Books and Stationery,Transfer,Urgent,500,575,TRUE
-Shahbandar,1000909899,464 Nile St,Cairo,Shubra,"Apartment 5, Floor 4",Electronics,COD,Standard,200,0,FALSE
-Abo Alaa,1000909899,132 Tahrir St,Cairo,Abbassia,"Building 10, Floor 3",Books and Stationery,Transfer,Urgent,500,575,TRUE
-Shahbandar,1000909899,465 Nile St,Cairo,Ain Shams,"Apartment 5, Floor 4",Electronics,COD,Standard,200,0,FALSE
-Abo Alaa,1000909899,133 Tahrir St,Cairo,El Marg,"Building 10, Floor 3",Books and Stationery,Transfer,Urgent,500,575,TRUE
-Shahbandar,1000909899,466 Nile St,Cairo,Matariya,"Apartment 5, Floor 4",Electronics,COD,Standard,200,0,FALSE
-Abo Alaa,1000909899,134 Tahrir St,Cairo,Helwan,"Building 10, Floor 3",Books and Stationery,Transfer,Urgent,500,575,TRUE
-Shahbandar,1000909899,467 Nile St,Cairo,15th of May City,"Building 10, Floor 4",Books and Stationery,Transfer,Urgent,200,0,FALSE
-Abo Alaa,1000909899,133 Tahrir St,Cairo,New Administrative Capital,"Apartment 5, Floor 5",Electronics,COD,Standard,500,575,TRUE
-Shahbandar,1000909899,466 Nile St,Giza,Mohandessin,"Building 10, Floor 4",Books and Stationery,Transfer,Urgent,200,0,FALSE
-Abo Alaa,1000909899,465 Nile St,Giza,Dokki,"Apartment 5, Floor 5",Electronics,COD,Standard,500,575,TRUE
-Shahbandar,1000909899,465 Nile St,Giza,Agouza,"Building 10, Floor 4",Books and Stationery,Transfer,Urgent,200,0,FALSE
-Abo Alaa,1000909899,133 Tahrir St,Giza,Haram,"Apartment 5, Floor 5",Electronics,COD,Standard,500,575,TRUE
-Shahbandar,1000909899,466 Nile St,Giza,Faisal,"Building 10, Floor 4",Books and Stationery,Transfer,Urgent,200,0,FALSE
-Abo Alaa,1000909899,134 Tahrir St,Giza,Giza Square,"Building 10, Floor 5",Books and Stationery,Transfer,Urgent,500,0,TRUE
-Shahbandar,1000909899,467 Nile St,Giza,Imbaba,"Apartment 5, Floor 6",Electronics,COD,Standard,200,0,FALSE
-Abo Alaa,1000909899,135 Tahrir St,Giza,Boulak El Dakrour,"Building 10, Floor 5",Books and Stationery,Transfer,Urgent,500,575,TRUE
-Shahbandar,1000909899,468 Nile St,Giza,Warraq,"Apartment 5, Floor 6",Electronics,COD,Standard,200,0,FALSE
-Abo Alaa,1000909899,134 Tahrir St,Giza,6th of October City,"Building 10, Floor 5",Books and Stationery,Transfer,Urgent,500,575,TRUE
-Shahbandar,1000909899,464 Nile St,Giza,Sheikh Zayed,"Apartment 5, Floor 6",Electronics,COD,Standard,200,0,FALSE
-Abo Alaa,1000909899,463 Nile St,Giza,Hadayek October,"Building 10, Floor 5",Books and Stationery,Transfer,Urgent,500,0,TRUE
-Shahbandar,1000909899,466 Nile St,Giza,Mansoureya,"Building 10, Floor 6",Books and Stationery,Transfer,Urgent,200,0,FALSE
-Abo Alaa,1000909899,134 Tahrir St,Giza,Nazlet El Semman,"Apartment 5, Floor 7",Electronics,COD,Standard,500,575,TRUE
-Shahbandar,1000909899,467 Nile St,Giza,Maryoteya,"Building 10, Floor 6",Books and Stationery,Transfer,Urgent,200,0,FALSE
-Abo Alaa,1000909899,467 Nile St,Giza,Bahariya Oasis Road,"Apartment 5, Floor 7",Electronics,COD,Standard,500,575,TRUE
+Recipient Name,Recipient Phone,Recipient Street,City,Zone,Address Details,Package Description,Payment Method,Priority,Package Value,Amount to Collect,Shipping Fee Included
+Ahmed Hassan,01123456789,15 Tahrir Square,Cairo,Nasr City,"Apartment 3, Floor 2",Electronics - Mobile Phone,COD,Standard,800,875,TRUE
+Fatma Ali,1234567890,25 Nile Corniche,Cairo,Heliopolis,"Villa 12, Ground Floor",Books and Stationery,Transfer,Urgent,300,350,TRUE
+Mohamed Sayed,01987654321,45 New Cairo St,Cairo,New Cairo,"Flat 7, Floor 4",Clothing - Jacket,COD,Express,250,375,TRUE
+Nour Ibrahim,1555666777,78 5th Settlement Rd,Cairo,5th Settlement,"Building 5, Floor 1",Home Appliances,Transfer,Standard,1200,0,FALSE
+Omar Khaled,01444555666,12 3rd Settlement Ave,Cairo,3rd Settlement,"Apartment 15, Floor 8",Sports Equipment,COD,Urgent,600,687.5,TRUE
+Layla Ahmed,1333444555,33 1st Settlement Blvd,Cairo,1st Settlement,"Villa 3, Second Floor",Baby Products,Transfer,Express,400,500,TRUE
+Youssef Mahmoud,01222333444,56 Rehab City St,Cairo,Rehab City,"Building 22, Floor 3",Electronics - Laptop,COD,Standard,2500,2575,TRUE
+Maha Mostafa,1111222333,89 Madinty Blvd,Cairo,Madinty,"Apartment 8, Floor 6",Beauty Products,Transfer,Urgent,150,225,TRUE
+Karim Fathy,01999888777,67 El Shorouk Ave,Cairo,El Shorouk,"Villa 7, Ground Floor",Automotive Parts,COD,Express,350,475,TRUE
+Sara Nabil,1888777666,44 El Obour City,Cairo,El Obour,"Building 11, Floor 2",Toys and Games,Transfer,Standard,180,0,FALSE
+Tamer Adel,01777666555,23 Maadi St,Cairo,Maadi,"Apartment 19, Floor 5",Health Supplements,COD,Urgent,320,407.5,TRUE
+Dina Essam,1666555444,78 Zahraa El Maadi,Cairo,Zahraa El Maadi,"Villa 14, First Floor",Kitchen Appliances,Transfer,Express,900,1025,TRUE
+Hany Salah,01555444333,90 Katameya Heights,Cairo,Katameya,"Building 8, Floor 4",Computer Accessories,COD,Standard,220,295,TRUE
+Rania Gamal,1444333222,34 Mokattam Hills,Cairo,Mokattam,"Apartment 6, Floor 3",Fashion Accessories,Transfer,Urgent,280,350,TRUE
+Sherif Wael,01333222111,67 Downtown Cairo,Cairo,Downtown Cairo,"Villa 9, Second Floor",Office Supplies,COD,Express,160,285,TRUE
+Noha Tarek,1222111000,45 Garden City,Cairo,Garden City,"Building 13, Floor 7",Pet Supplies,Transfer,Standard,130,0,FALSE
+Amr Hosny,01111000999,89 Zamalek St,Cairo,Zamalek,"Apartment 21, Floor 6",Music Instruments,COD,Urgent,750,837.5,TRUE
+Eman Farid,1000999888,12 Shubra St,Cairo,Shubra,"Building 4, Floor 1",Household Items,Transfer,Express,95,170,TRUE
+Mahmoud Reda,01999888111,56 Abbassia Sq,Cairo,Abbassia,"Apartment 11, Floor 5",Garden Tools,COD,Standard,180,255,TRUE
+Yasmin Fouad,1888777000,78 Ain Shams,Cairo,Ain Shams,"Villa 2, Ground Floor",Craft Supplies,Transfer,Urgent,140,215,TRUE
+Ahmed Samir,01777666000,23 El Marg,Cairo,El Marg,"Building 7, Floor 2",Electrical Tools,COD,Express,290,415,TRUE
+Mariam Said,1666555000,45 Matariya,Cairo,Matariya,"Apartment 14, Floor 4",Educational Books,Transfer,Standard,110,0,FALSE
+Hassan Omar,01555444000,67 Helwan,Cairo,Helwan,"Villa 6, First Floor",Medical Equipment,COD,Urgent,850,937.5,TRUE
+Nadine Adham,1444333000,89 15th of May City,Cairo,15th of May City,"Building 9, Floor 3",Art Supplies,Transfer,Express,200,275,TRUE
+Khaled Ashraf,01333222000,12 New Capital,Cairo,New Administrative Capital,"Apartment 25, Floor 8",Furniture,COD,Standard,1500,1575,TRUE
+Nadia Youssef,1222111999,34 Mohandessin,Giza,Mohandessin,"Building 16, Floor 6",Jewelry,Transfer,Urgent,600,675,TRUE
+Bassam Kamal,01111000888,56 Dokki St,Giza,Dokki,"Apartment 12, Floor 4",Shoes,COD,Express,320,445,TRUE
+Reem Mansour,1000999777,78 Agouza,Giza,Agouza,"Villa 8, Second Floor",Perfumes,Transfer,Standard,250,0,FALSE
+Tarek Zaki,01999888000,90 Haram St,Giza,Haram,"Building 3, Floor 1",Souvenirs,COD,Urgent,120,207.5,TRUE
+Salma Nasser,1888777999,23 Faisal St,Giza,Faisal,"Apartment 17, Floor 7",Mobile Accessories,Transfer,Express,85,160,TRUE
+Mostafa Galal,01777666999,45 Giza Square,Giza,Giza Square,"Villa 11, Ground Floor",Board Games,COD,Standard,95,170,TRUE
+Hala Magdy,1666555999,67 Imbaba,Giza,Imbaba,"Building 12, Floor 5",Skincare Products,Transfer,Urgent,170,245,TRUE
+Waleed Saad,01555444999,89 Boulak El Dakrour,Giza,Boulak El Dakrour,"Apartment 20, Floor 2",Phone Cases,COD,Express,45,170,TRUE
+Dalia Fahmy,1444333999,12 Warraq,Giza,Warraq,"Villa 4, First Floor",Fitness Equipment,Transfer,Standard,400,0,FALSE
+Ayman Helmy,01333222999,34 6th October,Giza,6th of October City,"Building 18, Floor 3",Video Games,COD,Urgent,280,367.5,TRUE
+Ghada Sameh,1222111888,56 Sheikh Zayed,Giza,Sheikh Zayed,"Apartment 9, Floor 6",Handbags,Transfer,Express,350,425,TRUE
+Ragab Mohsen,01111000777,78 Hadayek October,Giza,Hadayek October,"Villa 15, Second Floor",Tools,COD,Standard,190,265,TRUE
+Mona Abdel,1000999666,90 Mansoureya,Giza,Mansoureya,"Building 6, Floor 4",Cosmetics,Transfer,Urgent,130,205,TRUE
+Islam Rizk,01999888666,23 Nazlet El Semman,Giza,Nazlet El Semman,"Apartment 13, Floor 1",Camera Equipment,COD,Express,650,775,TRUE
+Nesma Lotfy,1888777888,45 Maryoteya,Giza,Maryoteya,"Villa 10, Ground Floor",Travel Accessories,Transfer,Standard,220,0,FALSE
+Adel Farouk,01777666888,67 Bahariya Oasis Road,Giza,Bahariya Oasis Road,"Building 14, Floor 5",Camping Gear,COD,Urgent,380,467.5,TRUE

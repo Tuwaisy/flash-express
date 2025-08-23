@@ -7,7 +7,10 @@ import { Address, PaymentMethod, ZONES, ShipmentPriority, Shipment, User, Permis
 import { PlusCircleIcon, UploadIcon, DownloadIcon, CheckCircleIcon, XCircleIcon } from '../components/Icons';
 import Papa from 'papaparse';
 
-type BulkShipment = Omit<Shipment, 'id' | 'clientId' | 'clientName' | 'fromAddress' | 'status' | 'creationDate' | 'isLargeOrder' | 'price' | 'clientFlatRateFee' | 'courierCommission'>;
+type BulkShipment = Omit<Shipment, 'id' | 'clientId' | 'clientName' | 'fromAddress' | 'status' | 'creationDate' | 'isLargeOrder' | 'price' | 'clientFlatRateFee' | 'courierCommission'> & {
+    amountToCollect?: number;
+    csvShippingFeeIncluded?: boolean; // Temporary field for CSV processing only
+};
 
 const CreateShipment = () => {
     const { currentUser, users, addShipment, addToast, calculatePriorityPrice, hasPermission, tierSettings } = useAppContext();
@@ -181,6 +184,10 @@ const CreateShipment = () => {
                         phone = '0' + phone;
                     }
                     
+                    // Parse amount to collect and shipping fee included
+                    const amountToCollect = parseFloat(row['Amount to Collect']) || 0;
+                    const shippingFeeIncluded = String(row['Shipping Fee Included']).toLowerCase() === 'true';
+                    
                     return {
                         recipientName: row['Recipient Name'],
                         recipientPhone: phone,
@@ -194,6 +201,8 @@ const CreateShipment = () => {
                         paymentMethod: row['Payment Method'] as PaymentMethod,
                         priority: row['Priority'] as ShipmentPriority,
                         packageValue: parseFloat(row['Package Value']),
+                        amountToCollect: amountToCollect,
+                        csvShippingFeeIncluded: shippingFeeIncluded, // Temporary field for processing
                     };
                 });
                 setParsedData(shipments);
@@ -257,20 +266,29 @@ const CreateShipment = () => {
              const priorityAdjustedFee = calculatePriorityPrice(baseFee, shipment.priority, clientForBulk);
              
              let calculatedPrice;
+             let finalAmountToCollect = 0;
+             
              if (shipment.paymentMethod === PaymentMethod.TRANSFER) {
-                 calculatedPrice = 0;
+                 // For Transfer: Use amount to collect from CSV, optionally including shipping fee
+                 const baseAmountToCollect = shipment.amountToCollect || 0;
+                 finalAmountToCollect = shipment.csvShippingFeeIncluded ? baseAmountToCollect + priorityAdjustedFee : baseAmountToCollect;
+                 calculatedPrice = finalAmountToCollect;
              } else { // COD
                  calculatedPrice = (shipment.packageValue || 0) + priorityAdjustedFee;
              }
             
+            // Remove CSV processing fields before creating shipment
+            const { csvShippingFeeIncluded, ...cleanShipment } = shipment;
+            
             addShipment({
-                ...shipment,
+                ...cleanShipment,
                  isLargeOrder: false,
                  price: calculatedPrice,
                  clientFlatRateFee: priorityAdjustedFee,
                  clientId: clientForBulk.id,
                  clientName: clientForBulk.name,
                  fromAddress: clientForBulk.address!,
+                 amountToCollect: shipment.paymentMethod === PaymentMethod.TRANSFER ? finalAmountToCollect : undefined,
             });
         });
         
@@ -298,48 +316,49 @@ const CreateShipment = () => {
         
         const templateData = [
             headers,
-            [
-                'Enter recipient full name',
-                '01xxxxxxxxx (11 digits) OR 1xxxxxxxxx (10 digits)',
-                'Enter full street address',
-                'Cairo | Giza',
-                `Cairo zones: ${cairoZones} || Giza zones: ${gizaZones}`,
-                'Additional address details',
-                'Describe package contents',
-                'COD | Transfer',
-                `Standard (${(Number(standardFee) || 0).toFixed(2)} EGP) | Urgent (${(Number(urgentFee) || 0).toFixed(2)} EGP) | Express (${(Number(expressFee) || 0).toFixed(2)} EGP)`,
-                'Package value in EGP',
-                'For COD: amount + shipping if included | For Transfer: 0',
-                'TRUE | FALSE (add shipping to collection amount)'
-            ],
-            [
-                'Ahmed Mohamed',
-                '01000909899',
-                '123 Tahrir St',
-                'Cairo',
-                'Nasr City',
-                'Apartment 5, Floor 3',
-                'Electronics - Mobile Phone',
-                'COD',
-                'Standard',
-                '500.00',
-                '575.00',
-                'TRUE'
-            ],
-            [
-                'Fatma Ali',
-                '1123456789',
-                '456 Nile St',
-                'Giza',
-                'Dokki',
-                'Building 10, Floor 2',
-                'Books and Stationery',
-                'Transfer',
-                'Urgent',
-                '200.00',
-                '0',
-                'FALSE'
-            ]
+            // Complete Cairo zones in order
+            ['Ahmed Hassan', '01123456789', '15 Tahrir Square', 'Cairo', 'Nasr City', 'Apartment 3, Floor 2', 'Electronics - Mobile Phone', 'COD', 'Standard', '800.00', '875.00', 'TRUE'],
+            ['Fatma Ali', '1234567890', '25 Nile Corniche', 'Cairo', 'Heliopolis', 'Villa 12, Ground Floor', 'Books and Stationery', 'Transfer', 'Urgent', '300.00', '350.00', 'TRUE'],
+            ['Mohamed Sayed', '01987654321', '45 New Cairo St', 'Cairo', 'New Cairo', 'Flat 7, Floor 4', 'Clothing - Jacket', 'COD', 'Express', '250.00', '375.00', 'TRUE'],
+            ['Nour Ibrahim', '1555666777', '78 5th Settlement Rd', 'Cairo', '5th Settlement', 'Building 5, Floor 1', 'Home Appliances', 'Transfer', 'Standard', '1200.00', '0.00', 'FALSE'],
+            ['Omar Khaled', '01444555666', '12 3rd Settlement Ave', 'Cairo', '3rd Settlement', 'Apartment 15, Floor 8', 'Sports Equipment', 'COD', 'Urgent', '600.00', '687.50', 'TRUE'],
+            ['Layla Ahmed', '1333444555', '33 1st Settlement Blvd', 'Cairo', '1st Settlement', 'Villa 3, Second Floor', 'Baby Products', 'Transfer', 'Express', '400.00', '500.00', 'TRUE'],
+            ['Youssef Mahmoud', '01222333444', '56 Rehab City St', 'Cairo', 'Rehab City', 'Building 22, Floor 3', 'Electronics - Laptop', 'COD', 'Standard', '2500.00', '2575.00', 'TRUE'],
+            ['Maha Mostafa', '1111222333', '89 Madinty Blvd', 'Cairo', 'Madinty', 'Apartment 8, Floor 6', 'Beauty Products', 'Transfer', 'Urgent', '150.00', '225.00', 'TRUE'],
+            ['Karim Fathy', '01999888777', '67 El Shorouk Ave', 'Cairo', 'El Shorouk', 'Villa 7, Ground Floor', 'Automotive Parts', 'COD', 'Express', '350.00', '475.00', 'TRUE'],
+            ['Sara Nabil', '1888777666', '44 El Obour City', 'Cairo', 'El Obour', 'Building 11, Floor 2', 'Toys and Games', 'Transfer', 'Standard', '180.00', '0.00', 'FALSE'],
+            ['Tamer Adel', '01777666555', '23 Maadi St', 'Cairo', 'Maadi', 'Apartment 19, Floor 5', 'Health Supplements', 'COD', 'Urgent', '320.00', '407.50', 'TRUE'],
+            ['Dina Essam', '1666555444', '78 Zahraa El Maadi', 'Cairo', 'Zahraa El Maadi', 'Villa 14, First Floor', 'Kitchen Appliances', 'Transfer', 'Express', '900.00', '1025.00', 'TRUE'],
+            ['Hany Salah', '01555444333', '90 Katameya Heights', 'Cairo', 'Katameya', 'Building 8, Floor 4', 'Computer Accessories', 'COD', 'Standard', '220.00', '295.00', 'TRUE'],
+            ['Rania Gamal', '1444333222', '34 Mokattam Hills', 'Cairo', 'Mokattam', 'Apartment 6, Floor 3', 'Fashion Accessories', 'Transfer', 'Urgent', '280.00', '350.00', 'TRUE'],
+            ['Sherif Wael', '01333222111', '67 Downtown Cairo', 'Cairo', 'Downtown Cairo', 'Villa 9, Second Floor', 'Office Supplies', 'COD', 'Express', '160.00', '285.00', 'TRUE'],
+            ['Noha Tarek', '1222111000', '45 Garden City', 'Cairo', 'Garden City', 'Building 13, Floor 7', 'Pet Supplies', 'Transfer', 'Standard', '130.00', '0.00', 'FALSE'],
+            ['Amr Hosny', '01111000999', '89 Zamalek St', 'Cairo', 'Zamalek', 'Apartment 21, Floor 6', 'Music Instruments', 'COD', 'Urgent', '750.00', '837.50', 'TRUE'],
+            ['Eman Farid', '1000999888', '12 Shubra St', 'Cairo', 'Shubra', 'Building 4, Floor 1', 'Household Items', 'Transfer', 'Express', '95.00', '170.00', 'TRUE'],
+            ['Mahmoud Reda', '01999888111', '56 Abbassia Sq', 'Cairo', 'Abbassia', 'Apartment 11, Floor 5', 'Garden Tools', 'COD', 'Standard', '180.00', '255.00', 'TRUE'],
+            ['Yasmin Fouad', '1888777000', '78 Ain Shams', 'Cairo', 'Ain Shams', 'Villa 2, Ground Floor', 'Craft Supplies', 'Transfer', 'Urgent', '140.00', '215.00', 'TRUE'],
+            ['Ahmed Samir', '01777666000', '23 El Marg', 'Cairo', 'El Marg', 'Building 7, Floor 2', 'Electrical Tools', 'COD', 'Express', '290.00', '415.00', 'TRUE'],
+            ['Mariam Said', '1666555000', '45 Matariya', 'Cairo', 'Matariya', 'Apartment 14, Floor 4', 'Educational Books', 'Transfer', 'Standard', '110.00', '0.00', 'FALSE'],
+            ['Hassan Omar', '01555444000', '67 Helwan', 'Cairo', 'Helwan', 'Villa 6, First Floor', 'Medical Equipment', 'COD', 'Urgent', '850.00', '937.50', 'TRUE'],
+            ['Nadine Adham', '1444333000', '89 15th of May City', 'Cairo', '15th of May City', 'Building 9, Floor 3', 'Art Supplies', 'Transfer', 'Express', '200.00', '275.00', 'TRUE'],
+            ['Khaled Ashraf', '01333222000', '12 New Capital', 'Cairo', 'New Administrative Capital', 'Apartment 25, Floor 8', 'Furniture', 'COD', 'Standard', '1500.00', '1575.00', 'TRUE'],
+            // Complete Giza zones in order
+            ['Nadia Youssef', '1222111999', '34 Mohandessin', 'Giza', 'Mohandessin', 'Building 16, Floor 6', 'Jewelry', 'Transfer', 'Urgent', '600.00', '675.00', 'TRUE'],
+            ['Bassam Kamal', '01111000888', '56 Dokki St', 'Giza', 'Dokki', 'Apartment 12, Floor 4', 'Shoes', 'COD', 'Express', '320.00', '445.00', 'TRUE'],
+            ['Reem Mansour', '1000999777', '78 Agouza', 'Giza', 'Agouza', 'Villa 8, Second Floor', 'Perfumes', 'Transfer', 'Standard', '250.00', '0.00', 'FALSE'],
+            ['Tarek Zaki', '01999888000', '90 Haram St', 'Giza', 'Haram', 'Building 3, Floor 1', 'Souvenirs', 'COD', 'Urgent', '120.00', '207.50', 'TRUE'],
+            ['Salma Nasser', '1888777999', '23 Faisal St', 'Giza', 'Faisal', 'Apartment 17, Floor 7', 'Mobile Accessories', 'Transfer', 'Express', '85.00', '160.00', 'TRUE'],
+            ['Mostafa Galal', '01777666999', '45 Giza Square', 'Giza', 'Giza Square', 'Villa 11, Ground Floor', 'Board Games', 'COD', 'Standard', '95.00', '170.00', 'TRUE'],
+            ['Hala Magdy', '1666555999', '67 Imbaba', 'Giza', 'Imbaba', 'Building 12, Floor 5', 'Skincare Products', 'Transfer', 'Urgent', '170.00', '245.00', 'TRUE'],
+            ['Waleed Saad', '01555444999', '89 Boulak El Dakrour', 'Giza', 'Boulak El Dakrour', 'Apartment 20, Floor 2', 'Phone Cases', 'COD', 'Express', '45.00', '170.00', 'TRUE'],
+            ['Dalia Fahmy', '1444333999', '12 Warraq', 'Giza', 'Warraq', 'Villa 4, First Floor', 'Fitness Equipment', 'Transfer', 'Standard', '400.00', '0.00', 'FALSE'],
+            ['Ayman Helmy', '01333222999', '34 6th October', 'Giza', '6th of October City', 'Building 18, Floor 3', 'Video Games', 'COD', 'Urgent', '280.00', '367.50', 'TRUE'],
+            ['Ghada Sameh', '1222111888', '56 Sheikh Zayed', 'Giza', 'Sheikh Zayed', 'Apartment 9, Floor 6', 'Handbags', 'Transfer', 'Express', '350.00', '425.00', 'TRUE'],
+            ['Ragab Mohsen', '01111000777', '78 Hadayek October', 'Giza', 'Hadayek October', 'Villa 15, Second Floor', 'Tools', 'COD', 'Standard', '190.00', '265.00', 'TRUE'],
+            ['Mona Abdel', '1000999666', '90 Mansoureya', 'Giza', 'Mansoureya', 'Building 6, Floor 4', 'Cosmetics', 'Transfer', 'Urgent', '130.00', '205.00', 'TRUE'],
+            ['Islam Rizk', '01999888666', '23 Nazlet El Semman', 'Giza', 'Nazlet El Semman', 'Apartment 13, Floor 1', 'Camera Equipment', 'COD', 'Express', '650.00', '775.00', 'TRUE'],
+            ['Nesma Lotfy', '1888777888', '45 Maryoteya', 'Giza', 'Maryoteya', 'Villa 10, Ground Floor', 'Travel Accessories', 'Transfer', 'Standard', '220.00', '0.00', 'FALSE'],
+            ['Adel Farouk', '01777666888', '67 Bahariya Oasis Road', 'Giza', 'Bahariya Oasis Road', 'Building 14, Floor 5', 'Camping Gear', 'COD', 'Urgent', '380.00', '467.50', 'TRUE']
         ];
         
         const csv = Papa.unparse(templateData);

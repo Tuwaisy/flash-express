@@ -208,6 +208,36 @@ export default function PackagingAndAssignment({ setLabelShipment }: PackagingAn
         exportToCsv(headers, body, fileName);
     };
 
+    const handlePrintAllLabels = () => {
+        let shipmentsToPrint: Shipment[] = [];
+
+        switch (activeTab) {
+            case 'packaging':
+                shipmentsToPrint = shipmentsToPackage;
+                break;
+            case 'assignment':
+                shipmentsToPrint = shipmentsToAssign;
+                break;
+            case 'delivery':
+                shipmentsToPrint = shipmentsForDelivery;
+                break;
+        }
+
+        if (shipmentsToPrint.length === 0) {
+            addToast('No shipments available to print labels for.', 'info');
+            return;
+        }
+
+        // Print each shipment label sequentially
+        shipmentsToPrint.forEach((shipment, index) => {
+            setTimeout(() => {
+                setLabelShipment(shipment);
+            }, index * 100); // Small delay between each print to avoid overwhelming the browser
+        });
+
+        addToast(`Preparing to print ${shipmentsToPrint.length} labels...`, 'success');
+    };
+
     const totalBoxesInSummary = useMemo(() => Object.entries(materialsSummary).filter(([key]) => key.startsWith('inv_box_')).reduce((sum, [, value]) => sum + Number(value), 0), [materialsSummary]);
     
     const TabButton: React.FC<{ label: string; count: number; isActive: boolean; onClick: () => void; }> = ({ label, count, isActive, onClick }) => (
@@ -283,6 +313,13 @@ export default function PackagingAndAssignment({ setLabelShipment }: PackagingAn
                         )}
                         <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full sm:w-auto px-4 py-2 border border-border rounded-lg" aria-label="Filter by creation date" />
                         {selectedDate && <button onClick={() => setSelectedDate('')} className="px-4 py-2 text-sm font-semibold text-muted-foreground rounded-lg hover:bg-accent" aria-label="Clear date filter">Clear</button>}
+                        <button 
+                            onClick={handlePrintAllLabels}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
+                        >
+                            <PrinterIcon className="w-5 h-5"/>
+                            Print All Labels
+                        </button>
                         <button 
                             onClick={handleExport}
                             className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition"
