@@ -1,0 +1,42 @@
+Recipient Name,Recipient Phone (01xxxxxxxxx OR 1xxxxxxxxx),Recipient Street,City,Zone,Address Details,Package Description,Payment Method,Priority,Package Value,Amount to Collect For COD: amount + shipping if included | For Transfer: 0,Shipping Fee Included TRUE | FALSE (add shipping to collection amount)
+Abo Alaa,01000909899,123 Tahrir St,Cairo,Nasr City,"Apartment 5, Floor 3",Electronics,COD,Standard,500,575,TRUE
+Shahbandar,01000909899,456 Nile St,Cairo,Heliopolis,"Building 10, Floor 2",Books and Stationery,Transfer,Urgent,200,0,FALSE
+Abo Alaa,01000909899,124 Tahrir St,Cairo,New Cairo,"Apartment 5, Floor 3",Electronics,COD,Express,500,575,TRUE
+Shahbandar,01000909899,457 Nile St,Cairo,5th Settlement,"Building 10, Floor 2",Books and Stationery,Transfer,Urgent,200,0,FALSE
+Abo Alaa,1000909899,125 Tahrir St,Cairo,3rd Settlement,"Apartment 5, Floor 3",Electronics,COD,Standard,500,575,TRUE
+Shahbandar,1000909899,458 Nile St,Cairo,1st Settlement,"Building 10, Floor 2",Books and Stationery,Transfer,Urgent,200,0,FALSE
+Abo Alaa,1000909899,126 Tahrir St,Cairo,Rehab City,"Apartment 5, Floor 3",Electronics,COD,Standard,500,575,TRUE
+Shahbandar,1000909899,459 Nile St,Cairo,Madinty,"Building 10, Floor 2",Books and Stationery,Transfer,Urgent,200,0,FALSE
+Abo Alaa,1000909899,127 Tahrir St,Cairo,El Shorouk,"Apartment 5, Floor 3",Electronics,COD,Standard,500,575,TRUE
+Shahbandar,1000909899,460 Nile St,Cairo,El Obour,"Building 10, Floor 2",Books and Stationery,Transfer,Urgent,200,0,FALSE
+Abo Alaa,1000909899,128 Tahrir St,Cairo,Maadi,"Apartment 5, Floor 3",Electronics,COD,Standard,500,575,TRUE
+Shahbandar,1000909899,461 Nile St,Cairo,Zahraa El Maadi,"Building 10, Floor 2",Books and Stationery,Transfer,Urgent,200,0,FALSE
+Abo Alaa,1000909899,129 Tahrir St,Cairo,Katameya,"Apartment 5, Floor 3",Electronics,COD,Standard,500,575,TRUE
+Shahbandar,1000909899,462 Nile St,Cairo,Mokattam,"Building 10, Floor 2",Books and Stationery,Transfer,Urgent,200,0,FALSE
+Abo Alaa,1000909899,130 Tahrir St,Cairo,Downtown Cairo,"Apartment 5, Floor 3",Electronics,COD,Standard,500,575,TRUE
+Shahbandar,1000909899,463 Nile St,Cairo,Garden City,"Building 10, Floor 2",Books and Stationery,Transfer,Urgent,200,0,FALSE
+Abo Alaa,1000909899,131 Tahrir St,Cairo,Zamalek,"Building 10, Floor 3",Books and Stationery,Transfer,Urgent,500,575,TRUE
+Shahbandar,1000909899,464 Nile St,Cairo,Shubra,"Apartment 5, Floor 4",Electronics,COD,Standard,200,0,FALSE
+Abo Alaa,1000909899,132 Tahrir St,Cairo,Abbassia,"Building 10, Floor 3",Books and Stationery,Transfer,Urgent,500,575,TRUE
+Shahbandar,1000909899,465 Nile St,Cairo,Ain Shams,"Apartment 5, Floor 4",Electronics,COD,Standard,200,0,FALSE
+Abo Alaa,1000909899,133 Tahrir St,Cairo,El Marg,"Building 10, Floor 3",Books and Stationery,Transfer,Urgent,500,575,TRUE
+Shahbandar,1000909899,466 Nile St,Cairo,Matariya,"Apartment 5, Floor 4",Electronics,COD,Standard,200,0,FALSE
+Abo Alaa,1000909899,134 Tahrir St,Cairo,Helwan,"Building 10, Floor 3",Books and Stationery,Transfer,Urgent,500,575,TRUE
+Shahbandar,1000909899,467 Nile St,Cairo,15th of May City,"Building 10, Floor 4",Books and Stationery,Transfer,Urgent,200,0,FALSE
+Abo Alaa,1000909899,133 Tahrir St,Cairo,New Administrative Capital,"Apartment 5, Floor 5",Electronics,COD,Standard,500,575,TRUE
+Shahbandar,1000909899,466 Nile St,Giza,Mohandessin,"Building 10, Floor 4",Books and Stationery,Transfer,Urgent,200,0,FALSE
+Abo Alaa,1000909899,465 Nile St,Giza,Dokki,"Apartment 5, Floor 5",Electronics,COD,Standard,500,575,TRUE
+Shahbandar,1000909899,465 Nile St,Giza,Agouza,"Building 10, Floor 4",Books and Stationery,Transfer,Urgent,200,0,FALSE
+Abo Alaa,1000909899,133 Tahrir St,Giza,Haram,"Apartment 5, Floor 5",Electronics,COD,Standard,500,575,TRUE
+Shahbandar,1000909899,466 Nile St,Giza,Faisal,"Building 10, Floor 4",Books and Stationery,Transfer,Urgent,200,0,FALSE
+Abo Alaa,1000909899,134 Tahrir St,Giza,Giza Square,"Building 10, Floor 5",Books and Stationery,Transfer,Urgent,500,0,TRUE
+Shahbandar,1000909899,467 Nile St,Giza,Imbaba,"Apartment 5, Floor 6",Electronics,COD,Standard,200,0,FALSE
+Abo Alaa,1000909899,135 Tahrir St,Giza,Boulak El Dakrour,"Building 10, Floor 5",Books and Stationery,Transfer,Urgent,500,575,TRUE
+Shahbandar,1000909899,468 Nile St,Giza,Warraq,"Apartment 5, Floor 6",Electronics,COD,Standard,200,0,FALSE
+Abo Alaa,1000909899,134 Tahrir St,Giza,6th of October City,"Building 10, Floor 5",Books and Stationery,Transfer,Urgent,500,575,TRUE
+Shahbandar,1000909899,464 Nile St,Giza,Sheikh Zayed,"Apartment 5, Floor 6",Electronics,COD,Standard,200,0,FALSE
+Abo Alaa,1000909899,463 Nile St,Giza,Hadayek October,"Building 10, Floor 5",Books and Stationery,Transfer,Urgent,500,0,TRUE
+Shahbandar,1000909899,466 Nile St,Giza,Mansoureya,"Building 10, Floor 6",Books and Stationery,Transfer,Urgent,200,0,FALSE
+Abo Alaa,1000909899,134 Tahrir St,Giza,Nazlet El Semman,"Apartment 5, Floor 7",Electronics,COD,Standard,500,575,TRUE
+Shahbandar,1000909899,467 Nile St,Giza,Maryoteya,"Building 10, Floor 6",Books and Stationery,Transfer,Urgent,200,0,FALSE
+Abo Alaa,1000909899,467 Nile St,Giza,Bahariya Oasis Road,"Apartment 5, Floor 7",Electronics,COD,Standard,500,575,TRUE

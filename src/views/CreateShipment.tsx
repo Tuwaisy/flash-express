@@ -40,6 +40,20 @@ const CreateShipment = () => {
         }
     }, [paymentMethod]);
 
+    // Phone validation function
+    const isValidPhoneNumber = (phone: string): boolean => {
+        // Accept 11 digits starting with 01, or 10 digits starting with 1
+        return /^01\d{9}$/.test(phone) || /^1\d{9}$/.test(phone);
+    };
+
+    // Normalize phone number (add 0 if starts with 1 and is 10 digits)
+    const normalizePhoneNumber = (phone: string): string => {
+        if (phone.length === 10 && phone.startsWith('1')) {
+            return '0' + phone;
+        }
+        return phone;
+    };
+
     const clientForShipment = useMemo(() => {
         if (canCreateForOthers) {
             return clients.find(c => c.id === parseInt(selectedClientId));
@@ -85,16 +99,18 @@ const CreateShipment = () => {
              addToast(`${clientForShipment.name} does not have a complete default address in their profile.`, 'error');
             return;
         }
-        if (!/^01\d{9}$/.test(recipientPhone)) {
-            addToast('Phone number must be exactly 11 digits starting with 01 (e.g., 01000909899)', 'error');
+        if (!isValidPhoneNumber(recipientPhone)) {
+            addToast('Phone number must be 11 digits starting with 01 or 10 digits starting with 1', 'error');
             return;
         }
+
+        const normalizedPhone = normalizePhoneNumber(recipientPhone);
 
         const shipment: Omit<Shipment, 'id' | 'status' | 'creationDate'> = {
             clientId: clientForShipment.id,
             clientName: clientForShipment.name,
             recipientName,
-            recipientPhone,
+            recipientPhone: normalizedPhone,
             fromAddress: clientForShipment.address,
             toAddress,
             packageDescription,
@@ -156,20 +172,30 @@ const CreateShipment = () => {
             skipEmptyLines: true,
             complete: (results) => {
                 const data = results.data as any[];
-                const shipments: BulkShipment[] = data.map(row => ({
-                    recipientName: row['Recipient Name'],
-                    recipientPhone: row['Recipient Phone'],
-                    toAddress: {
-                        street: row['Recipient Street'],
-                        city: row['City'] || 'Cairo',
-                        zone: row['Zone'],
-                        details: row['Address Details'] || '',
-                    },
-                    packageDescription: row['Package Description'],
-                    paymentMethod: row['Payment Method'] as PaymentMethod,
-                    priority: row['Priority'] as ShipmentPriority,
-                    packageValue: parseFloat(row['Package Value']),
-                }));
+                const shipments: BulkShipment[] = data.map(row => {
+                    // Normalize phone number
+                    let phone = String(row['Recipient Phone'] || '').replace(/\D/g, ''); // Remove non-digits
+                    
+                    // If phone starts with 1 and is 10 digits, add 0 at the beginning
+                    if (phone.length === 10 && phone.startsWith('1')) {
+                        phone = '0' + phone;
+                    }
+                    
+                    return {
+                        recipientName: row['Recipient Name'],
+                        recipientPhone: phone,
+                        toAddress: {
+                            street: row['Recipient Street'],
+                            city: row['City'] || 'Cairo',
+                            zone: row['Zone'],
+                            details: row['Address Details'] || '',
+                        },
+                        packageDescription: row['Package Description'],
+                        paymentMethod: row['Payment Method'] as PaymentMethod,
+                        priority: row['Priority'] as ShipmentPriority,
+                        packageValue: parseFloat(row['Package Value']),
+                    };
+                });
                 setParsedData(shipments);
                 verifyData(shipments);
             }
@@ -186,8 +212,12 @@ const CreateShipment = () => {
             if (!shipment.recipientName) errors.push('Recipient Name is required.');
             if (!shipment.recipientPhone) {
                 errors.push('Recipient Phone is required.');
-            } else if (!/^01\d{9}$/.test(shipment.recipientPhone)) {
-                errors.push('Phone must be exactly 11 digits starting with 01 (e.g., 01000909899).');
+            } else {
+                const phone = shipment.recipientPhone;
+                // Accept 11 digits starting with 01, or 10 digits starting with 1 (which we normalize to 01)
+                if (!/^01\d{9}$/.test(phone)) {
+                    errors.push('Phone must be 11 digits starting with 01 or 10 digits starting with 1 (e.g., 01000909899 or 1000909899).');
+                }
             }
             if (!shipment.toAddress.street) errors.push('Recipient Street is required.');
             if (!validCities.includes(shipment.toAddress.city)) errors.push('City must be Cairo or Giza.');
@@ -270,7 +300,7 @@ const CreateShipment = () => {
             headers,
             [
                 'Enter recipient full name',
-                '01xxxxxxxxx (11 digits exactly)',
+                '01xxxxxxxxx (11 digits) OR 1xxxxxxxxx (10 digits)',
                 'Enter full street address',
                 'Cairo | Giza',
                 `Cairo zones: ${cairoZones} || Giza zones: ${gizaZones}`,
@@ -298,7 +328,7 @@ const CreateShipment = () => {
             ],
             [
                 'Fatma Ali',
-                '01123456789',
+                '1123456789',
                 '456 Nile St',
                 'Giza',
                 'Dokki',
@@ -369,19 +399,20 @@ const CreateShipment = () => {
                                 value={recipientPhone} 
                                 onChange={e => {
                                     const value = e.target.value.replace(/[^0-9]/g, '');
+                                    // Allow up to 11 digits for input
                                     if (value.length <= 11) {
                                         setRecipientPhone(value);
                                     }
                                 }} 
                                 className={`w-full px-4 py-2 border rounded-lg focus:ring-primary focus:border-primary text-foreground bg-background ${
-                                    recipientPhone.length > 0 && recipientPhone.length !== 11 ? 'border-red-500' : 'border-border'
+                                    recipientPhone.length > 0 && !isValidPhoneNumber(recipientPhone) ? 'border-red-500' : 'border-border'
                                 }`}
-                                placeholder="01000909899" 
+                                placeholder="01000909899 or 1000909899" 
                                 required 
                             />
-                            <p className="text-xs text-muted-foreground mt-1">Must be exactly 11 digits (01000909899)</p>
-                            {recipientPhone.length > 0 && recipientPhone.length !== 11 && (
-                                <p className="text-xs text-red-500 mt-1">Phone number must be exactly 11 digits</p>
+                            <p className="text-xs text-muted-foreground mt-1">11 digits starting with 01 or 10 digits starting with 1</p>
+                            {recipientPhone.length > 0 && !isValidPhoneNumber(recipientPhone) && (
+                                <p className="text-xs text-red-500 mt-1">Phone must be 11 digits starting with 01 or 10 digits starting with 1</p>
                             )}
                         </div>
                     </div>
