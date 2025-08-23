@@ -3,6 +3,7 @@ import { Shipment, ShipmentStatus, PartnerTier, UserRole } from '../../types';
 import { ShipmentStatusBadge } from '../common/ShipmentStatusBadge';
 import { PencilIcon, ClockIcon } from '../Icons';
 import { useAppContext } from '../../context/AppContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface ShipmentListProps {
     shipments: Shipment[]; 
@@ -28,6 +29,7 @@ export const ShipmentList: React.FC<ShipmentListProps> = ({
     updateShipmentFees,
 }) => {
     const { currentUser, tierSettings, users } = useAppContext();
+    const { t } = useLanguage();
     const [editingCell, setEditingCell] = useState<{ shipmentId: string; field: 'clientFee' | 'courierCommission' } | null>(null);
     const [editValue, setEditValue] = useState<string>('');
     const [now, setNow] = useState(new Date());
@@ -92,18 +94,29 @@ export const ShipmentList: React.FC<ShipmentListProps> = ({
         if (!shipment.creationDate) return null;
 
         const startTime = new Date(shipment.creationDate);
-
-        const outForDeliveryEntry = shipment.statusHistory?.find(
-            h => h.status === ShipmentStatus.OUT_FOR_DELIVERY
-        );
-
-        const endTime = outForDeliveryEntry
-            ? new Date(outForDeliveryEntry.timestamp)
-            : now;
+        const endTime = now; // Always calculate from creation date to now
         
         const diffTime = Math.abs(endTime.getTime() - startTime.getTime());
         const diffDays = diffTime / (1000 * 60 * 60 * 24);
         return diffDays;
+    };
+
+    const isOverdue = (shipment: Shipment): boolean => {
+        // Only consider shipments that are not delivered or delivery failed as potentially overdue
+        if ([ShipmentStatus.DELIVERED, ShipmentStatus.DELIVERY_FAILED].includes(shipment.status)) {
+            return false;
+        }
+        const days = getDaysInPhase(shipment);
+        return days !== null && days > 2.5;
+    };
+
+    const isCriticallyOverdue = (shipment: Shipment): boolean => {
+        // Consider shipments older than 3 days as critically overdue
+        if ([ShipmentStatus.DELIVERED, ShipmentStatus.DELIVERY_FAILED].includes(shipment.status)) {
+            return false;
+        }
+        const days = getDaysInPhase(shipment);
+        return days !== null && days >= 3;
     };
     
     const sortedShipments = useMemo(() => {
@@ -188,9 +201,20 @@ export const ShipmentList: React.FC<ShipmentListProps> = ({
                         const days = getDaysInPhase(s);
                         const basePrice = Number(s.price) || 0;
                         const discountedPrice = calculateDiscountedPrice(s);
+                        const overdueStatus = isOverdue(s);
+                        const criticallyOverdue = isCriticallyOverdue(s);
                         
                         return (
-                            <tr key={s.id} onClick={() => onSelect?.(s)} className={`hover:bg-accent ${onSelect ? 'cursor-pointer' : ''}`}>
+                            <tr 
+                                key={s.id} 
+                                onClick={() => onSelect?.(s)} 
+                                className={`
+                                    ${onSelect ? 'cursor-pointer' : ''} 
+                                    ${criticallyOverdue ? 'bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30' : 
+                                      overdueStatus ? 'bg-orange-50 dark:bg-orange-950/20 hover:bg-orange-100 dark:hover:bg-orange-950/30' : 
+                                      'hover:bg-accent'}
+                                `}
+                            >
                                 <td className="px-4 py-3">
                                     <p className="font-mono text-sm font-semibold text-foreground">{s.id}</p>
                                     <p className="text-xs text-muted-foreground">{s.recipientName}</p>
@@ -199,9 +223,15 @@ export const ShipmentList: React.FC<ShipmentListProps> = ({
                                 <td className="px-4 py-3"><ShipmentStatusBadge status={s.status} /></td>
                                 <td className="px-4 py-3 text-sm">
                                     {days !== null && (
-                                        <div className="flex items-center gap-2">
-                                            <ClockIcon className="w-4 h-4 text-muted-foreground"/>
+                                        <div className={`flex items-center gap-2 ${
+                                            criticallyOverdue ? 'text-red-600 dark:text-red-400 font-semibold' :
+                                            overdueStatus ? 'text-orange-600 dark:text-orange-400 font-semibold' :
+                                            'text-muted-foreground'
+                                        }`}>
+                                            <ClockIcon className="w-4 h-4"/>
                                             <span className="font-mono">{days.toFixed(1)} days</span>
+                                            {criticallyOverdue && <span className="text-xs bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 px-1 rounded">OVERDUE</span>}
+                                            {overdueStatus && !criticallyOverdue && <span className="text-xs bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 px-1 rounded">WARNING</span>}
                                         </div>
                                     )}
                                 </td>

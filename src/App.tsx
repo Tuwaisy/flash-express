@@ -1,5 +1,6 @@
 import React from 'react';
 import { AppProvider } from './context/AppContext';
+import { LanguageProvider } from './context/LanguageContext';
 import AppRoutes from './AppRoutes';
 import LandingPage from './views/LandingPage';
 
@@ -10,14 +11,20 @@ const App = () => {
     if (isAppRoute) {
         // If the user is on /app.html, load the full application with its context.
         return (
-            <AppProvider>
-                <AppRoutes />
-            </AppProvider>
+            <LanguageProvider>
+                <AppProvider>
+                    <AppRoutes />
+                </AppProvider>
+            </LanguageProvider>
         );
     }
 
     // Otherwise, show the new, animated landing page.
-    return <LandingPage />;
+    return (
+        <LanguageProvider>
+            <LandingPage />
+        </LanguageProvider>
+    );
 };
 
 export default App;

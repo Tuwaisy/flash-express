@@ -5,6 +5,7 @@
 import React from 'react';
 import { Permission } from '../types';
 import { useAppContext } from '../context/AppContext';
+import { useLanguage } from '../context/LanguageContext';
 import { 
     LogoIcon, DashboardIcon, PackageIcon, UsersIcon, WalletIcon, 
     ChartBarIcon, TruckIcon, ClipboardListIcon, PlusCircleIcon,
@@ -12,7 +13,7 @@ import {
 } from '../components/Icons';
 
 interface NavItemConfig {
-    name: string;
+    nameKey: string;
     icon: React.ReactElement;
     view: string;
     permission: Permission;
@@ -20,47 +21,46 @@ interface NavItemConfig {
 
 const ALL_NAV_ITEMS: NavItemConfig[] = [
     // Common
-    { name: 'Dashboard', icon: <DashboardIcon />, view: 'dashboard', permission: Permission.VIEW_DASHBOARD },
+    { nameKey: 'dashboard', icon: <DashboardIcon />, view: 'dashboard', permission: Permission.VIEW_DASHBOARD },
     
     // Client
-    { name: 'My Shipments', icon: <PackageIcon />, view: 'shipments', permission: Permission.VIEW_OWN_SHIPMENTS },
-    { name: 'Create Shipment', icon: <PlusCircleIcon />, view: 'create', permission: Permission.CREATE_SHIPMENTS },
-    { name: 'Bulk Import', icon: <UploadIcon />, view: 'bulk-import', permission: Permission.CREATE_SHIPMENTS },
-    { name: 'My Wallet', icon: <WalletIcon />, view: 'wallet', permission: Permission.VIEW_OWN_WALLET },
-    { name: 'My Financials', icon: <ChartBarIcon />, view: 'financials', permission: Permission.VIEW_OWN_FINANCIALS },
-    { name: 'Client Revenue', icon: <TrendingUpIcon />, view: 'client-revenue', permission: Permission.VIEW_CLIENT_REVENUE },
+    { nameKey: 'myShipments', icon: <PackageIcon />, view: 'shipments', permission: Permission.VIEW_OWN_SHIPMENTS },
+    { nameKey: 'createShipment', icon: <PlusCircleIcon />, view: 'create', permission: Permission.CREATE_SHIPMENTS },
+    { nameKey: 'myWallet', icon: <WalletIcon />, view: 'wallet', permission: Permission.VIEW_OWN_WALLET },
+    { nameKey: 'myFinancials', icon: <ChartBarIcon />, view: 'financials', permission: Permission.VIEW_OWN_FINANCIALS },
+    { nameKey: 'clientRevenue', icon: <TrendingUpIcon />, view: 'client-revenue', permission: Permission.VIEW_CLIENT_REVENUE },
     
     // Courier
-    { name: 'My Tasks', icon: <ClipboardListIcon />, view: 'tasks', permission: Permission.VIEW_COURIER_TASKS },
-    { name: 'Completed Orders', icon: <CheckCircleIcon />, view: 'completed-orders', permission: Permission.VIEW_COURIER_COMPLETED_ORDERS },
-    { name: 'My Earnings', icon: <CurrencyDollarIcon />, view: 'courier-financials', permission: Permission.VIEW_COURIER_EARNINGS },
+    { nameKey: 'myTasks', icon: <ClipboardListIcon />, view: 'tasks', permission: Permission.VIEW_COURIER_TASKS },
+    { nameKey: 'completedOrders', icon: <CheckCircleIcon />, view: 'completed-orders', permission: Permission.VIEW_COURIER_COMPLETED_ORDERS },
+    { nameKey: 'myEarnings', icon: <CurrencyDollarIcon />, view: 'courier-financials', permission: Permission.VIEW_COURIER_EARNINGS },
 
     // Assigner
-    { name: 'Delivered Shipments', icon: <PackageIcon />, view: 'delivered-shipments', permission: Permission.VIEW_DELIVERED_SHIPMENTS },
-    { name: 'Couriers By Zone', icon: <MapPinIcon />, view: 'couriers-by-zone', permission: Permission.VIEW_COURIERS_BY_ZONE },
+    { nameKey: 'deliveredShipments', icon: <PackageIcon />, view: 'delivered-shipments', permission: Permission.VIEW_DELIVERED_SHIPMENTS },
+    { nameKey: 'couriersByZone', icon: <MapPinIcon />, view: 'couriers-by-zone', permission: Permission.VIEW_COURIERS_BY_ZONE },
 
     // User General
-    { name: 'My Profile', icon: <UserCircleIcon />, view: 'profile', permission: Permission.VIEW_PROFILE },
-    { name: 'My Assets', icon: <TagIcon />, view: 'my-assets', permission: Permission.VIEW_OWN_ASSETS },
+    { nameKey: 'myProfile', icon: <UserCircleIcon />, view: 'profile', permission: Permission.VIEW_PROFILE },
+    { nameKey: 'myAssets', icon: <TagIcon />, view: 'my-assets', permission: Permission.VIEW_OWN_ASSETS },
 
     // Management
-    { name: 'All Shipments', icon: <PackageIcon />, view: 'shipments', permission: Permission.VIEW_ALL_SHIPMENTS },
-    { name: 'Packaging & Assignment', icon: <ArchiveBoxIcon />, view: 'packaging-and-assignment', permission: Permission.ASSIGN_SHIPMENTS },
-    { name: 'Delivery Management', icon: <SwitchHorizontalIcon />, view: 'admin-delivery-management', permission: Permission.VIEW_ADMIN_DELIVERY_MANAGEMENT },
-    { name: 'User Management', icon: <UsersIcon />, view: 'users', permission: Permission.MANAGE_USERS },
-    { name: 'Role Management', icon: <CogIcon />, view: 'roles', permission: Permission.MANAGE_ROLES },
-    { name: 'Partner Tiers', icon: <CrownIcon />, view: 'partner-tier-management', permission: Permission.MANAGE_PARTNER_TIERS },
-    { name: 'Inventory', icon: <ArchiveBoxIcon />, view: 'inventory', permission: Permission.MANAGE_INVENTORY },
-    { name: 'Asset Management', icon: <TagIcon />, view: 'asset-management', permission: Permission.MANAGE_ASSETS },
-    { name: 'Supplier Management', icon: <SwitchHorizontalIcon />, view: 'supplier-management', permission: Permission.MANAGE_SUPPLIERS },
+    { nameKey: 'allShipments', icon: <PackageIcon />, view: 'shipments', permission: Permission.VIEW_ALL_SHIPMENTS },
+    { nameKey: 'packagingAssignment', icon: <ArchiveBoxIcon />, view: 'packaging-and-assignment', permission: Permission.ASSIGN_SHIPMENTS },
+    { nameKey: 'deliveryManagement', icon: <SwitchHorizontalIcon />, view: 'admin-delivery-management', permission: Permission.VIEW_ADMIN_DELIVERY_MANAGEMENT },
+    { nameKey: 'userManagement', icon: <UsersIcon />, view: 'users', permission: Permission.MANAGE_USERS },
+    { nameKey: 'roleManagement', icon: <CogIcon />, view: 'roles', permission: Permission.MANAGE_ROLES },
+    { nameKey: 'partnerTiers', icon: <CrownIcon />, view: 'partner-tier-management', permission: Permission.MANAGE_PARTNER_TIERS },
+    { nameKey: 'inventory', icon: <ArchiveBoxIcon />, view: 'inventory', permission: Permission.MANAGE_INVENTORY },
+    { nameKey: 'assetManagement', icon: <TagIcon />, view: 'asset-management', permission: Permission.MANAGE_ASSETS },
+    { nameKey: 'supplierManagement', icon: <SwitchHorizontalIcon />, view: 'supplier-management', permission: Permission.MANAGE_SUPPLIERS },
     
     // Analytics & Logs
-    { name: 'Client Analytics', icon: <TrendingUpIcon />, view: 'client-analytics', permission: Permission.VIEW_CLIENT_ANALYTICS },
-    { name: 'Courier Performance', icon: <CurrencyDollarIcon />, view: 'courier-performance', permission: Permission.VIEW_COURIER_PERFORMANCE },
-    { name: 'Financials', icon: <ChartBarIcon />, view: 'financials', permission: Permission.VIEW_ADMIN_FINANCIALS },
-    { name: 'Admin Financials', icon: <ChartBarIcon />, view: 'admin-financials', permission: Permission.VIEW_ADMIN_FINANCIALS },
-    { name: 'Total Shipments', icon: <PackageIcon />, view: 'total-shipments', permission: Permission.VIEW_TOTAL_SHIPMENTS_OVERVIEW },
-    { name: 'Notifications Log', icon: <BellIcon />, view: 'notifications', permission: Permission.VIEW_NOTIFICATIONS_LOG },
+    { nameKey: 'clientAnalytics', icon: <TrendingUpIcon />, view: 'client-analytics', permission: Permission.VIEW_CLIENT_ANALYTICS },
+    { nameKey: 'courierPerformance', icon: <CurrencyDollarIcon />, view: 'courier-performance', permission: Permission.VIEW_COURIER_PERFORMANCE },
+    { nameKey: 'financials', icon: <ChartBarIcon />, view: 'financials', permission: Permission.VIEW_ADMIN_FINANCIALS },
+    { nameKey: 'adminFinancials', icon: <ChartBarIcon />, view: 'admin-financials', permission: Permission.VIEW_ADMIN_FINANCIALS },
+    { nameKey: 'totalShipments', icon: <PackageIcon />, view: 'total-shipments', permission: Permission.VIEW_TOTAL_SHIPMENTS_OVERVIEW },
+    { nameKey: 'notificationsLog', icon: <BellIcon />, view: 'notifications', permission: Permission.VIEW_NOTIFICATIONS_LOG },
 ];
 
 interface SidebarProps {
@@ -72,6 +72,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, setIsOpen }) => {
     const { hasPermission } = useAppContext();
+    const { t } = useLanguage();
 
     const availableNavItems = ALL_NAV_ITEMS.filter(item => {
         // Special case to avoid duplicate "Financials" links for admins
@@ -124,7 +125,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, se
                 <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
                     {availableNavItems.map(item => (
                         <button 
-                            key={item.view + item.name} 
+                            key={item.view + item.nameKey} 
                             onClick={() => handleItemClick(item.view)}
                             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-left transition-all duration-200 group relative ${
                                 activeView === item.view 
@@ -134,7 +135,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, se
                         >
                             <div className={`absolute left-0 top-0 h-full w-1 rounded-r-full transition-all duration-200 ${activeView === item.view ? 'bg-primary' : 'bg-transparent'}`}></div>
                             <div className="w-6 h-6">{item.icon}</div>
-                            <span className="text-sm font-medium">{item.name}</span>
+                            <span className="text-sm font-medium">{t(item.nameKey)}</span>
                         </button>
                     ))}
                 </nav>

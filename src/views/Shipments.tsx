@@ -16,8 +16,11 @@ const isShipmentOverdue = (shipment: Shipment) => {
     if ([ShipmentStatus.DELIVERED, ShipmentStatus.DELIVERY_FAILED].includes(shipment.status)) {
         return false;
     }
-    const twoAndHalfDaysAgo = new Date(Date.now() - 2.5 * 24 * 60 * 60 * 1000);
-    return new Date(shipment.creationDate) < twoAndHalfDaysAgo;
+    const now = new Date();
+    const creationTime = new Date(shipment.creationDate);
+    const diffTime = Math.abs(now.getTime() - creationTime.getTime());
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+    return diffDays > 2.5;
 };
 
 

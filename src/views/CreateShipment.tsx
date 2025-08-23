@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Address, PaymentMethod, ZONES, ShipmentPriority, Shipment, User, Permission, UserRole, PartnerTier } from '../types';
 import { PlusCircleIcon, UploadIcon, DownloadIcon, CheckCircleIcon, XCircleIcon } from '../components/Icons';
 import Papa from 'papaparse';
@@ -10,6 +11,7 @@ type BulkShipment = Omit<Shipment, 'id' | 'clientId' | 'clientName' | 'fromAddre
 
 const CreateShipment = () => {
     const { currentUser, users, addShipment, addToast, calculatePriorityPrice, hasPermission, tierSettings } = useAppContext();
+    const { t } = useLanguage();
     const [activeTab, setActiveTab] = useState('single');
 
     const canCreateForOthers = hasPermission(Permission.CREATE_SHIPMENTS_FOR_OTHERS);
@@ -83,6 +85,10 @@ const CreateShipment = () => {
              addToast(`${clientForShipment.name} does not have a complete default address in their profile.`, 'error');
             return;
         }
+        if (!/^01\d{9}$/.test(recipientPhone)) {
+            addToast('Phone number must be exactly 11 digits starting with 01 (e.g., 01000909899)', 'error');
+            return;
+        }
 
         const shipment: Omit<Shipment, 'id' | 'status' | 'creationDate'> = {
             clientId: clientForShipment.id,
@@ -121,7 +127,11 @@ const CreateShipment = () => {
     const handleZoneChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const selectedZone = e.target.value;
         const parentGroup = e.target.options[e.target.selectedIndex]?.parentElement?.getAttribute('label');
-        setToAddress(prev => ({ ...prev, zone: selectedZone, city: parentGroup || 'Other' }));
+        setToAddress(prev => ({ 
+            ...prev, 
+            zone: selectedZone, 
+            city: parentGroup === 'Cairo' ? 'Cairo' : parentGroup === 'Giza' ? 'Giza' : 'Cairo'
+        }));
     };
 
     const allZones = Object.values(ZONES.GreaterCairo.Cairo).concat(Object.values(ZONES.GreaterCairo.Giza));
@@ -170,11 +180,18 @@ const CreateShipment = () => {
         const results = shipments.map(shipment => {
             const errors: string[] = [];
             const validPaymentMethods: string[] = [PaymentMethod.COD, PaymentMethod.TRANSFER];
+            const validCities = ['Cairo', 'Giza'];
+            const allValidZones = [...ZONES.GreaterCairo.Cairo, ...ZONES.GreaterCairo.Giza];
 
             if (!shipment.recipientName) errors.push('Recipient Name is required.');
-            if (!shipment.recipientPhone) errors.push('Recipient Phone is required.');
+            if (!shipment.recipientPhone) {
+                errors.push('Recipient Phone is required.');
+            } else if (!/^01\d{9}$/.test(shipment.recipientPhone)) {
+                errors.push('Phone must be exactly 11 digits starting with 01 (e.g., 01000909899).');
+            }
             if (!shipment.toAddress.street) errors.push('Recipient Street is required.');
-            if (!allZones.includes(shipment.toAddress.zone)) errors.push('Invalid Zone.');
+            if (!validCities.includes(shipment.toAddress.city)) errors.push('City must be Cairo or Giza.');
+            if (!allValidZones.includes(shipment.toAddress.zone)) errors.push('Invalid Zone for selected city.');
             if (!validPaymentMethods.includes(shipment.paymentMethod)) errors.push('Invalid Payment Method. Must be COD or Transfer.');
             if (!Object.values(ShipmentPriority).includes(shipment.priority)) errors.push('Invalid Priority.');
             if (isNaN(shipment.packageValue) || (shipment.paymentMethod === PaymentMethod.COD && shipment.packageValue <= 0)) {
@@ -237,7 +254,8 @@ const CreateShipment = () => {
         const headers = [
             'Recipient Name', 'Recipient Phone', 
             'Recipient Street', 'City', 'Zone', 'Address Details',
-            'Package Description', 'Payment Method', 'Priority', 'Package Value'
+            'Package Description', 'Payment Method', 'Priority', 'Package Value',
+            'Amount to Collect', 'Shipping Fee Included'
         ];
         
         const baseFee = currentUser?.flatRateFee || 75;
@@ -245,27 +263,28 @@ const CreateShipment = () => {
         const urgentFee = currentUser ? calculatePriorityPrice(baseFee, ShipmentPriority.URGENT, currentUser) : baseFee * 1.5;
         const expressFee = currentUser ? calculatePriorityPrice(baseFee, ShipmentPriority.EXPRESS, currentUser) : baseFee * 2.0;
 
-        const paymentMethodOptions = Object.values(PaymentMethod)
-            .filter(method => method !== PaymentMethod.WALLET)
-            .join(' or ');
+        const cairoZones = ZONES.GreaterCairo.Cairo.join(' | ');
+        const gizaZones = ZONES.GreaterCairo.Giza.join(' | ');
         
         const templateData = [
             headers,
             [
                 'Enter recipient full name',
-                'Enter phone with country code',
+                '01xxxxxxxxx (11 digits exactly)',
                 'Enter full street address',
-                'Cairo or Giza',
-                'Select from available zones',
+                'Cairo | Giza',
+                `Cairo zones: ${cairoZones} || Giza zones: ${gizaZones}`,
                 'Additional address details',
                 'Describe package contents',
-                paymentMethodOptions,
-                `Standard (${(Number(standardFee) || 0).toFixed(2)} EGP), Urgent (${(Number(urgentFee) || 0).toFixed(2)} EGP), Express (${(Number(expressFee) || 0).toFixed(2)} EGP)`,
-                'Package value in EGP (optional for Transfer)'
+                'COD | Transfer',
+                `Standard (${(Number(standardFee) || 0).toFixed(2)} EGP) | Urgent (${(Number(urgentFee) || 0).toFixed(2)} EGP) | Express (${(Number(expressFee) || 0).toFixed(2)} EGP)`,
+                'Package value in EGP',
+                'For COD: amount + shipping if included | For Transfer: 0',
+                'TRUE | FALSE (add shipping to collection amount)'
             ],
             [
                 'Ahmed Mohamed',
-                '01012345678',
+                '01000909899',
                 '123 Tahrir St',
                 'Cairo',
                 'Nasr City',
@@ -273,8 +292,24 @@ const CreateShipment = () => {
                 'Electronics - Mobile Phone',
                 'COD',
                 'Standard',
-                '500.00'
+                '500.00',
+                '575.00',
+                'TRUE'
             ],
+            [
+                'Fatma Ali',
+                '01123456789',
+                '456 Nile St',
+                'Giza',
+                'Dokki',
+                'Building 10, Floor 2',
+                'Books and Stationery',
+                'Transfer',
+                'Urgent',
+                '200.00',
+                '0',
+                'FALSE'
+            ]
         ];
         
         const csv = Papa.unparse(templateData);
@@ -293,15 +328,15 @@ const CreateShipment = () => {
 
     return (
         <div className="card max-w-6xl mx-auto">
-            <h2 className="text-2xl font-bold text-foreground mb-6">Create Shipments</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-6">{t('createShipments')}</h2>
 
             <div className="border-b border-border mb-6">
                 <nav className="-mb-px flex space-x-6">
                     <button onClick={() => setActiveTab('single')} className={`py-3 px-1 border-b-2 font-semibold text-sm ${activeTab === 'single' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}`}>
-                        Create Single Shipment
+                        {t('createSingleShipment')}
                     </button>
                     <button onClick={() => setActiveTab('bulk')} className={`py-3 px-1 border-b-2 font-semibold text-sm ${activeTab === 'bulk' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}`}>
-                        Bulk Upload Shipments
+                        {t('bulkUploadShipments')}
                     </button>
                 </nav>
             </div>
@@ -310,9 +345,9 @@ const CreateShipment = () => {
                 <form onSubmit={handleSingleSubmit} className="space-y-6">
                     {canCreateForOthers && (
                          <div className="p-4 bg-secondary rounded-lg">
-                            <label className="block text-sm font-medium text-foreground mb-1">Create Shipment For Client</label>
+                            <label className="block text-sm font-medium text-foreground mb-1">{t('createShipmentForClient')}</label>
                             <select value={selectedClientId} onChange={e => setSelectedClientId(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg focus:ring-primary focus:border-primary text-foreground bg-background" required>
-                                <option value="" disabled>Select a client...</option>
+                                <option value="" disabled>{t('selectClient')}</option>
                                 {clients.map(client => (
                                     <option key={client.id} value={client.id}>{client.name}</option>
                                 ))}
@@ -322,13 +357,32 @@ const CreateShipment = () => {
                     {/* Recipient Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="block text-sm font-medium text-foreground mb-1">Recipient Name</label>
+                            <label className="block text-sm font-medium text-foreground mb-1">{t('recipientName')}</label>
                             <input type="text" value={recipientName} onChange={e => setRecipientName(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg focus:ring-primary focus:border-primary text-foreground bg-background" required />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-foreground mb-1">Recipient Phone</label>
-                            <input type="text" inputMode="numeric" pattern="[0-9]*" value={recipientPhone} onChange={e => setRecipientPhone(e.target.value.replace(/[^0-9]/g, ''))} className="w-full px-4 py-2 border border-border rounded-lg focus:ring-primary focus:border-primary text-foreground bg-background" placeholder="01xxxxxxxxx" required />
-                            <p className="text-xs text-muted-foreground mt-1">Example for Egyptian number: 01012345678</p>
+                            <label className="block text-sm font-medium text-foreground mb-1">{t('recipientPhone')}</label>
+                            <input 
+                                type="text" 
+                                inputMode="numeric" 
+                                pattern="[0-9]*" 
+                                value={recipientPhone} 
+                                onChange={e => {
+                                    const value = e.target.value.replace(/[^0-9]/g, '');
+                                    if (value.length <= 11) {
+                                        setRecipientPhone(value);
+                                    }
+                                }} 
+                                className={`w-full px-4 py-2 border rounded-lg focus:ring-primary focus:border-primary text-foreground bg-background ${
+                                    recipientPhone.length > 0 && recipientPhone.length !== 11 ? 'border-red-500' : 'border-border'
+                                }`}
+                                placeholder="01000909899" 
+                                required 
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">Must be exactly 11 digits (01000909899)</p>
+                            {recipientPhone.length > 0 && recipientPhone.length !== 11 && (
+                                <p className="text-xs text-red-500 mt-1">Phone number must be exactly 11 digits</p>
+                            )}
                         </div>
                     </div>
                     {/* Address Info */}
@@ -345,12 +399,6 @@ const CreateShipment = () => {
                                 </optgroup>
                                 <optgroup label="Giza">
                                     {ZONES.GreaterCairo.Giza.map(z => <option key={z} value={z}>{z}</option>)}
-                                </optgroup>
-                                <optgroup label="Alexandria">
-                                     {ZONES.Alexandria.map(z => <option key={z} value={z}>{z}</option>)}
-                                </optgroup>
-                                <optgroup label="Other">
-                                     {ZONES.Other.map(z => <option key={z} value={z}>{z}</option>)}
                                 </optgroup>
                             </select>
                         </div>

@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { useLanguage } from '../context/LanguageContext';
 import { User, Address, ZONES } from '../types';
 import { PencilIcon } from '../components/Icons';
 
 const Profile = () => {
     const { currentUser, updateUser } = useAppContext();
+    const { t } = useLanguage();
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState<Partial<User>>({});
 
@@ -60,18 +62,18 @@ const Profile = () => {
         <div className="max-w-4xl mx-auto">
              <div className="flex justify-between items-start mb-6">
                 <div>
-                     <h1 className="text-3xl font-bold text-foreground">My Profile</h1>
-                     <p className="text-muted-foreground mt-1">View and edit your personal information and default address.</p>
+                     <h1 className="text-3xl font-bold text-foreground">{t('myProfile')}</h1>
+                     <p className="text-muted-foreground mt-1">{t('viewEditPersonalInfo')}</p>
                  </div>
                  {!isEditing ? (
                     <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 transition">
                          <PencilIcon className="w-5 h-5"/>
-                         Edit Profile
+                         {t('editProfile')}
                      </button>
                  ) : (
                     <div className="flex gap-2">
-                        <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-accent font-semibold">Cancel</button>
-                        <button onClick={handleSave} className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700">Save Changes</button>
+                        <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-accent font-semibold">{t('cancel')}</button>
+                        <button onClick={handleSave} className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700">{t('saveChanges')}</button>
                     </div>
                  )}
             </div>
@@ -79,10 +81,10 @@ const Profile = () => {
             <div className="card p-8 space-y-8">
                 {/* Personal Information */}
                 <div className="border-b border-border pb-8">
-                     <h2 className="text-lg font-bold text-foreground mb-4">Personal Information</h2>
+                     <h2 className="text-lg font-bold text-foreground mb-4">{t('personalInformation')}</h2>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="block text-sm font-medium text-muted-foreground mb-1">Full Name</label>
+                            <label className="block text-sm font-medium text-muted-foreground mb-1">{t('fullName')}</label>
                             {isEditing ? (
                                 <input type="text" name="name" value={formData.name || ''} onChange={handleFormChange} className="w-full px-4 py-2 border border-border rounded-lg"/>
                             ) : (
@@ -90,22 +92,22 @@ const Profile = () => {
                             )}
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-muted-foreground mb-1">Email Address</label>
+                            <label className="block text-sm font-medium text-muted-foreground mb-1">{t('emailAddress')}</label>
                             <p className="text-lg text-muted-foreground p-2 bg-secondary rounded-lg">{currentUser.email}</p>
                         </div>
                          <div>
-                            <label className="block text-sm font-medium text-muted-foreground mb-1">Phone Number</label>
+                            <label className="block text-sm font-medium text-muted-foreground mb-1">{t('phoneNumber')}</label>
                             {isEditing ? (
                                 <>
                                     <input type="tel" name="phone" value={formData.phone || ''} onChange={handleFormChange} className="w-full px-4 py-2 border border-border rounded-lg" placeholder="01xxxxxxxxx"/>
-                                    <p className="text-xs text-muted-foreground mt-1">Example for Egyptian number: 01012345678</p>
+                                    <p className="text-xs text-muted-foreground mt-1">{t('phoneExample')}</p>
                                 </>
                             ) : (
-                                <p className="text-lg text-foreground p-2">{currentUser.phone || 'Not set'}</p>
+                                <p className="text-lg text-foreground p-2">{currentUser.phone || t('notSet')}</p>
                             )}
                         </div>
                          <div>
-                             <label className="block text-sm font-medium text-muted-foreground mb-1">Role</label>
+                             <label className="block text-sm font-medium text-muted-foreground mb-1">{t('role')}</label>
                              <p className="text-lg text-muted-foreground p-2 bg-secondary rounded-lg">{(currentUser.roles || []).join(' & ')}</p>
                         </div>
                      </div>

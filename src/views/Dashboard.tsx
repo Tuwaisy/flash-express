@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAppContext } from '../context/AppContext';
+import { useLanguage } from '../context/LanguageContext';
 import { UserRole, ShipmentStatus, PaymentMethod, Permission, Shipment } from '../types';
 import { StatCard } from '../components/common/StatCard';
 import { PackageIcon, TruckIcon, WalletIcon, ClipboardListIcon, UsersIcon, ChartBarIcon, CurrencyDollarIcon, CheckCircleIcon, SwitchHorizontalIcon, UserCircleIcon, ArchiveBoxIcon, ClockIcon, DatabaseResetIcon } from '../components/Icons';
@@ -10,6 +11,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
     const { currentUser, shipments, users, courierStats, hasPermission, setShipmentFilter, resetDatabaseComplete, addToast } = useAppContext();
+    const { t } = useLanguage();
     const [showResetConfirm, setShowResetConfirm] = React.useState(false);
     const [isResetting, setIsResetting] = React.useState(false);
     

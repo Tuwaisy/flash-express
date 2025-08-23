@@ -3,6 +3,7 @@
 
 
 import { useAppContext } from '../context/AppContext';
+import { useLanguage } from '../context/LanguageContext';
 import { TransactionType, ClientTransaction, ClientTransactionStatus } from '../types';
 import { StatCard } from '../components/common/StatCard';
 import { WalletIcon, ClockIcon } from '../components/Icons';
@@ -11,6 +12,7 @@ import { useState } from 'react';
 
 const Wallet = () => {
     const { currentUser, clientTransactions, requestClientPayout, addToast } = useAppContext();
+    const { t } = useLanguage();
     const [isPayoutModalOpen, setPayoutModalOpen] = useState(false);
     const [payoutAmount, setPayoutAmount] = useState('');
 

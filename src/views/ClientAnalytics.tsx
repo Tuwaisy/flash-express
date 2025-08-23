@@ -41,6 +41,7 @@ const ClientAnalytics: React.FC<ClientAnalyticsProps> = ({ onSelectShipment, set
                 name: client.name,
                 partnerTier: client.partnerTier,
                 manualTierAssignment: client.manualTierAssignment,
+                walletBalance: client.walletBalance || 0,
                 shipmentCount: clientShipments.length,
                 flatRateFee: client.flatRateFee || 0,
                 payoutRequestCount: payoutRequests.length,
@@ -132,11 +133,12 @@ const ClientAnalytics: React.FC<ClientAnalyticsProps> = ({ onSelectShipment, set
     }
 
     const handleExportSummary = () => {
-        const headers = ['Client Name', 'Client ID', 'Total Shipments', 'Flat Rate (EGP)', 'Partner Tier', 'Pending Payouts'];
+        const headers = ['Client Name', 'Client ID', 'Total Shipments', 'Wallet Balance (EGP)', 'Flat Rate (EGP)', 'Partner Tier', 'Pending Payouts'];
         const data = clientData.map(c => [
             c.name,
             c.publicId,
             c.shipmentCount,
+            (Number(c.walletBalance) || 0).toFixed(2),
             (Number(c.flatRateFee) || 0).toFixed(2),
             c.partnerTier || 'N/A',
             c.payoutRequestCount,
@@ -234,6 +236,7 @@ const ClientAnalytics: React.FC<ClientAnalyticsProps> = ({ onSelectShipment, set
                                     <SortableHeader title="Client" sortKey="name" />
                                     <SortableHeader title="ID" sortKey="publicId" />
                                     <SortableHeader title="Total Shipments" sortKey="shipmentCount" />
+                                    <SortableHeader title="Wallet Balance" sortKey="walletBalance" />
                                     <SortableHeader title="Partner Tier" sortKey="partnerTier" />
                                     <SortableHeader title="Flat Rate" sortKey="flatRateFee" />
                                     <SortableHeader title="Pending Payouts" sortKey="payoutRequestCount" />
@@ -250,6 +253,7 @@ const ClientAnalytics: React.FC<ClientAnalyticsProps> = ({ onSelectShipment, set
                                         </td>
                                         <td className="p-4 font-mono text-xs text-muted-foreground">{client.publicId}</td>
                                         <td className="p-4 text-muted-foreground font-mono">{client.shipmentCount}</td>
+                                        <td className="p-4 text-green-600 dark:text-green-400 font-semibold font-mono">{(Number(client.walletBalance) || 0).toFixed(2)} EGP</td>
                                         <td className="p-4">
                                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getTierBadgeColor(client.partnerTier)}`}>
                                                 {client.partnerTier || 'N/A'}

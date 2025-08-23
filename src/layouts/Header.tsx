@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, UserRole } from '../types';
 import { useAppContext } from '../context/AppContext';
+import { useLanguage } from '../context/LanguageContext';
 import { BellIcon, LogoutIcon, MenuIcon, SunIcon, MoonIcon } from '../components/Icons';
 
 interface HeaderProps {
@@ -12,6 +13,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onLogout, user, onNavigate, onMenuClick }) => {
     const { inAppNotifications, markNotificationAsRead, theme, setTheme } = useAppContext();
+    const { language, setLanguage, t } = useLanguage();
     const [isDropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     
@@ -59,6 +61,13 @@ const Header: React.FC<HeaderProps> = ({ onLogout, user, onNavigate, onMenuClick
                     aria-label="Toggle theme"
                  >
                      {theme === 'dark' ? <SunIcon className="w-6 h-6 text-yellow-400" /> : <MoonIcon className="w-6 h-6" />}
+                 </button>
+                 <button 
+                    onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
+                    className="p-2 rounded-full text-foreground hover:bg-accent transition text-sm font-medium"
+                    aria-label="Toggle language"
+                 >
+                     {language === 'en' ? 'ع' : 'EN'}
                  </button>
                  <div className="relative" ref={dropdownRef}>
                     <button onClick={() => setDropdownOpen(prev => !prev)} className="p-2 rounded-full hover:bg-accent transition relative">
