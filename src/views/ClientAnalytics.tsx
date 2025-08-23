@@ -3,6 +3,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { useLanguage } from '../context/LanguageContext';
 import { UserRole, User, Shipment, ShipmentStatus, TransactionType, PartnerTier } from '../types';
 import { ArrowUpCircleIcon, DocumentDownloadIcon } from '../components/Icons';
 import { exportToCsv } from '../utils/pdf';
@@ -16,6 +17,7 @@ interface ClientAnalyticsProps {
 
 const ClientAnalytics: React.FC<ClientAnalyticsProps> = ({ onSelectShipment, setActiveView }) => {
     const { users, shipments, clientTransactions, processClientPayout, declineClientPayout, addToast } = useAppContext();
+    const { t } = useLanguage();
     const [mainTab, setMainTab] = useState<'summary' | 'payouts'>('summary');
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: 'shipmentCount', direction: 'desc' });
     const [selectedClient, setSelectedClient] = useState<User | null>(null);
@@ -180,7 +182,7 @@ const ClientAnalytics: React.FC<ClientAnalyticsProps> = ({ onSelectShipment, set
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-foreground">Client Analytics</h1>
+                    <h1 className="text-3xl font-bold text-foreground">{t('clientAnalytics.title')}</h1>
                     <p className="text-muted-foreground mt-1">Overview of client shipment volumes and pending payouts.</p>
                 </div>
                  <button 

@@ -21,46 +21,46 @@ interface NavItemConfig {
 
 const ALL_NAV_ITEMS: NavItemConfig[] = [
     // Common
-    { nameKey: 'dashboard', icon: <DashboardIcon />, view: 'dashboard', permission: Permission.VIEW_DASHBOARD },
+    { nameKey: 'nav.dashboard', icon: <DashboardIcon />, view: 'dashboard', permission: Permission.VIEW_DASHBOARD },
     
     // Client
-    { nameKey: 'myShipments', icon: <PackageIcon />, view: 'shipments', permission: Permission.VIEW_OWN_SHIPMENTS },
-    { nameKey: 'createShipment', icon: <PlusCircleIcon />, view: 'create', permission: Permission.CREATE_SHIPMENTS },
-    { nameKey: 'myWallet', icon: <WalletIcon />, view: 'wallet', permission: Permission.VIEW_OWN_WALLET },
-    { nameKey: 'myFinancials', icon: <ChartBarIcon />, view: 'financials', permission: Permission.VIEW_OWN_FINANCIALS },
-    { nameKey: 'clientRevenue', icon: <TrendingUpIcon />, view: 'client-revenue', permission: Permission.VIEW_CLIENT_REVENUE },
+    { nameKey: 'nav.myShipments', icon: <PackageIcon />, view: 'shipments', permission: Permission.VIEW_OWN_SHIPMENTS },
+    { nameKey: 'nav.createShipment', icon: <PlusCircleIcon />, view: 'create', permission: Permission.CREATE_SHIPMENTS },
+    { nameKey: 'nav.myWallet', icon: <WalletIcon />, view: 'wallet', permission: Permission.VIEW_OWN_WALLET },
+    { nameKey: 'nav.myFinancials', icon: <ChartBarIcon />, view: 'financials', permission: Permission.VIEW_OWN_FINANCIALS },
+    { nameKey: 'nav.clientRevenue', icon: <TrendingUpIcon />, view: 'client-revenue', permission: Permission.VIEW_CLIENT_REVENUE },
     
     // Courier
-    { nameKey: 'myTasks', icon: <ClipboardListIcon />, view: 'tasks', permission: Permission.VIEW_COURIER_TASKS },
-    { nameKey: 'completedOrders', icon: <CheckCircleIcon />, view: 'completed-orders', permission: Permission.VIEW_COURIER_COMPLETED_ORDERS },
-    { nameKey: 'myEarnings', icon: <CurrencyDollarIcon />, view: 'courier-financials', permission: Permission.VIEW_COURIER_EARNINGS },
+    { nameKey: 'nav.myTasks', icon: <ClipboardListIcon />, view: 'tasks', permission: Permission.VIEW_COURIER_TASKS },
+    { nameKey: 'nav.completedOrders', icon: <CheckCircleIcon />, view: 'completed-orders', permission: Permission.VIEW_COURIER_COMPLETED_ORDERS },
+    { nameKey: 'nav.myEarnings', icon: <CurrencyDollarIcon />, view: 'courier-financials', permission: Permission.VIEW_COURIER_EARNINGS },
 
     // Assigner
-    { nameKey: 'deliveredShipments', icon: <PackageIcon />, view: 'delivered-shipments', permission: Permission.VIEW_DELIVERED_SHIPMENTS },
-    { nameKey: 'couriersByZone', icon: <MapPinIcon />, view: 'couriers-by-zone', permission: Permission.VIEW_COURIERS_BY_ZONE },
+    { nameKey: 'nav.deliveredShipments', icon: <PackageIcon />, view: 'delivered-shipments', permission: Permission.VIEW_DELIVERED_SHIPMENTS },
+    { nameKey: 'nav.couriersByZone', icon: <MapPinIcon />, view: 'couriers-by-zone', permission: Permission.VIEW_COURIERS_BY_ZONE },
 
     // User General
-    { nameKey: 'myProfile', icon: <UserCircleIcon />, view: 'profile', permission: Permission.VIEW_PROFILE },
-    { nameKey: 'myAssets', icon: <TagIcon />, view: 'my-assets', permission: Permission.VIEW_OWN_ASSETS },
+    { nameKey: 'nav.myProfile', icon: <UserCircleIcon />, view: 'profile', permission: Permission.VIEW_PROFILE },
+    { nameKey: 'nav.myAssets', icon: <TagIcon />, view: 'my-assets', permission: Permission.VIEW_OWN_ASSETS },
 
     // Management
-    { nameKey: 'allShipments', icon: <PackageIcon />, view: 'shipments', permission: Permission.VIEW_ALL_SHIPMENTS },
-    { nameKey: 'packagingAssignment', icon: <ArchiveBoxIcon />, view: 'packaging-and-assignment', permission: Permission.ASSIGN_SHIPMENTS },
-    { nameKey: 'deliveryManagement', icon: <SwitchHorizontalIcon />, view: 'admin-delivery-management', permission: Permission.VIEW_ADMIN_DELIVERY_MANAGEMENT },
-    { nameKey: 'userManagement', icon: <UsersIcon />, view: 'users', permission: Permission.MANAGE_USERS },
-    { nameKey: 'roleManagement', icon: <CogIcon />, view: 'roles', permission: Permission.MANAGE_ROLES },
-    { nameKey: 'partnerTiers', icon: <CrownIcon />, view: 'partner-tier-management', permission: Permission.MANAGE_PARTNER_TIERS },
-    { nameKey: 'inventory', icon: <ArchiveBoxIcon />, view: 'inventory', permission: Permission.MANAGE_INVENTORY },
-    { nameKey: 'assetManagement', icon: <TagIcon />, view: 'asset-management', permission: Permission.MANAGE_ASSETS },
-    { nameKey: 'supplierManagement', icon: <SwitchHorizontalIcon />, view: 'supplier-management', permission: Permission.MANAGE_SUPPLIERS },
+    { nameKey: 'nav.allShipments', icon: <PackageIcon />, view: 'shipments', permission: Permission.VIEW_ALL_SHIPMENTS },
+    { nameKey: 'nav.packagingAssignment', icon: <ArchiveBoxIcon />, view: 'packaging-and-assignment', permission: Permission.ASSIGN_SHIPMENTS },
+    { nameKey: 'nav.deliveryManagement', icon: <SwitchHorizontalIcon />, view: 'admin-delivery-management', permission: Permission.VIEW_ADMIN_DELIVERY_MANAGEMENT },
+    { nameKey: 'nav.userManagement', icon: <UsersIcon />, view: 'users', permission: Permission.MANAGE_USERS },
+    { nameKey: 'nav.roleManagement', icon: <CogIcon />, view: 'roles', permission: Permission.MANAGE_ROLES },
+    { nameKey: 'nav.partnerTiers', icon: <CrownIcon />, view: 'partner-tier-management', permission: Permission.MANAGE_PARTNER_TIERS },
+    { nameKey: 'nav.inventory', icon: <ArchiveBoxIcon />, view: 'inventory', permission: Permission.MANAGE_INVENTORY },
+    { nameKey: 'nav.assetManagement', icon: <TagIcon />, view: 'asset-management', permission: Permission.MANAGE_ASSETS },
+    { nameKey: 'nav.supplierManagement', icon: <SwitchHorizontalIcon />, view: 'supplier-management', permission: Permission.MANAGE_SUPPLIERS },
     
     // Analytics & Logs
-    { nameKey: 'clientAnalytics', icon: <TrendingUpIcon />, view: 'client-analytics', permission: Permission.VIEW_CLIENT_ANALYTICS },
-    { nameKey: 'courierPerformance', icon: <CurrencyDollarIcon />, view: 'courier-performance', permission: Permission.VIEW_COURIER_PERFORMANCE },
-    { nameKey: 'financials', icon: <ChartBarIcon />, view: 'financials', permission: Permission.VIEW_ADMIN_FINANCIALS },
-    { nameKey: 'adminFinancials', icon: <ChartBarIcon />, view: 'admin-financials', permission: Permission.VIEW_ADMIN_FINANCIALS },
-    { nameKey: 'totalShipments', icon: <PackageIcon />, view: 'total-shipments', permission: Permission.VIEW_TOTAL_SHIPMENTS_OVERVIEW },
-    { nameKey: 'notificationsLog', icon: <BellIcon />, view: 'notifications', permission: Permission.VIEW_NOTIFICATIONS_LOG },
+    { nameKey: 'nav.clientAnalytics', icon: <TrendingUpIcon />, view: 'client-analytics', permission: Permission.VIEW_CLIENT_ANALYTICS },
+    { nameKey: 'nav.courierPerformance', icon: <CurrencyDollarIcon />, view: 'courier-performance', permission: Permission.VIEW_COURIER_PERFORMANCE },
+    { nameKey: 'nav.financials', icon: <ChartBarIcon />, view: 'financials', permission: Permission.VIEW_ADMIN_FINANCIALS },
+    { nameKey: 'nav.adminFinancials', icon: <ChartBarIcon />, view: 'admin-financials', permission: Permission.VIEW_ADMIN_FINANCIALS },
+    { nameKey: 'nav.totalShipments', icon: <PackageIcon />, view: 'total-shipments', permission: Permission.VIEW_TOTAL_SHIPMENTS_OVERVIEW },
+    { nameKey: 'nav.notificationsLog', icon: <BellIcon />, view: 'notifications', permission: Permission.VIEW_NOTIFICATIONS_LOG },
 ];
 
 interface SidebarProps {

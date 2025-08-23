@@ -64,26 +64,26 @@ const Wallet = () => {
         <div className="space-y-8">
              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                  <div>
-                     <h1 className="text-3xl font-bold text-foreground">My Wallet</h1>
-                     <p className="text-muted-foreground mt-1">Your wallet is credited with the value of your delivered packages. You can use this balance to pay for future shipping fees.</p>
+                     <h1 className="text-3xl font-bold text-foreground">{t('wallet.title')}</h1>
+                     <p className="text-muted-foreground mt-1">{t('wallet.description') || 'Your wallet is credited with the value of your delivered packages. You can use this balance to pay for future shipping fees.'}</p>
                  </div>
                  <button 
                     onClick={() => setPayoutModalOpen(true)}
                     disabled={availableBalance <= 0}
                     className="w-full sm:w-auto px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-sm hover:bg-green-700 transition disabled:bg-muted disabled:cursor-not-allowed"
                 >
-                    Request Payout
+                    {t('wallet.requestPayout')}
                 </button>
             </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <StatCard 
-                    title="Available Balance" 
+                    title={t('wallet.availableBalance')} 
                     value={`${(Number(availableBalance) || 0).toFixed(2)} EGP`} 
                     icon={<WalletIcon className="w-7 h-7"/>} 
                     color="#22c55e" 
                 />
                  <StatCard 
-                    title="Pending Payouts" 
+                    title={t('wallet.pendingPayouts')} 
                     value={`${(Number(-pendingAmount) || 0).toFixed(2)} EGP`} 
                     icon={<ClockIcon className="w-7 h-7"/>} 
                     color="#3b82f6" 
@@ -92,7 +92,7 @@ const Wallet = () => {
 
             <div className="card overflow-hidden">
                 <div className="p-5 border-b border-border">
-                    <h2 className="text-xl font-bold text-foreground">Transaction History</h2>
+                    <h2 className="text-xl font-bold text-foreground">{t('wallet.transactionHistory')}</h2>
                 </div>
                 <div className="overflow-x-auto">
                      <table className="w-full text-left">

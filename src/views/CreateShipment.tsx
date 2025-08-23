@@ -532,19 +532,19 @@ const CreateShipment = () => {
                     {verificationResults.length > 0 && (
                         <div className="space-y-4">
                             <div className="p-4 bg-secondary rounded-lg">
-                                <h3 className="font-bold text-lg">Verification Results</h3>
-                                <p>{parsedData.length} rows found. {parsedData.length - verificationResults.filter(r => !r.isValid).length} valid shipments.</p>
+                                <h3 className="font-bold text-lg text-foreground">Verification Results</h3>
+                                <p className="text-foreground">{parsedData.length} rows found. {parsedData.length - verificationResults.filter(r => !r.isValid).length} valid shipments.</p>
                             </div>
 
                             <div className="max-h-80 overflow-y-auto space-y-2">
                                 {parsedData.map((shipment, index) => (
-                                    <div key={index} className={`p-3 rounded-lg border ${verificationResults[index].isValid ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                                    <div key={index} className={`p-3 rounded-lg border ${verificationResults[index].isValid ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700'}`}>
                                         <div className="flex items-start gap-3">
-                                            {verificationResults[index].isValid ? <CheckCircleIcon className="w-5 h-5 text-green-600 mt-0.5"/> : <XCircleIcon className="w-5 h-5 text-red-600 mt-0.5"/>}
+                                            {verificationResults[index].isValid ? <CheckCircleIcon className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5"/> : <XCircleIcon className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5"/>}
                                             <div>
-                                                <p className="font-semibold">{shipment.recipientName} - {shipment.toAddress.zone}</p>
+                                                <p className="font-semibold text-foreground">{shipment.recipientName} - {shipment.toAddress.zone}</p>
                                                 {!verificationResults[index].isValid && (
-                                                    <ul className="list-disc list-inside text-sm text-red-700 mt-1">
+                                                    <ul className="list-disc list-inside text-sm text-red-700 dark:text-red-300 mt-1">
                                                         {verificationResults[index].errors.map((err, i) => <li key={i}>{err}</li>)}
                                                     </ul>
                                                 )}

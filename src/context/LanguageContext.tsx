@@ -126,6 +126,85 @@ const translations = {
         'wallet.balance': 'Current Balance',
         'wallet.transactions': 'Transactions',
         'wallet.requestPayout': 'Request Payout',
+        'wallet.availableBalance': 'Available Balance',
+        'wallet.pendingPayouts': 'Pending Payouts',
+        'wallet.transactionHistory': 'Transaction History',
+        'wallet.amount': 'Amount',
+        'wallet.date': 'Date',
+        'wallet.type': 'Type',
+        'wallet.status': 'Status',
+
+        // Dashboard screens
+        'dashboard.welcomeBack': 'Welcome back',
+        'dashboard.quickStats': 'Quick Stats',
+        'dashboard.recentActivity': 'Recent Activity',
+        'dashboard.totalRevenue': 'Total Revenue',
+        'dashboard.activeShipments': 'Active Shipments',
+        'dashboard.completedToday': 'Completed Today',
+
+        // Client Revenue
+        'clientRevenue.title': 'Client Revenue',
+        'clientRevenue.totalEarnings': 'Total Earnings',
+        'clientRevenue.monthlyBreakdown': 'Monthly Breakdown',
+        'clientRevenue.revenueAnalysis': 'Revenue Analysis',
+
+        // Courier views
+        'myTasks.title': 'My Tasks',
+        'myTasks.assignedToday': 'Assigned Today',
+        'myTasks.pending': 'Pending Tasks',
+        'myTasks.inProgress': 'In Progress',
+        'completedOrders.title': 'Completed Orders',
+        'completedOrders.today': 'Today',
+        'completedOrders.thisWeek': 'This Week',
+        'completedOrders.thisMonth': 'This Month',
+        'myEarnings.title': 'My Earnings',
+        'myEarnings.totalEarnings': 'Total Earnings',
+        'myEarnings.commissionRate': 'Commission Rate',
+
+        // Management views
+        'deliveredShipments.title': 'Delivered Shipments',
+        'couriersByZone.title': 'Couriers By Zone',
+        'myAssets.title': 'My Assets',
+        'allShipments.title': 'All Shipments',
+        'packagingAssignment.title': 'Packaging & Assignment',
+        'deliveryManagement.title': 'Delivery Management',
+        'userManagement.title': 'User Management',
+        'roleManagement.title': 'Role Management',
+        'partnerTiers.title': 'Partner Tiers',
+        'inventory.title': 'Inventory',
+        'assetManagement.title': 'Asset Management',
+        'supplierManagement.title': 'Supplier Management',
+        'courierPerformance.title': 'Courier Performance',
+        'adminFinancials.title': 'Admin Financials',
+        'totalShipments.title': 'Total Shipments',
+        'notificationsLog.title': 'Notifications Log',
+
+        // Common table headers
+        'table.id': 'ID',
+        'table.name': 'Name',
+        'table.email': 'Email',
+        'table.phone': 'Phone',
+        'table.address': 'Address',
+        'table.city': 'City',
+        'table.zone': 'Zone',
+        'table.status': 'Status',
+        'table.date': 'Date',
+        'table.amount': 'Amount',
+        'table.actions': 'Actions',
+        'table.view': 'View',
+        'table.edit': 'Edit',
+        'table.delete': 'Delete',
+
+        // Form fields
+        'form.street': 'Street Address',
+        'form.city': 'City',
+        'form.zone': 'Zone',
+        'form.details': 'Additional Details',
+        'form.description': 'Description',
+        'form.value': 'Value',
+        'form.priority': 'Priority',
+        'form.required': 'Required',
+        'form.optional': 'Optional',
 
         // Client Analytics
         'clientAnalytics.title': 'Client Analytics',
@@ -274,6 +353,85 @@ const translations = {
         'wallet.balance': 'الرصيد الحالي',
         'wallet.transactions': 'المعاملات',
         'wallet.requestPayout': 'طلب سحب',
+        'wallet.availableBalance': 'الرصيد المتاح',
+        'wallet.pendingPayouts': 'المدفوعات المعلقة',
+        'wallet.transactionHistory': 'تاريخ المعاملات',
+        'wallet.amount': 'المبلغ',
+        'wallet.date': 'التاريخ',
+        'wallet.type': 'النوع',
+        'wallet.status': 'الحالة',
+
+        // Dashboard screens
+        'dashboard.welcomeBack': 'مرحباً بعودتك',
+        'dashboard.quickStats': 'إحصائيات سريعة',
+        'dashboard.recentActivity': 'النشاط الأخير',
+        'dashboard.totalRevenue': 'إجمالي الإيرادات',
+        'dashboard.activeShipments': 'الشحنات النشطة',
+        'dashboard.completedToday': 'مكتملة اليوم',
+
+        // Client Revenue
+        'clientRevenue.title': 'إيرادات العميل',
+        'clientRevenue.totalEarnings': 'إجمالي الأرباح',
+        'clientRevenue.monthlyBreakdown': 'التفصيل الشهري',
+        'clientRevenue.revenueAnalysis': 'تحليل الإيرادات',
+
+        // Courier views
+        'myTasks.title': 'مهامي',
+        'myTasks.assignedToday': 'المكلف بها اليوم',
+        'myTasks.pending': 'المهام المعلقة',
+        'myTasks.inProgress': 'قيد التنفيذ',
+        'completedOrders.title': 'الطلبات المكتملة',
+        'completedOrders.today': 'اليوم',
+        'completedOrders.thisWeek': 'هذا الأسبوع',
+        'completedOrders.thisMonth': 'هذا الشهر',
+        'myEarnings.title': 'أرباحي',
+        'myEarnings.totalEarnings': 'إجمالي الأرباح',
+        'myEarnings.commissionRate': 'معدل العمولة',
+
+        // Management views
+        'deliveredShipments.title': 'الشحنات المسلمة',
+        'couriersByZone.title': 'المناديب حسب المنطقة',
+        'myAssets.title': 'أصولي',
+        'allShipments.title': 'جميع الشحنات',
+        'packagingAssignment.title': 'التعبئة والتوزيع',
+        'deliveryManagement.title': 'إدارة التسليم',
+        'userManagement.title': 'إدارة المستخدمين',
+        'roleManagement.title': 'إدارة الأدوار',
+        'partnerTiers.title': 'مستويات الشراكة',
+        'inventory.title': 'المخزون',
+        'assetManagement.title': 'إدارة الأصول',
+        'supplierManagement.title': 'إدارة الموردين',
+        'courierPerformance.title': 'أداء المناديب',
+        'adminFinancials.title': 'الماليات الإدارية',
+        'totalShipments.title': 'إجمالي الشحنات',
+        'notificationsLog.title': 'سجل الإشعارات',
+
+        // Common table headers
+        'table.id': 'المعرف',
+        'table.name': 'الاسم',
+        'table.email': 'البريد الإلكتروني',
+        'table.phone': 'الهاتف',
+        'table.address': 'العنوان',
+        'table.city': 'المدينة',
+        'table.zone': 'المنطقة',
+        'table.status': 'الحالة',
+        'table.date': 'التاريخ',
+        'table.amount': 'المبلغ',
+        'table.actions': 'الإجراءات',
+        'table.view': 'عرض',
+        'table.edit': 'تعديل',
+        'table.delete': 'حذف',
+
+        // Form fields
+        'form.street': 'عنوان الشارع',
+        'form.city': 'المدينة',
+        'form.zone': 'المنطقة',
+        'form.details': 'تفاصيل إضافية',
+        'form.description': 'الوصف',
+        'form.value': 'القيمة',
+        'form.priority': 'الأولوية',
+        'form.required': 'مطلوب',
+        'form.optional': 'اختياري',
 
         // Client Analytics
         'clientAnalytics.title': 'تحليلات العملاء',
@@ -324,14 +482,9 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
 
     useEffect(() => {
-        // Apply RTL/LTR to document
-        if (language === 'ar') {
-            document.documentElement.setAttribute('dir', 'rtl');
-            document.documentElement.setAttribute('lang', 'ar');
-        } else {
-            document.documentElement.setAttribute('dir', 'ltr');
-            document.documentElement.setAttribute('lang', 'en');
-        }
+        // Set language attribute but do NOT change text direction - keep LTR for both languages
+        document.documentElement.setAttribute('dir', 'ltr');
+        document.documentElement.setAttribute('lang', language);
     }, [language]);
 
     const setLanguage = (lang: Language) => {
