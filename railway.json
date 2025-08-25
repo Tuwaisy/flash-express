@@ -1,4 +1,19 @@
 {
+  "services": [
+    {
+      "name": "flash-express",
+      "start": "npm run start",
+      "env": {
+        "NODE_ENV": "production",
+        "PORT": "3000",
+        "DATABASE_URL": "",
+        "JWT_SECRET": "",
+        "RAILWAY_STATIC_URL": ""
+      }
+    }
+  ]
+}
+{
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
