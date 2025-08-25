@@ -220,7 +220,19 @@ async function setupDatabase() {
             createJsonColumn(table, 'statusHistory');
             table.decimal('amountReceived', 10, 2);
             table.decimal('amountToCollect', 10, 2);
+      // Track whether this shipment row originated from a CSV where the shipping fee
+      // was marked as included. Default to false for backwards compatibility.
+      table.boolean('csvShippingFeeIncluded').defaultTo(false);
         });
+  } else {
+    // Migration: add csvShippingFeeIncluded column if it doesn't exist (safe for existing DBs)
+    const hasCsvFlag = await knex.schema.hasColumn('shipments', 'csvShippingFeeIncluded');
+    if (!hasCsvFlag) {
+      console.log('Adding csvShippingFeeIncluded column to shipments table...');
+      await knex.schema.alterTable('shipments', table => {
+        table.boolean('csvShippingFeeIncluded').defaultTo(false);
+      });
+    }
     }
 
     // Table: shipment_counters

@@ -11,6 +11,7 @@ const twilio = require('twilio');
 const bcrypt = require('bcrypt');
 const fs = require('fs');
 const { knex, setupDatabase } = require('./db');
+const jwt = require('jsonwebtoken');
 
 const saltRounds = 10; // For bcrypt hashing
 
@@ -189,6 +190,22 @@ async function main() {
     
     app.use(express.json({limit: '5mb'})); // To parse JSON request bodies, increased limit for photos
 
+    // --- JWT auth middleware (stateless, efficient). Not enforced on debug/admin by default.
+    // To enable, add middleware usage on admin/debug routes or globally as needed.
+    const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+    const authenticateJWT = (req, res, next) => {
+        const auth = req.headers && req.headers.authorization;
+        if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+        const token = auth.split(' ')[1];
+        try {
+            const payload = jwt.verify(token, JWT_SECRET);
+            req.user = payload;
+            next();
+        } catch (e) {
+            return res.status(401).json({ error: 'Invalid token' });
+        }
+    };
+
     // Serve static files from the React app and uploaded images
     app.use(express.static(path.join(__dirname, '../dist')));
     app.use('/uploads', express.static(uploadsDir));
@@ -326,6 +343,42 @@ async function main() {
     setInterval(updateClientTiers, 24 * 60 * 60 * 1000); // Daily
     checkForOverdueShipments(); // Run on startup
     updateClientTiers(); // Run on startup
+
+    // --- Backup helper ---
+    const backupDatabase = async (note = '') => {
+        try {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const backupsDir = path.join(__dirname, 'backups');
+            if (!fs.existsSync(backupsDir)) fs.mkdirSync(backupsDir);
+            if (process.env.DATABASE_URL) {
+                // Try to run pg_dump if available
+                const filePath = path.join(backupsDir, `pg_backup_${timestamp}.sql`);
+                console.log(`Attempting PostgreSQL dump to ${filePath} ...`);
+                const { execSync } = require('child_process');
+                try {
+                    execSync(`pg_dump "${process.env.DATABASE_URL}" > "${filePath}"`, { stdio: 'ignore' });
+                    console.log('Postgres dump completed.');
+                    return filePath;
+                } catch (e) {
+                    console.warn('pg_dump failed or not available, skipping pg_dump:', e.message);
+                    return null;
+                }
+            } else {
+                // SQLite: copy the file
+                const src = path.join(__dirname, 'flash.sqlite');
+                const dest = path.join(backupsDir, `sqlite_backup_${timestamp}.sqlite`);
+                if (fs.existsSync(src)) {
+                    fs.copyFileSync(src, dest);
+                    console.log(`SQLite DB copied to ${dest}`);
+                    return dest;
+                }
+            }
+        } catch (e) {
+            console.error('Database backup failed:', e);
+            return null;
+        }
+        return null;
+    };
 
 
     
@@ -1083,6 +1136,11 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     amountReceived: shipmentData.paymentMethod === 'Transfer' ? shipmentData.amountReceived : null,
                     amountToCollect: shipmentData.paymentMethod === 'Transfer' ? shipmentData.amountToCollect : null,
                 };
+
+                // Preserve CSV-only shipping fee flag if provided (for auditing). Migration must ensure this column exists.
+                if (shipmentData.hasOwnProperty('shippingFeeIncluded')) {
+                    newShipment.csvShippingFeeIncluded = shipmentData.shippingFeeIncluded === true || shipmentData.shippingFeeIncluded === 'true' || shipmentData.shippingFeeIncluded === 'TRUE';
+                }
     
                 await trx('shipments').insert(newShipment);
                 
@@ -1931,6 +1989,8 @@ app.get('/api/debug/users/:id', async (req, res) => {
     app.post('/api/debug/reset-database', async (req, res) => {
         try {
             console.log('🔄 Starting COMPLETE database reset...');
+            // Create a backup before destructive operations
+            await backupDatabase('debug-reset');
             
             const resetResults = {
                 backup: {},
@@ -2039,6 +2099,8 @@ app.get('/api/debug/users/:id', async (req, res) => {
     app.post('/api/admin/reset-database-complete', async (req, res) => {
         try {
             console.log('🚨 COMPLETE DATABASE RESET INITIATED by Admin');
+            // Create a backup before destructive admin reset
+            await backupDatabase('admin-reset');
             
             // Remove transaction wrapper to avoid PostgreSQL foreign key constraint abort issues
             const results = {
@@ -2454,6 +2516,11 @@ app.get('/api/debug/users/:id', async (req, res) => {
                             }]),
                             clientFlatRateFee: Number(client.flatRateFee) || 30
                         };
+
+                        // If CSV included a shippingFeeIncluded column, store it as csvShippingFeeIncluded for audit.
+                        if (shipmentData.hasOwnProperty('shippingFeeIncluded')) {
+                            newShipment.csvShippingFeeIncluded = shipmentData.shippingFeeIncluded === 'TRUE' || shipmentData.shippingFeeIncluded === true || shipmentData.shippingFeeIncluded === 'true';
+                        }
 
                         // Handle wallet payment
                         if (shipmentData.paymentMethod === 'Wallet') {
@@ -2994,9 +3061,10 @@ app.get('/api/debug/users/:id', async (req, res) => {
         }
     };
 
-    // Run the cleanup job every hour
-    setInterval(cleanupExpiredFailurePhotos, 60 * 60 * 1000);
-    setInterval(cleanupExpiredEvidence, 60 * 60 * 1000);
+    // Run the cleanup job every 4 hours (reduce hosting cost as requested)
+    const FOUR_HOURS = 4 * 60 * 60 * 1000;
+    setInterval(cleanupExpiredFailurePhotos, FOUR_HOURS);
+    setInterval(cleanupExpiredEvidence, FOUR_HOURS);
     // Run once on startup as well
     cleanupExpiredFailurePhotos();
     cleanupExpiredEvidence();
