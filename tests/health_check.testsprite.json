@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "name": "health-check",
+  "steps": [
+    {
+      "type": "http",
+      "name": "Get health",
+      "request": {
+        "method": "GET",
+        "url": "http://localhost:3000/api/health",
+        "headers": {}
+      },
+      "assertions": [
+        { "type": "status", "operator": "equals", "value": 200 },
+        { "type": "jsonPath", "path": "$.status", "operator": "equals", "value": "OK" }
+      ]
+    }
+  ]
+}
