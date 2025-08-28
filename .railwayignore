@@ -16,7 +16,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # Build artifacts (we'll rebuild on Railway)
-dist/
 build/
 
 # Documentation and markdown files

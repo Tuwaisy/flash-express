@@ -8,13 +8,10 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm install --only=production
 
-# Copy source code
+# Copy source code and built dist folder
 COPY . .
-
-# Build the application
-RUN npm run build:skip-check
 
 # Expose port
 EXPOSE 3000
