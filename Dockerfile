@@ -8,9 +8,9 @@ WORKDIR /app
 COPY package*.json ./
 COPY server/package*.json ./server/
 
-# Install dependencies
-RUN npm ci --only=production --no-audit --no-fund
-RUN cd server && npm ci --only=production --no-audit --no-fund
+# Install ALL dependencies (including dev dependencies for building)
+RUN npm install
+RUN cd server && npm install --only=production
 
 # Copy application source
 COPY . .
