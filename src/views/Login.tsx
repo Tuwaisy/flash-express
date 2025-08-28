@@ -20,7 +20,7 @@ const LoginScreen = () => {
                     <div className="inline-block p-4 bg-primary/10 border-2 border-primary/20 rounded-2xl">
                         <svg viewBox="0 0 24 24" className="w-16 h-16 text-primary" fill="currentColor"><path d="M13,3V9H16L11,21V15H8L13,3Z"></path></svg>
                     </div>
-                    <h1 className="text-4xl font-bold tracking-tight text-foreground mt-4">Flash Express</h1>
+                    <h1 className="text-4xl font-bold tracking-tight text-foreground mt-4">Shuhna Express</h1>
                     <p className="mt-2 text-muted-foreground">Your world, delivered.</p>
                 </div>
 

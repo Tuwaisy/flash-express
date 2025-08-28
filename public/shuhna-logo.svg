@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 400 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lightning bolt -->
+  <path d="M50 10 L30 50 L45 50 L35 90 L65 40 L50 40 L60 10 Z" fill="#FFC107" stroke="none"/>
+  
+  <!-- Text -->
+  <text x="90" y="65" font-family="Arial, sans-serif" font-size="36" font-weight="bold" fill="#1e3a8a">
+    EXPRESS
+  </text>
+  
+  <!-- Comma accent -->
+  <circle cx="370" cy="20" r="8" fill="#FFC107"/>
+</svg>

@@ -1,7 +1,7 @@
 {
   "name": "flash-express-email-server",
   "version": "1.0.0",
-  "description": "Backend server to send emails for Flash Express.",
+  "description": "Backend server to send emails for Shuhna Express.",
   "main": "server.js",
   "scripts": {
   "start": "node server.js",

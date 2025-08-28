@@ -350,7 +350,7 @@ async function main() {
         const { recipient, subject, message } = notification;
 
         const mailOptions = {
-            from: `"Flash Express" <${process.env.EMAIL_USER}>`,
+            from: `"Shuhna Express" <${process.env.EMAIL_USER}>`,
             to: recipient,
             subject: subject,
             html: `<p>${message.replace(/\n/g, '<br>')}</p>`,
@@ -1402,7 +1402,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
 
             await knex('delivery_verifications').insert({ shipmentId: id, code, expires_at }).onConflict('shipmentId').merge();
             
-            const message = `Your Flash Express delivery code for shipment ${id} is: ${code}`;
+            const message = `Your Shuhna Express delivery code for shipment ${id} is: ${code}`;
             
             await knex('notifications').insert({
                 id: generateId('NOT'),

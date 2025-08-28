@@ -25,7 +25,7 @@ const Footer: React.FC<FooterProps> = ({ t }) => {
                   <Zap className="h-10 w-10 text-[#FFD000]" />
                 </div>
                 <h3 className="text-3xl font-bold bg-gradient-to-r from-[#FFD000] to-[#FFF700] bg-clip-text text-transparent">
-                  Flash Express
+                  Shuhna Express
                 </h3>
               </div>
               <p className="text-xl text-gray-300 mb-6 leading-relaxed">
@@ -111,7 +111,7 @@ const Footer: React.FC<FooterProps> = ({ t }) => {
           <div className="mt-12 pt-8 border-t border-white/20">
             <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
               <div className="text-gray-400 text-sm">
-                &copy; {currentYear} Flash Express. {t('footerRights')}
+                &copy; {currentYear} Shuhna Express. {t('footerRights')}
               </div>
               <div className="flex space-x-6 text-sm text-gray-400">
                 <a href="#" className="hover:text-[#FFD000] transition-colors">Privacy Policy</a>

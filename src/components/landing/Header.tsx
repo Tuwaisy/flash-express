@@ -58,10 +58,10 @@ const Header: React.FC<HeaderProps> = ({ currentLang, setLanguage, t }) => {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-3">
               <div className="logo-bounce">
-                <Zap className="h-10 w-10 text-[#FFD000]" />
+                <img src="/shuhna-logo.png" alt="Shuhna Express Logo" className="h-10 w-auto" />
               </div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-[#FFD000] to-[#FFF700] bg-clip-text text-transparent">
-                Flash Express
+                Shuhna Express
               </h1>
             </div>
             

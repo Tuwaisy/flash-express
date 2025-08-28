@@ -112,10 +112,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, se
                 <div className="p-4 flex items-center justify-between border-b border-border">
                     <div className="flex items-center gap-3">
                         <div className="bg-primary/10 p-1.5 rounded-lg">
-                            <LogoIcon className="w-8 h-8"/>
+                            <img src="/shuhna-logo.png" alt="Shuhna Express Logo" className="w-8 h-8 object-contain" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-bold text-foreground">Flash Express</h1>
+                            <h1 className="text-lg font-bold text-foreground">Shuhna Express</h1>
                         </div>
                     </div>
                      <button onClick={() => setIsOpen(false)} className="p-1 text-muted-foreground hover:text-foreground lg:hidden">

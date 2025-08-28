@@ -68,7 +68,7 @@ const RecipientTracking: React.FC<RecipientTrackingProps> = ({ onBackToApp }) =>
                 <div className="max-w-6xl mx-auto flex justify-between items-center">
                     <div className="flex items-center gap-3">
                         <LogoIcon className="w-9 h-9" />
-                        <h1 className="text-xl font-bold text-foreground">Flash Express Tracking</h1>
+                        <h1 className="text-xl font-bold text-foreground">Shuhna Express Tracking</h1>
                     </div>
                     <button onClick={onBackToApp} className="text-sm font-semibold text-primary hover:text-primary/90">
                         Back to Portal
