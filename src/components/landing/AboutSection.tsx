@@ -16,7 +16,7 @@ const AboutSection: React.FC<AboutSectionProps> = ({ t }) => {
       title: t('missionTitle'),
       description: t('missionDesc'),
       icon: <Rocket className="h-12 w-12" />,
-      color: 'from-blue-500 to-blue-700',
+      color: 'from-[#001f3d] to-[#001f3d]',
       stats: [
         { label: 'Local Businesses Served', value: '500+' },
         { label: 'Packages Delivered', value: '50K+' },
@@ -28,7 +28,7 @@ const AboutSection: React.FC<AboutSectionProps> = ({ t }) => {
       title: t('visionTitle'),
       description: t('visionDesc'),
       icon: <Eye className="h-12 w-12" />,
-      color: 'from-purple-500 to-purple-700',
+      color: 'from-[#fecb00] to-[#fecb00]',
       stats: [
         { label: 'Growth Target', value: '200%' },
         { label: 'New Partnerships', value: '100+' },
@@ -61,7 +61,7 @@ const AboutSection: React.FC<AboutSectionProps> = ({ t }) => {
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveTab((prev) => (prev + 1) % tabs.length);
-    }, 5000);
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [tabs.length]);

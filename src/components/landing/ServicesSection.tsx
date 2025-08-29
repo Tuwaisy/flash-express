@@ -58,7 +58,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ t }) => {
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveTab((prev) => (prev + 1) % services.length);
-    }, 4000);
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [services.length]);
@@ -70,7 +70,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ t }) => {
             <h2 className={`will-animate text-4xl font-bold text-white mb-6 ${isVisible ? 'slide-in-visible' : ''}`}>
               {t('servicesTitle')}
             </h2>
-            <p className={`will-animate text-xl text-gray-300 max-w-3xl mx-auto ${isVisible ? 'slide-in-visible' : ''}`} style={{ animationDelay: '0.2s' }}>
+            <p className={`will-animate text-xl text-gray-300 max-w-3xl mx-auto ${isVisible ? 'slide-in-visible' : ''}`} style={{ animationDelay: '7.2s' }}>
               {t('servicesSubtitle')}
             </p>
           </div>

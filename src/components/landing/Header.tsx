@@ -55,23 +55,25 @@ const Header: React.FC<HeaderProps> = ({ currentLang, setLanguage, t }) => {
         isScrolled ? 'header-blur shadow-xl' : 'bg-transparent'
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
+          <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-3">
-              <div className="logo-bounce">
-                <img src="/shuhna-logo.png" alt="Shuhna Express Logo" className="h-10 w-auto" />
-              </div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-[#FFD000] to-[#FFF700] bg-clip-text text-transparent">
-                Shuhna Express
-              </h1>
+              <button 
+                onClick={() => scrollToSection('hero')}
+                className="flex items-center space-x-3 hover:opacity-80 transition-opacity duration-300"
+              >
+                <div>
+                  <img src="/shuhna-logo.png" alt="Shuhna Express Logo" className="h-16 w-auto" />
+                </div>
+              </button>
             </div>
             
             {/* Desktop Menu */}
-            <div className="hidden md:flex items-center gap-x-8">
+            <div className="hidden md:flex items-center gap-x-12">
               {navItems.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => scrollToSection(item.id)}
-                  className={`nav-link text-sm font-medium transition-all duration-300 ${
+                  className={`nav-link text-base font-medium transition-all duration-300 ${
                     activeSection === item.id ? 'text-[#FFD000] active' : 'text-white hover:text-[#FFD000]'
                   }`}
                 >
@@ -81,20 +83,20 @@ const Header: React.FC<HeaderProps> = ({ currentLang, setLanguage, t }) => {
             </div>
 
             {/* Desktop Actions */}
-            <div className="hidden md:flex items-center gap-x-4">
-               <a href="/app.html" className="px-4 py-2 rounded-lg text-sm border-2 border-white/80 text-white/80 hover:bg-white/10 hover:text-white transition-all duration-300 font-semibold">
+            <div className="hidden md:flex items-center gap-x-6">
+               <a href="/app.html" className="px-6 py-3 rounded-lg text-base border-2 border-white/80 text-white/80 hover:bg-white/10 hover:text-white transition-all duration-300 font-semibold">
                 {t('navLogin')}
               </a>
               <button
                 onClick={() => scrollToSection('tracking')}
-                className="bg-[#FFD000] text-[#061A40] px-6 py-2 rounded-lg font-semibold hover:bg-[#e6bb00] transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center"
+                className="bg-[#FFD000] text-[#061A40] px-8 py-3 rounded-lg font-semibold hover:bg-[#e6bb00] transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center"
               >
-                <Package className="inline h-4 w-4 me-2" />
+                <Package className="inline h-5 w-5 me-2" />
                 {t('navTrackShipment')}
               </button>
               <button
                 onClick={() => setLanguage(currentLang === 'en' ? 'ar' : 'en')}
-                className="px-4 py-2 rounded-lg border-2 border-[#FFD000] text-[#FFD000] hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300 font-semibold"
+                className="px-6 py-3 rounded-lg border-2 border-[#FFD000] text-[#FFD000] hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300 font-semibold"
               >
                 {currentLang === 'en' ? 'AR' : 'EN'}
               </button>
@@ -102,22 +104,22 @@ const Header: React.FC<HeaderProps> = ({ currentLang, setLanguage, t }) => {
 
             {/* Mobile Menu Button */}
             <button
-              className="md:hidden p-2 text-white hover:text-[#FFD000] transition-colors"
+              className="md:hidden p-3 text-white hover:text-[#FFD000] transition-colors"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              {isMenuOpen ? <X className="h-8 w-8" /> : <Menu className="h-8 w-8" />}
             </button>
           </div>
 
           {/* Mobile Menu */}
           {isMenuOpen && (
-            <div className="md:hidden mobile-menu-slide bg-[#061A40]/95 backdrop-blur-md rounded-lg mt-2 mb-4 p-4">
-              <div className="space-y-3">
+            <div className="md:hidden mobile-menu-slide bg-[#061A40]/95 backdrop-blur-md rounded-lg mt-3 mb-6 p-6">
+              <div className="space-y-4">
                 {navItems.map((item) => (
                   <button
                     key={item.id}
                     onClick={() => scrollToSection(item.id)}
-                    className={`block w-full text-left px-4 py-3 rounded-lg transition-all duration-300 ${
+                    className={`block w-full text-left px-6 py-4 rounded-lg transition-all duration-300 text-base ${
                       activeSection === item.id 
                         ? 'bg-[#FFD000] text-[#061A40] font-semibold' 
                         : 'text-white hover:bg-[#FFD000]/10 hover:text-[#FFD000]'
@@ -126,19 +128,19 @@ const Header: React.FC<HeaderProps> = ({ currentLang, setLanguage, t }) => {
                     {item.label}
                   </button>
                 ))}
-                <div className="flex space-x-3 pt-3 border-t border-white/20">
-                   <a href="/app.html" className="flex-1 text-center bg-transparent border-2 border-white/80 text-white/80 px-4 py-2 rounded-lg font-semibold">
+                <div className="flex space-x-4 pt-4 border-t border-white/20">
+                   <a href="/app.html" className="flex-1 text-center bg-transparent border-2 border-white/80 text-white/80 px-6 py-3 rounded-lg font-semibold">
                       {t('navLogin')}
                    </a>
                   <button
                     onClick={() => scrollToSection('tracking')}
-                    className="flex-1 bg-[#FFD000] text-[#061A40] px-4 py-2 rounded-lg font-semibold text-center"
+                    className="flex-1 bg-[#FFD000] text-[#061A40] px-6 py-3 rounded-lg font-semibold text-center"
                   >
                     {t('navTrackShipment')}
                   </button>
                   <button
                     onClick={() => setLanguage(currentLang === 'en' ? 'ar' : 'en')}
-                    className="px-4 py-2 rounded-lg border-2 border-[#FFD000] text-[#FFD000] font-semibold"
+                    className="px-6 py-3 rounded-lg border-2 border-[#FFD000] text-[#FFD000] font-semibold"
                   >
                     {currentLang === 'en' ? 'AR' : 'EN'}
                   </button>
