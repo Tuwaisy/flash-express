@@ -71,7 +71,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, setIsOpen }) => {
-    const { hasPermission } = useAppContext();
+    const { hasPermission, theme } = useAppContext();
     const { t } = useLanguage();
 
     const availableNavItems = ALL_NAV_ITEMS.filter(item => {
@@ -115,7 +115,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, se
                         className="flex items-center gap-3 hover:opacity-80 transition-opacity duration-300"
                     >
                         <div className="p-2">
-                            <img src="/shuhna-logo-app.png" alt="Shuhna Express Logo" className="w-15 h-15 object-contain" />
+                            <img 
+                                src={theme === 'dark' ? "/shuhna-logo-main.png" : "/shuhna-logo-app.png"} 
+                                alt="Shuhna Express Logo" 
+                                className="w-15 h-15 object-contain" 
+                            />
                         </div>
 
                     </button>
