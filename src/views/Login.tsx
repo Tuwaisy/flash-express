@@ -41,7 +41,7 @@ const LoginScreen = () => {
                                     value={email} 
                                     onChange={e => setEmail(e.target.value)} 
                                     className="w-full pl-10 pr-4 py-3 bg-background/60 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary/80 focus:border-primary transition" 
-                                    placeholder="you@example.com" 
+                                    placeholder="admin@shuhna.net" 
                                     required 
                                 />
                             </div>
@@ -75,9 +75,6 @@ const LoginScreen = () => {
                     </form>
                 </div>
 
-                <p className="text-center text-xs text-muted-foreground mt-6">
-                    Test with: <code className="bg-card text-secondary-foreground px-1.5 py-0.5 rounded-md">admin@flash.com</code> / <code className="bg-card text-secondary-foreground px-1.5 py-0.5 rounded-md">password123</code>
-                </p>
             </div>
         </div>
     );

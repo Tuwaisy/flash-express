@@ -55,21 +55,6 @@ const Header: React.FC<HeaderProps> = ({ currentLang, setLanguage, t }) => {
         isScrolled ? 'header-blur shadow-xl' : 'bg-transparent'
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Top row - Login and Language buttons */}
-          <div className="flex justify-end items-center py-2 border-b border-white/10">
-            <div className="flex items-center gap-x-3">
-              <a href="/app.html" className="px-4 py-2 rounded-lg text-sm border border-white/60 text-white/80 hover:bg-white/10 hover:text-white transition-all duration-300 font-medium">
-                {t('navLogin')}
-              </a>
-              <button
-                onClick={() => setLanguage(currentLang === 'en' ? 'ar' : 'en')}
-                className="px-4 py-2 rounded-lg border border-[#FFD000] text-[#FFD000] hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300 font-medium text-sm"
-              >
-                {currentLang === 'en' ? 'AR' : 'EN'}
-              </button>
-            </div>
-          </div>
-
           {/* Main navigation row */}
           <div className="flex justify-between items-center py-4">
             {/* Logo Section */}
@@ -78,7 +63,7 @@ const Header: React.FC<HeaderProps> = ({ currentLang, setLanguage, t }) => {
                 onClick={() => scrollToSection('hero')}
                 className="flex items-center hover:opacity-80 transition-opacity duration-300"
               >
-                <img src="/shuhna-logo-main.png" alt="Shuhna Express Logo" className="h-14 w-auto" />
+                <img src="/shuhna-logo-main.png" alt="Shuhna Express Logo" className="h-16 w-auto" />
               </button>
             </div>
             
@@ -103,10 +88,23 @@ const Header: React.FC<HeaderProps> = ({ currentLang, setLanguage, t }) => {
             <div className="hidden md:flex items-center">
               <button
                 onClick={() => scrollToSection('tracking')}
-                className="bg-[#FFD000] text-[#061A40] px-6 py-3 rounded-lg font-semibold hover:bg-[#e6bb00] transition-all duration-300 shadow-lg hover:shadow-xl flex items-center"
+                className="bg-[#FFD000] text-[#061A40] px-6 py-3 rounded-lg font-semibold hover:bg-[#e6bb00] transition-all duration-300 shadow-lg hover:shadow-xl flex items-center mr-4"
               >
                 <Package className="inline h-5 w-5 me-2" />
                 {t('navTrackShipment')}
+              </button>
+            </div>
+
+            {/* Login and Language buttons - Far right */}
+            <div className="hidden md:flex items-center gap-x-3">
+              <a href="/app.html" className="px-4 py-2 rounded-lg text-sm border border-white/60 text-white/80 hover:bg-white/10 hover:text-white transition-all duration-300 font-medium">
+                {t('navLogin')}
+              </a>
+              <button
+                onClick={() => setLanguage(currentLang === 'en' ? 'ar' : 'en')}
+                className="px-4 py-2 rounded-lg border border-[#FFD000] text-[#FFD000] hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300 font-medium text-sm"
+              >
+                {currentLang === 'en' ? 'AR' : 'EN'}
               </button>
             </div>
 

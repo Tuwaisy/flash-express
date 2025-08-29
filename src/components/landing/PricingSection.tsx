@@ -152,11 +152,7 @@ const PricingSection: React.FC<PricingSectionProps> = ({ t }) => {
                   </div>
                   
                   <button
-                    className={`w-full py-3 rounded-xl font-bold transition-all duration-300 mt-auto ${
-                      tier.popular
-                        ? 'bg-[#FFD000] text-[#061A40] hover:bg-[#e6bb00]'
-                        : 'border-2 border-[#FFD000] text-[#FFD000] hover:bg-[#FFD000] hover:text-[#061A40]'
-                    }`}
+                    className="w-full py-3 rounded-xl font-bold transition-all duration-300 mt-auto bg-[#FFD000] text-[#061A40] hover:bg-[#e6bb00]"
                   >
                     {tier.id === 'enterprise' ? t('largeOrdersCTA') : t('getStarted')}
                   </button>

@@ -56,7 +56,7 @@ const ContactSection: React.FC<ContactSectionProps> = ({ t }) => {
                   {t('contactNumber')}
                 </h3>
                 
-                <div className="text-3xl font-black text-[#061A40] mb-8 tracking-wider">
+                <div className="text-3xl font-black text-[#061A40] mb-8 tracking-wider" dir="ltr">
                   +2 010 3267 4447
                 </div>
                 

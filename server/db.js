@@ -145,14 +145,14 @@ async function setupDatabase() {
     await knex('custom_roles').insert(rolesToSeed);
 
     // Seeding: admin user
-    if (!(await knex('users').where({ email: 'admin@flash.com' }).first())) {
+    if (!(await knex('users').where({ email: 'admin@shuhna.net' }).first())) {
         console.log('Seeding admin user...');
         const hashedPassword = await bcrypt.hash('password123', saltRounds);
         await knex('users').insert({
           id: 1,
           publicId: 'AD-1',
           name: 'Admin User',
-          email: 'admin@flash.com',
+          email: 'admin@shuhna.net',
           password: hashedPassword,
           roles: safeStringify(['Administrator']),
         });
