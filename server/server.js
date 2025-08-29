@@ -922,6 +922,78 @@ app.get('/api/debug/users/:id', async (req, res) => {
         catch (error) { res.status(500).json({ error: 'Server error updating user' }); }
     });
 
+    // Admin Profile Update - Allow admin to change their email
+    app.put('/api/admin/profile', async (req, res) => {
+        try {
+            const { email, name, currentPassword } = req.body;
+            
+            // Get the current admin user (assuming it's passed in the request or session)
+            const currentUserId = req.body.userId || req.headers['user-id'];
+            if (!currentUserId) {
+                return res.status(401).json({ error: 'User ID required' });
+            }
+            
+            const currentUser = await knex('users').where({ id: currentUserId }).first();
+            if (!currentUser) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+            
+            // Verify user is admin
+            const userRoles = safeJsonParse(currentUser.roles, []);
+            if (!userRoles.includes('Administrator')) {
+                return res.status(403).json({ error: 'Admin access required' });
+            }
+            
+            // Verify current password if provided
+            if (currentPassword) {
+                const bcrypt = require('bcrypt');
+                const passwordMatch = await bcrypt.compare(currentPassword, currentUser.password);
+                if (!passwordMatch) {
+                    return res.status(400).json({ error: 'Current password is incorrect' });
+                }
+            }
+            
+            // Check if new email already exists (for another user)
+            if (email && email !== currentUser.email) {
+                const existingUser = await knex('users').where({ email }).first();
+                if (existingUser) {
+                    return res.status(400).json({ error: 'Email already in use by another user' });
+                }
+            }
+            
+            // Update admin profile
+            const updateData = {};
+            if (email) updateData.email = email;
+            if (name) updateData.name = name;
+            
+            if (Object.keys(updateData).length > 0) {
+                await knex('users').where({ id: currentUserId }).update(updateData);
+                
+                // Get updated user data
+                const updatedUser = await knex('users').where({ id: currentUserId }).first();
+                
+                res.json({
+                    success: true,
+                    message: 'Admin profile updated successfully',
+                    user: {
+                        id: updatedUser.id,
+                        email: updatedUser.email,
+                        name: updatedUser.name,
+                        roles: safeJsonParse(updatedUser.roles, [])
+                    }
+                });
+                
+                throttledDataUpdate();
+            } else {
+                res.status(400).json({ error: 'No valid fields provided for update' });
+            }
+            
+        } catch (error) {
+            console.error('Admin profile update error:', error);
+            res.status(500).json({ error: 'Server error updating admin profile' });
+        }
+    });
+
     app.delete('/api/users/:id', async (req, res) => {
         const { id } = req.params;
         try {

@@ -144,27 +144,49 @@ async function setupDatabase() {
     ].map(role => ({ ...role, permissions: safeStringify(role.permissions) })); // Stringify permissions
     await knex('custom_roles').insert(rolesToSeed);
 
-    // Seeding: admin user
-    if (!(await knex('users').where({ email: 'admin@shuhna.net' }).first())) {
+    // Seeding: admin user - Handle existing user updates
+    const existingAdmin = await knex('users').where({ email: 'admin@shuhna.net' }).first();
+    const existingOldAdmin = await knex('users').where({ email: 'admin@flash.com' }).first();
+    
+    if (existingOldAdmin && !existingAdmin) {
+        // Update old admin email to new one
+        console.log('Updating existing admin user email from admin@flash.com to admin@shuhna.net...');
+        await knex('users')
+            .where({ email: 'admin@flash.com' })
+            .update({ email: 'admin@shuhna.net' });
+    } else if (!existingAdmin && !existingOldAdmin) {
+        // Create new admin user only if none exists
         console.log('Seeding admin user...');
         const hashedPassword = await bcrypt.hash('password123', saltRounds);
+        
+        // Get the next available ID
+        const maxId = await knex('users').max('id as maxId').first();
+        const nextId = (maxId?.maxId || 0) + 1;
+        
         await knex('users').insert({
-          id: 1,
-          publicId: 'AD-1',
+          id: nextId,
+          publicId: `AD-${nextId}`,
           name: 'Admin User',
           email: 'admin@shuhna.net',
           password: hashedPassword,
           roles: safeStringify(['Administrator']),
         });
+    } else if (existingAdmin) {
+        console.log('Admin user with admin@shuhna.net already exists, skipping...');
     }
 
     // Seeding: test client user
     if (!(await knex('users').where({ email: 'client@test.com' }).first())) {
         console.log('Seeding test client user...');
         const hashedPassword = await bcrypt.hash('password123', saltRounds);
+        
+        // Get the next available ID
+        const maxId = await knex('users').max('id as maxId').first();
+        const nextId = (maxId?.maxId || 0) + 1;
+        
         await knex('users').insert({
-          id: 2,
-          publicId: 'CL-2',
+          id: nextId,
+          publicId: `CL-${nextId}`,
           name: 'Test Client',
           email: 'client@test.com',
           password: hashedPassword,
@@ -179,9 +201,14 @@ async function setupDatabase() {
     if (!(await knex('users').where({ email: 'courier@test.com' }).first())) {
         console.log('Seeding test courier user...');
         const hashedPassword = await bcrypt.hash('password123', saltRounds);
+        
+        // Get the next available ID
+        const maxId = await knex('users').max('id as maxId').first();
+        const nextId = (maxId?.maxId || 0) + 1;
+        
         await knex('users').insert({
-          id: 3,
-          publicId: 'CO-3',
+          id: nextId,
+          publicId: `CO-${nextId}`,
           name: 'Test Courier',
           email: 'courier@test.com',
           password: hashedPassword,
