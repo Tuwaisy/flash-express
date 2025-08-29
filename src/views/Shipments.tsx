@@ -3,6 +3,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { useLanguage } from '../context/LanguageContext';
 import { UserRole, Shipment, ShipmentStatus, Permission } from '../types';
 import { exportToCsv } from '../utils/pdf';
 import { DocumentDownloadIcon } from '../components/Icons';
@@ -26,6 +27,7 @@ const isShipmentOverdue = (shipment: Shipment) => {
 
 const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
     const { currentUser, shipments, users, updateShipmentFees, getCourierName, hasPermission } = useAppContext();
+    const { t } = useLanguage();
     
     // Filters
     const [searchTerm, setSearchTerm] = useState('');
@@ -120,7 +122,7 @@ const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
         <>
             <div className="flex justify-between items-center mb-4">
                  <h2 className="text-2xl font-bold text-foreground">
-                   {canViewAll ? 'All Shipments' : 'My Shipments'}
+                   {canViewAll ? t('nav.allShipments') : t('nav.myShipments')}
                </h2>
             </div>
             

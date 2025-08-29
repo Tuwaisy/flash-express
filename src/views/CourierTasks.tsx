@@ -4,6 +4,7 @@
 
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Shipment, ShipmentStatus, PaymentMethod, UserRole } from '../types';
 import { BarcodeScanner } from '../components/common/BarcodeScanner';
 import { Modal } from '../components/common/Modal';
@@ -17,6 +18,7 @@ interface CourierTasksProps {
 
 const CourierTasks: React.FC<CourierTasksProps> = ({ setActiveView }) => {
     const { currentUser, shipments, users, updateShipmentStatus, addToast, sendDeliveryVerificationCode, verifyDelivery } = useAppContext();
+    const { t } = useLanguage();
     const [isScannerOpen, setScannerOpen] = useState(false);
     const [highlightedTask, setHighlightedTask] = useState<string | null>(null);
     const [isFailureModalOpen, setFailureModalOpen] = useState(false);
@@ -243,7 +245,7 @@ const CourierTasks: React.FC<CourierTasksProps> = ({ setActiveView }) => {
     return (
         <div className="space-y-8">
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-foreground">My Delivery Tasks</h2>
+                <h2 className="text-2xl font-bold text-foreground">{t('nav.myTasks')}</h2>
                 <button 
                     onClick={() => setScannerOpen(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 transition"

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Shipment, ShipmentStatus, ShipmentPriority } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 import { LogoIcon, PhoneIcon, UserCircleIcon, MapPinIcon } from '../components/Icons';
 import { ShipmentStatusBadge } from '../components/common/ShipmentStatusBadge';
 import { TrackingTimeline } from '../components/specific/TrackingTimeline';
@@ -10,6 +11,7 @@ interface RecipientTrackingProps {
 }
 
 const RecipientTracking: React.FC<RecipientTrackingProps> = ({ onBackToApp }) => {
+    const { t } = useLanguage();
     const [trackingId, setTrackingId] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
     const [shipment, setShipment] = useState<Shipment | null>(null);
@@ -79,8 +81,8 @@ const RecipientTracking: React.FC<RecipientTrackingProps> = ({ onBackToApp }) =>
                 <div className="w-full max-w-6xl mx-auto">
                     {!shipment ? (
                         <div className="w-full max-w-lg mx-auto card p-8 shadow-lg">
-                            <h2 className="text-3xl font-bold text-foreground text-center">Track Your Shipment</h2>
-                            <p className="text-muted-foreground text-center mt-2 mb-8">Enter the shipment ID and your phone number to see its status.</p>
+                            <h2 className="text-3xl font-bold text-foreground text-center">{t('trackTitle')}</h2>
+                            <p className="text-muted-foreground text-center mt-2 mb-8">{t('trackSubtitle')}</p>
                             
                             {error && (
                                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md relative mb-6" role="alert">

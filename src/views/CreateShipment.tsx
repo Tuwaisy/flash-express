@@ -377,7 +377,7 @@ const CreateShipment = () => {
 
     return (
         <div className="card max-w-6xl mx-auto">
-            <h2 className="text-2xl font-bold text-foreground mb-6">{t('createShipments')}</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-6">{t('nav.createShipment')}</h2>
 
             <div className="border-b border-border mb-6">
                 <nav className="-mb-px flex space-x-6">
