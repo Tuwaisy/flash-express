@@ -3,7 +3,7 @@ import { useAppContext } from '../context/AppContext';
 import { MailIcon, KeyIcon } from '../components/Icons';
 
 const LoginScreen = () => {
-    const { login, isLoading } = useAppContext();
+    const { login, isLoading, theme } = useAppContext();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     
@@ -18,7 +18,11 @@ const LoginScreen = () => {
                 <div className="text-center mb-8">
                     {/* Main logo for consistent branding */}
                     <div className="inline-block p-4">
-                        <img src="/shuhna-logo-main.png" alt="Shuhna Express Logo" className="w-24 h-24 object-contain" />
+                        <img 
+                            src={theme === 'dark' ? "/shuhna-logo-main.png" : "/shuhna-logo-app.png"} 
+                            alt="Shuhna Express Logo" 
+                            className="w-72 h-72 object-contain" 
+                        />
                     </div>
                     <h1 className="text-4xl font-bold tracking-tight text-foreground mt-4">Shuhna Express</h1>
                     <p className="mt-2 text-muted-foreground">Your world, delivered.</p>

@@ -22,10 +22,10 @@ const Footer: React.FC<FooterProps> = ({ t }) => {
             <div className="col-span-1 lg:col-span-2">
               <div className="flex items-center space-x-3 mb-6">
                 <div className="logo-glow">
-                  <img src="/shuhna-logo-main.png" alt="Shuhna Express Logo" className="h-16 w-16 object-contain" />
+                  <img src="/shuhna-logo-main.png" alt="Shuhna Express Logo" className="h-32 w-32 object-contain" />
                 </div>
               </div>
-              <p className="text-xl text-gray-300 mb-6 leading-relaxed">
+              <p className="text-xl text-gray-300 mb-6 leading-relaxed font-bold">
                 {t('footerSlogan')}
               </p>
               
