@@ -2107,7 +2107,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 
                 // STEP 3: Handle user deletions carefully with foreign key constraints
                 console.log('👥 Removing non-essential users...');
-                const essentialEmails = ['admin@flash.com', 'testcourier@flash.com', 'testclient@flash.com'];
+                const essentialEmails = ['admin@shuhna.net', 'testcourier@flash.com', 'testclient@flash.com'];
                 const essentialUsers = await knex('users').whereIn('email', essentialEmails).select('id', 'email');
                 const essentialUserIds = essentialUsers.map(u => u.id);
                 
@@ -2158,11 +2158,11 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 const existingEmails = existingEssentialUsers.map(u => u.email);
                 const missingUsers = [];
                 
-                if (!existingEmails.includes('admin@flash.com')) {
+                if (!existingEmails.includes('admin@shuhna.net')) {
                     missingUsers.push({
                         firstName: 'Admin',
                         lastName: 'User',
-                        email: 'admin@flash.com',
+                        email: 'admin@shuhna.net',
                         password: 'password123', // Will be hashed by the system
                         phone: '+201000000000',
                         roles: '["Administrator"]',
@@ -2297,6 +2297,59 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 error: 'Complete reset failed', 
                 details: error.message,
                 suggestion: 'Check logs for detailed error information'
+            });
+        }
+    });
+
+    // --- DEBUG ENDPOINT: Update Admin Email ---
+    app.post('/api/debug/update-admin-email', async (req, res) => {
+        try {
+            console.log('📧 Updating admin email from admin@flash.com to admin@shuhna.net...');
+            
+            // Check if the old admin email exists
+            const oldAdmin = await knex('users')
+                .where({ email: 'admin@flash.com' })
+                .andWhere('roles', 'like', '%Administrator%')
+                .first();
+            
+            if (!oldAdmin) {
+                return res.json({
+                    success: true,
+                    message: 'No admin user with old email found. No update needed.',
+                    admin_user: await knex('users')
+                        .where({ email: 'admin@shuhna.net' })
+                        .andWhere('roles', 'like', '%Administrator%')
+                        .select('id', 'email', 'name', 'roles')
+                        .first()
+                });
+            }
+            
+            // Update the admin email
+            const updateResult = await knex('users')
+                .where({ email: 'admin@flash.com' })
+                .andWhere('roles', 'like', '%Administrator%')
+                .update({ email: 'admin@shuhna.net' });
+            
+            // Verify the update
+            const updatedAdmin = await knex('users')
+                .where({ email: 'admin@shuhna.net' })
+                .andWhere('roles', 'like', '%Administrator%')
+                .select('id', 'email', 'name', 'roles')
+                .first();
+            
+            console.log('✅ Admin email updated successfully');
+            res.json({
+                success: true,
+                message: 'Admin email updated successfully',
+                rows_affected: updateResult,
+                admin_user: updatedAdmin
+            });
+            
+        } catch (error) {
+            console.error('❌ Admin email update failed:', error);
+            res.status(500).json({
+                error: 'Admin email update failed',
+                details: error.message
             });
         }
     });

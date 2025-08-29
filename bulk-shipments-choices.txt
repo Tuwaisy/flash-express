@@ -1,5 +1,5 @@
 Client Emails:
-admin@flash.com
+admin@shuhna.net
 testclient@flash.com
 client@flash.com
 

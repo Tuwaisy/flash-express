@@ -61,7 +61,7 @@ def create_bulk_shipments_template():
     # Define choice data for dropdowns
     choices_data = {
         "Client_Emails": [
-            "admin@flash.com",
+            "admin@shuhna.net",
             "testclient@flash.com", 
             "client@flash.com"
         ],
@@ -280,7 +280,7 @@ def create_bulk_shipments_template():
         "2. Upload it to the Flash Express bulk shipment import feature",
         "3. Review the preview before confirming the import",
         "",
-        "For support, contact: admin@flash.com"
+        "For support, contact: admin@shuhna.net"
     ]
     
     for row, instruction in enumerate(instructions, 1):

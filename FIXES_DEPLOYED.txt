@@ -30,7 +30,7 @@
 🧪 TEST USERS CREATED:
 
 ADMIN USER:
-- Email: admin@flash.com
+- Email: admin@shuhna.net
 - Password: password123
 - Role: Administrator
 - Features: Full system access
@@ -53,7 +53,7 @@ TEST COURIER:
 🔍 TESTING CHECKLIST:
 
 1. LOGIN TEST:
-   ✓ Try logging in with admin@flash.com / password123
+   ✓ Try logging in with admin@shuhna.net / password123
    ✓ Try logging in with client@test.com / password123
    ✓ Try logging in with courier@test.com / password123
 
