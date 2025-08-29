@@ -159,18 +159,21 @@ async function setupDatabase() {
         console.log('Seeding admin user...');
         const hashedPassword = await bcrypt.hash('password123', saltRounds);
         
-        // Get the next available ID
-        const maxId = await knex('users').max('id as maxId').first();
-        const nextId = (maxId?.maxId || 0) + 1;
-        
-        await knex('users').insert({
-          id: nextId,
-          publicId: `AD-${nextId}`,
+        // Let database auto-generate ID and then get it
+        const [insertedUser] = await knex('users').insert({
           name: 'Admin User',
           email: 'admin@shuhna.net',
           password: hashedPassword,
           roles: safeStringify(['Administrator']),
+        }).returning(['id']);
+        
+        const userId = insertedUser.id;
+        
+        // Update with proper publicId after getting the auto-generated ID
+        await knex('users').where({ id: userId }).update({
+          publicId: `AD-${userId}`
         });
+        
     } else if (existingAdmin) {
         console.log('Admin user with admin@shuhna.net already exists, skipping...');
     }
@@ -180,13 +183,8 @@ async function setupDatabase() {
         console.log('Seeding test client user...');
         const hashedPassword = await bcrypt.hash('password123', saltRounds);
         
-        // Get the next available ID
-        const maxId = await knex('users').max('id as maxId').first();
-        const nextId = (maxId?.maxId || 0) + 1;
-        
-        await knex('users').insert({
-          id: nextId,
-          publicId: `CL-${nextId}`,
+        // Let database auto-generate ID and then get it
+        const [insertedUser] = await knex('users').insert({
           name: 'Test Client',
           email: 'client@test.com',
           password: hashedPassword,
@@ -194,6 +192,13 @@ async function setupDatabase() {
           flatRateFee: 75.0,
           priorityMultipliers: safeStringify({ Standard: 1.0, Urgent: 1.5, Express: 2.0 }),
           address: safeStringify({ street: "123 Test Street", details: "Building A", city: "Cairo", zone: "Downtown" })
+        }).returning(['id']);
+        
+        const userId = insertedUser.id;
+        
+        // Update with proper publicId after getting the auto-generated ID
+        await knex('users').where({ id: userId }).update({
+          publicId: `CL-${userId}`
         });
     }
 
@@ -202,18 +207,20 @@ async function setupDatabase() {
         console.log('Seeding test courier user...');
         const hashedPassword = await bcrypt.hash('password123', saltRounds);
         
-        // Get the next available ID
-        const maxId = await knex('users').max('id as maxId').first();
-        const nextId = (maxId?.maxId || 0) + 1;
-        
-        await knex('users').insert({
-          id: nextId,
-          publicId: `CO-${nextId}`,
+        // Let database auto-generate ID and then get it
+        const [insertedUser] = await knex('users').insert({
           name: 'Test Courier',
           email: 'courier@test.com',
           password: hashedPassword,
           roles: safeStringify(['Courier']),
           zones: safeStringify(['Downtown', 'Heliopolis', 'Nasr City'])
+        }).returning(['id']);
+        
+        const userId = insertedUser.id;
+        
+        // Update with proper publicId after getting the auto-generated ID
+        await knex('users').where({ id: userId }).update({
+          publicId: `CO-${userId}`
         });
     }
 
