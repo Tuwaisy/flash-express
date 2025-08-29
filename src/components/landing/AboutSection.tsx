@@ -28,7 +28,7 @@ const AboutSection: React.FC<AboutSectionProps> = ({ t }) => {
       title: t('visionTitle'),
       description: t('visionDesc'),
       icon: <Eye className="h-12 w-12" />,
-      color: 'from-[#fecb00] to-[#fecb00]',
+      color: 'from-[#e51717] to-[#e51717]',
       stats: [
         { label: 'Growth Target', value: '200%' },
         { label: 'New Partnerships', value: '100+' },

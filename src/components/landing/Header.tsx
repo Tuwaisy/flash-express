@@ -55,50 +55,58 @@ const Header: React.FC<HeaderProps> = ({ currentLang, setLanguage, t }) => {
         isScrolled ? 'header-blur shadow-xl' : 'bg-transparent'
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-3">
-              <button 
-                onClick={() => scrollToSection('hero')}
-                className="flex items-center space-x-3 hover:opacity-80 transition-opacity duration-300"
-              >
-                <div>
-                  <img src="/shuhna-logo.png" alt="Shuhna Express Logo" className="h-16 w-auto" />
-                </div>
-              </button>
-            </div>
-            
-            {/* Desktop Menu */}
-            <div className="hidden md:flex items-center gap-x-12">
-              {navItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => scrollToSection(item.id)}
-                  className={`nav-link text-base font-medium transition-all duration-300 ${
-                    activeSection === item.id ? 'text-[#FFD000] active' : 'text-white hover:text-[#FFD000]'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Desktop Actions */}
-            <div className="hidden md:flex items-center gap-x-6">
-               <a href="/app.html" className="px-6 py-3 rounded-lg text-base border-2 border-white/80 text-white/80 hover:bg-white/10 hover:text-white transition-all duration-300 font-semibold">
+          {/* Top row - Login and Language buttons */}
+          <div className="flex justify-end items-center py-2 border-b border-white/10">
+            <div className="flex items-center gap-x-3">
+              <a href="/app.html" className="px-4 py-2 rounded-lg text-sm border border-white/60 text-white/80 hover:bg-white/10 hover:text-white transition-all duration-300 font-medium">
                 {t('navLogin')}
               </a>
               <button
+                onClick={() => setLanguage(currentLang === 'en' ? 'ar' : 'en')}
+                className="px-4 py-2 rounded-lg border border-[#FFD000] text-[#FFD000] hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300 font-medium text-sm"
+              >
+                {currentLang === 'en' ? 'AR' : 'EN'}
+              </button>
+            </div>
+          </div>
+
+          {/* Main navigation row */}
+          <div className="flex justify-between items-center py-4">
+            {/* Logo Section */}
+            <div className="flex items-center">
+              <button 
+                onClick={() => scrollToSection('hero')}
+                className="flex items-center hover:opacity-80 transition-opacity duration-300"
+              >
+                <img src="/shuhna-logo-main.png" alt="Shuhna Express Logo" className="h-14 w-auto" />
+              </button>
+            </div>
+            
+            {/* Desktop Menu with About Us */}
+            <div className="hidden md:flex items-center justify-center flex-1 mx-8">
+              <div className="flex items-center gap-x-8">
+                {navItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => scrollToSection(item.id)}
+                    className={`nav-link text-base font-medium transition-all duration-300 ${
+                      activeSection === item.id ? 'text-[#FFD000] active' : 'text-white hover:text-[#FFD000]'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Track Shipment Button - Same size as other buttons */}
+            <div className="hidden md:flex items-center">
+              <button
                 onClick={() => scrollToSection('tracking')}
-                className="bg-[#FFD000] text-[#061A40] px-8 py-3 rounded-lg font-semibold hover:bg-[#e6bb00] transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center"
+                className="bg-[#FFD000] text-[#061A40] px-6 py-3 rounded-lg font-semibold hover:bg-[#e6bb00] transition-all duration-300 shadow-lg hover:shadow-xl flex items-center"
               >
                 <Package className="inline h-5 w-5 me-2" />
                 {t('navTrackShipment')}
-              </button>
-              <button
-                onClick={() => setLanguage(currentLang === 'en' ? 'ar' : 'en')}
-                className="px-6 py-3 rounded-lg border-2 border-[#FFD000] text-[#FFD000] hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300 font-semibold"
-              >
-                {currentLang === 'en' ? 'AR' : 'EN'}
               </button>
             </div>
 
@@ -128,22 +136,24 @@ const Header: React.FC<HeaderProps> = ({ currentLang, setLanguage, t }) => {
                     {item.label}
                   </button>
                 ))}
-                <div className="flex space-x-4 pt-4 border-t border-white/20">
-                   <a href="/app.html" className="flex-1 text-center bg-transparent border-2 border-white/80 text-white/80 px-6 py-3 rounded-lg font-semibold">
-                      {t('navLogin')}
-                   </a>
+                <div className="pt-4 border-t border-white/20">
                   <button
                     onClick={() => scrollToSection('tracking')}
-                    className="flex-1 bg-[#FFD000] text-[#061A40] px-6 py-3 rounded-lg font-semibold text-center"
+                    className="w-full bg-[#FFD000] text-[#061A40] px-6 py-3 rounded-lg font-semibold text-center mb-4"
                   >
                     {t('navTrackShipment')}
                   </button>
-                  <button
-                    onClick={() => setLanguage(currentLang === 'en' ? 'ar' : 'en')}
-                    className="px-6 py-3 rounded-lg border-2 border-[#FFD000] text-[#FFD000] font-semibold"
-                  >
-                    {currentLang === 'en' ? 'AR' : 'EN'}
-                  </button>
+                  <div className="flex space-x-4">
+                    <a href="/app.html" className="flex-1 text-center bg-transparent border border-white/80 text-white/80 px-6 py-3 rounded-lg font-semibold">
+                      {t('navLogin')}
+                    </a>
+                    <button
+                      onClick={() => setLanguage(currentLang === 'en' ? 'ar' : 'en')}
+                      className="px-6 py-3 rounded-lg border border-[#FFD000] text-[#FFD000] font-semibold"
+                    >
+                      {currentLang === 'en' ? 'AR' : 'EN'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

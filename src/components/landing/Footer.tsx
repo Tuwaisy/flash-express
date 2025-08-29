@@ -22,7 +22,7 @@ const Footer: React.FC<FooterProps> = ({ t }) => {
             <div className="col-span-1 lg:col-span-2">
               <div className="flex items-center space-x-3 mb-6">
                 <div className="logo-glow">
-                  <Zap className="h-10 w-10 text-[#FFD000]" />
+                  <img src="/shuhna-logo-main.png" alt="Shuhna Express Logo" className="h-10 w-10 object-contain" />
                 </div>
                 <h3 className="text-3xl font-bold bg-gradient-to-r from-[#FFD000] to-[#FFF700] bg-clip-text text-transparent">
                   Shuhna Express
@@ -36,15 +36,15 @@ const Footer: React.FC<FooterProps> = ({ t }) => {
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
                   <Phone className="h-5 w-5 text-[#FFD000]" />
-                  <span className="text-gray-300">+20 111 630 6013</span>
+                  <span className="text-gray-300">+2 010 3267 4447</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <Mail className="h-5 w-5 text-[#FFD000]" />
-                  <span className="text-gray-300">info@flashexpress.eg</span>
+                  <span className="text-gray-300">info@shuhna.net</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <MapPin className="h-5 w-5 text-[#FFD000]" />
-                  <span className="text-gray-300">Greater Cairo, Egypt</span>
+                  <span className="text-gray-300">New Cairo - Egypt</span>
                 </div>
               </div>
             </div>

@@ -16,9 +16,9 @@ const LoginScreen = () => {
         <div className="min-h-screen w-full flex items-center justify-center p-4 bg-login-image">
             <div className="w-full max-w-sm">
                 <div className="text-center mb-8">
-                    {/* Simplified logo for a cleaner look */}
-                    <div className="inline-block p-4 bg-primary/10 border-2 border-primary/20 rounded-2xl">
-                        <svg viewBox="0 0 24 24" className="w-16 h-16 text-primary" fill="currentColor"><path d="M13,3V9H16L11,21V15H8L13,3Z"></path></svg>
+                    {/* Main logo for consistent branding */}
+                    <div className="inline-block p-4">
+                        <img src="/shuhna-logo-main.png" alt="Shuhna Express Logo" className="w-24 h-24 object-contain" />
                     </div>
                     <h1 className="text-4xl font-bold tracking-tight text-foreground mt-4">Shuhna Express</h1>
                     <p className="mt-2 text-muted-foreground">Your world, delivered.</p>

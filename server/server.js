@@ -926,26 +926,69 @@ app.get('/api/debug/users/:id', async (req, res) => {
         const { id } = req.params;
         try {
             await knex.transaction(async (trx) => {
+                // Check if user exists
+                const user = await trx('users').where({ id }).first();
+                if (!user) {
+                    return res.status(404).json({ error: 'User not found' });
+                }
+
+                console.log(`Deleting user ${id}: ${user.name} (${user.email})`);
+
                 // Delete related records first to avoid foreign key constraints
+                console.log('Deleting client transactions...');
                 await trx('client_transactions').where({ userId: id }).del();
+                
+                console.log('Deleting courier transactions...');
                 await trx('courier_transactions').where({ courierId: id }).del();
+                
+                console.log('Deleting courier stats...');
                 await trx('courier_stats').where({ courierId: id }).del();
+                
+                console.log('Deleting in-app notifications...');
                 await trx('in_app_notifications').where({ userId: id }).del();
                 
+                // Check if assets table exists and clear assignments
+                const hasAssetsTable = await knex.schema.hasTable('assets');
+                if (hasAssetsTable) {
+                    console.log('Clearing asset assignments...');
+                    await trx('assets').where({ assignedToUserId: id }).update({ 
+                        assignedToUserId: null,
+                        status: 'Available',
+                        assignmentDate: null
+                    });
+                }
+                
                 // Update shipments to remove courier references
+                console.log('Updating shipments...');
                 await trx('shipments').where({ courierId: id }).update({ 
                     courierId: null, 
                     status: 'Unassigned'
                 });
                 
+                // Handle referral relationships - update referred users
+                console.log('Clearing referrer relationships...');
+                await trx('users').where({ referrerId: id }).update({ referrerId: null });
+                
                 // Finally delete the user
-                await trx('users').where({ id }).del();
+                console.log('Deleting user record...');
+                const deletedCount = await trx('users').where({ id }).del();
+                
+                if (deletedCount === 0) {
+                    throw new Error('User deletion failed - no rows affected');
+                }
+
+                console.log(`Successfully deleted user ${id}`);
             });
-            res.status(200).json({ success: true });
+            
+            res.status(200).json({ success: true, message: 'User deleted successfully' });
             throttledDataUpdate();
         } catch (error) { 
             console.error('Error deleting user:', error);
-            res.status(500).json({ error: 'Server error deleting user' }); 
+            res.status(500).json({ 
+                error: 'Server error deleting user', 
+                details: error.message,
+                hint: 'Check server logs for detailed error information'
+            }); 
         }
     });
 
@@ -1938,81 +1981,74 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 reset: {}
             };
             
-            await knex.transaction(async (trx) => {
-                // Create backup counts
-                console.log('📊 Recording current state...');
-                resetResults.backup = {
-                    users: await trx('users').count('id as count').first(),
-                    shipments: await trx('shipments').count('id as count').first(),
-                    courier_transactions: await trx('courier_transactions').count('id as count').first(),
-                    client_transactions: await trx('client_transactions').count('id as count').first(),
-                    courier_stats: await trx('courier_stats').count('courierId as count').first()
-                };
+            // Step 1: Record current state (outside transaction)
+            console.log('📊 Recording current state...');
+            resetResults.backup = {
+                users: await knex('users').count('id as count').first(),
+                shipments: await knex('shipments').count('id as count').first(),
+                courier_transactions: await knex('courier_transactions').count('id as count').first(),
+                client_transactions: await knex('client_transactions').count('id as count').first(),
+                courier_stats: await knex('courier_stats').count('courierId as count').first()
+            };
+            
+            // Step 2: Get first 2 shipments to preserve (outside transaction)
+            const shipmentsToKeep = await knex('shipments')
+                .select('id', 'creationDate')
+                .orderBy('creationDate')
+                .limit(2);
                 
-                // Get first 2 shipments to preserve
-                const shipmentsToKeep = await trx('shipments')
-                    .select('id', 'creationDate')
-                    .orderBy('creationDate')
-                    .limit(2);
-                    
-                const shipmentIds = shipmentsToKeep.map(s => s.id);
-                console.log('📦 Preserving shipments:', shipmentIds);
-                
-                // STEP 1: Clear all transactions
-                console.log('🗑️  Clearing all transactions...');
-                resetResults.deleted.courier_transactions = await trx('courier_transactions').del();
-                resetResults.deleted.client_transactions = await trx('client_transactions').del();
-                resetResults.deleted.notifications = await trx('in_app_notifications').del();
-                
-                // STEP 2: Remove excess shipments
-                if (shipmentIds.length > 0) {
-                    resetResults.deleted.shipments = await trx('shipments')
-                        .whereNotIn('id', shipmentIds)
-                        .del();
-                } else {
-                    resetResults.deleted.shipments = await trx('shipments').del();
-                }
-                
-                // STEP 3: Reset all courier stats
-                console.log('👤 Resetting courier stats...');
-                resetResults.reset.courier_stats = await trx('courier_stats').update({
-                    currentBalance: 0,
-                    totalEarnings: 0,
-                    consecutiveFailures: 0,
-                    isRestricted: false
-                });
-                
-                // STEP 4: Reset user wallet balances
-                console.log('💰 Resetting user wallet balances...');
-                resetResults.reset.user_balances = await trx('users').update({ 
-                    walletBalance: 0 
-                });
-                
-                // STEP 5: Reset sequences for clean numbering
-                console.log('🔢 Resetting sequences...');
+            const shipmentIds = shipmentsToKeep.map(s => s.id);
+            console.log('📦 Preserving shipments:', shipmentIds);
+            
+            // Step 3: Perform deletions (outside transaction to avoid constraint issues)
+            console.log('🗑️  Clearing all transactions...');
+            resetResults.deleted.courier_transactions = await knex('courier_transactions').del();
+            resetResults.deleted.client_transactions = await knex('client_transactions').del();
+            resetResults.deleted.notifications = await knex('in_app_notifications').del();
+            
+            // Step 4: Remove excess shipments
+            if (shipmentIds.length > 0) {
+                resetResults.deleted.shipments = await knex('shipments')
+                    .whereNotIn('id', shipmentIds)
+                    .del();
+            } else {
+                resetResults.deleted.shipments = await knex('shipments').del();
+            }
+            
+            // Step 5: Reset all courier stats
+            console.log('👤 Resetting courier stats...');
+            resetResults.reset.courier_stats = await knex('courier_stats').update({
+                currentBalance: 0,
+                totalEarnings: 0,
+                consecutiveFailures: 0,
+                isRestricted: false,
+                restrictionReason: null
+            });
+            
+            // Step 6: Reset user wallet balances
+            console.log('💰 Resetting user wallet balances...');
+            resetResults.reset.user_balances = await knex('users').update({ 
+                walletBalance: 0 
+            });
+            
+            // Step 7: Reset sequences for clean numbering (PostgreSQL only)
+            console.log('🔢 Resetting sequences...');
+            if (process.env.DATABASE_URL) {
                 try {
-                    const sequences = await trx.raw(`
-                        SELECT sequence_name 
-                        FROM information_schema.sequences 
-                        WHERE sequence_schema = 'public'
-                    `);
-                    
-                    for (const seq of sequences.rows) {
-                        await trx.raw(`SELECT setval('${seq.sequence_name}', 1, false)`);
-                        console.log(`🔢 Reset sequence: ${seq.sequence_name}`);
-                    }
+                    await knex.raw(`SELECT setval(pg_get_serial_sequence('users', 'id'), COALESCE((SELECT MAX(id) FROM users), 1), true);`);
+                    console.log('🔢 Reset user sequence');
                 } catch (error) {
                     console.log('⚠️ Sequence reset skipped:', error.message);
                 }
-                
-                // Get new counts for verification
-                resetResults.final = {
-                    users: await trx('users').count('id as count').first(),
-                    shipments: await trx('shipments').count('id as count').first(),
-                    courier_transactions: await trx('courier_transactions').count('id as count').first(),
-                    client_transactions: await trx('client_transactions').count('id as count').first()
-                };
-            });
+            }
+            
+            // Step 8: Get final counts for verification
+            resetResults.final = {
+                users: await knex('users').count('id as count').first(),
+                shipments: await knex('shipments').count('id as count').first(),
+                courier_transactions: await knex('courier_transactions').count('id as count').first(),
+                client_transactions: await knex('client_transactions').count('id as count').first()
+            };
             
             console.log('✅ Complete database reset finished');
             console.log('📊 Reset Summary:', resetResults);
@@ -2030,7 +2066,8 @@ app.get('/api/debug/users/:id', async (req, res) => {
             res.status(500).json({ 
                 error: 'Reset failed', 
                 details: error.message,
-                suggestion: 'Try manual SQL reset using database-reset.sql file'
+                stack: error.stack,
+                suggestion: 'Check server logs for detailed error information'
             });
         }
     });
