@@ -61,11 +61,11 @@ export const ShipmentLabel: React.FC<{ shipment: Shipment }> = ({ shipment }) =>
             <div className="printable-label" style={{ fontFamily: 'sans-serif', color: 'black' }}>
                 <header className="flex justify-between items-center pb-4 border-b-2 border-black">
                     <div className="flex items-center gap-3">
-                         <img src="/shuhna-logo-main.png" alt="Shuhna Express Logo" className="w-12 h-12 object-contain" />
+                         <img src="/shuhna-logo-app.png" alt="Shuhna Express Logo" className="w-12 h-12 object-contain" />
                          <div>
                             <h1 className="text-2xl font-extrabold text-black">Shuhna Express</h1>
                             <div className="flex gap-4 text-xs text-gray-600 mt-1">
-                                <span>Ì≥û +2 010 3267 4447</span>
+                                <span>üìû +2 010 3267 4447</span>
                                 <span>‚úâÔ∏è info@shuhna.net</span>
                             </div>
                         </div>
