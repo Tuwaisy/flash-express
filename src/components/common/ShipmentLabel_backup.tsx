@@ -64,10 +64,6 @@ export const ShipmentLabel: React.FC<{ shipment: Shipment }> = ({ shipment }) =>
                          <img src="/shuhna-logo-main.png" alt="Shuhna Express Logo" className="w-12 h-12 object-contain" />
                          <div>
                             <h1 className="text-2xl font-extrabold text-black">Shuhna Express</h1>
-                            <div className="flex gap-4 text-xs text-gray-600 mt-1">
-                                <span>Ì≥û +2 010 3267 4447</span>
-                                <span>‚úâÔ∏è info@shuhna.net</span>
-                            </div>
                         </div>
                     </div>
                     <div className="text-right">
