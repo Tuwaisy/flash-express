@@ -93,6 +93,25 @@ async function resetDatabase() {
                 walletBalance: 0 
             });
             
+            // Reset inventory items stock to 0 but keep essential items
+            console.log('📦 Resetting inventory items stock...');
+            const essentialItems = [
+                { id: 'inv_box_sm', name: 'Small Cardboard Box', quantity: 0, unit: 'boxes', lastUpdated: new Date().toISOString(), minStock: 100, unitPrice: 5.00 },
+                { id: 'inv_box_md', name: 'Medium Cardboard Box', quantity: 0, unit: 'boxes', lastUpdated: new Date().toISOString(), minStock: 100, unitPrice: 7.50 },
+                { id: 'inv_box_lg', name: 'Large Cardboard Box', quantity: 0, unit: 'boxes', lastUpdated: new Date().toISOString(), minStock: 50, unitPrice: 10.00 },
+                { id: 'inv_flyer_sm', name: 'Small Flyer', quantity: 0, unit: 'flyers', lastUpdated: new Date().toISOString(), minStock: 500, unitPrice: 0.25 },
+                { id: 'inv_flyer_md', name: 'Medium Flyer', quantity: 0, unit: 'flyers', lastUpdated: new Date().toISOString(), minStock: 300, unitPrice: 0.35 },
+                { id: 'inv_flyer_lg', name: 'Large Flyer', quantity: 0, unit: 'flyers', lastUpdated: new Date().toISOString(), minStock: 200, unitPrice: 0.50 },
+                { id: 'inv_plastic_wrap', name: 'Packaging Plastic', quantity: 0, unit: 'rolls', lastUpdated: new Date().toISOString(), minStock: 20, unitPrice: 30.00 }
+            ];
+            
+            // Clear all inventory items first
+            await trx('inventory_items').del();
+            
+            // Insert essential items with 0 stock
+            await trx('inventory_items').insert(essentialItems);
+            console.log(`📦 Reset ${essentialItems.length} essential inventory items with 0 stock`);
+            
             // Reset sequence counters for clean IDs
             console.log('🔢 Resetting sequences...');
             

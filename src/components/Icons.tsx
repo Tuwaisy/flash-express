@@ -44,7 +44,7 @@ export const LogoIcon = ({ className = 'w-10 h-10' }: IconProps) => (
     </g>
 
     {/* Text */}
-    <text x="100" y="115" fontFamily="Arial, Helvetica, sans-serif" fontSize="36" fontWeight="bold" fill="#061A40" textAnchor="middle">FLASH</text>
+    <text x="100" y="115" fontFamily="Arial, Helvetica, sans-serif" fontSize="36" fontWeight="bold" fill="#061A40" textAnchor="middle">SHUHNA</text>
     <text x="100" y="140" fontFamily="Arial, Helvetica, sans-serif" fontSize="16" fontWeight="500" fill="#FFD000" textAnchor="middle" letterSpacing="0.5">EXPRESS SHIPPING</text>
   </svg>
 );
@@ -165,6 +165,12 @@ export const MailIcon = ({ className = 'w-6 h-6' }: IconProps) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
 );
 
+export const InstagramIcon = ({ className = 'w-6 h-6' }: IconProps) => (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+    </svg>
+);
+
 export const CurrencyDollarIcon = ({ className = 'w-6 h-6' }: IconProps) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01M12 14v3m-3-3h6M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
 );
@@ -230,11 +236,15 @@ export const WrenchIcon = ({ className = 'w-4 h-4' }: IconProps) => (
 );
 
 export const SunIcon = ({ className = 'w-6 h-6' }: IconProps) => (
-    <svg className={className} fill="currentColor" viewBox="0 0 256 256"><path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160ZM232,128A8,8,0,0,1,224,136H200a8,8,0,0,1,0-16h24A8,8,0,0,1,232,128ZM128,24a8,8,0,0,1-8-8V8a8,8,0,0,1,16,0V16A8,8,0,0,1,128,24Zm-80,42.34A8,8,0,0,0,59.31,77.66l17-17a8,8,0,0,0-11.32-11.32l-17,17A8,8,0,0,0,48,66.34ZM183,183a8,8,0,0,0-11.31-11.31l-17,17a8,8,0,0,0,11.31,11.31l17-17A8,8,0,0,0,183,183ZM128,232a8,8,0,0,1,8,8v8a8,8,0,0,1-16,0v-8A8,8,0,0,1,128,232ZM56,128a8,8,0,0,1-8-8V96a8,8,0,0,1,16,0v24A8,8,0,0,1,56,128ZM197.66,48a8,8,0,0,0-11.32,0l-17,17a8,8,0,0,0,11.32,11.32l17-17A8,8,0,0,0,197.66,48ZM76.34,197.66,59.31,180.69a8,8,0,0,0-11.31,11.31l17,17a8,8,0,0,0,11.31-11.31Z"></path></svg>
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+    </svg>
 );
 
 export const MoonIcon = ({ className = 'w-6 h-6' }: IconProps) => (
-    <svg className={className} fill="currentColor" viewBox="0 0 256 256"><path d="M216.7,152.61A95.82,95.82,0,0,1,103.39,39.3a8,8,0,0,0-10.9-10.9,111.94,111.94,0,0,0,16.5,152.91A112,112,0,0,0,227.6,227.6a8,8,0,0,0-10.9-10.9A95.82,95.82,0,0,1,216.7,152.61Z"></path></svg>
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+    </svg>
 );
 
 export const DatabaseResetIcon = ({ className = 'w-6 h-6' }: IconProps) => (
@@ -243,4 +253,38 @@ export const DatabaseResetIcon = ({ className = 'w-6 h-6' }: IconProps) => (
 
 export const RefreshIcon = ({ className = 'w-6 h-6' }: IconProps) => (
     <svg className={className} fill="currentColor" viewBox="0 0 256 256"><path d="M197.67,186.37a8,8,0,0,1,0,11.29C196.58,198.73,165.23,228,128,228c-37.23,0-68.58-29.27-69.67-30.34a8,8,0,1,1,11.3-11.32C70.73,187.44,97.83,212,128,212s57.27-24.56,58.37-25.66A8,8,0,0,1,197.67,186.37ZM128,44c37.23,0,68.58,29.27,69.67,30.34a8,8,0,1,0,11.3-11.32C208.58,62.93,165.23,28,128,28S47.42,62.93,47.03,63.02a8,8,0,1,0,11.3,11.32C59.42,73.27,90.77,44,128,44ZM184,128a56,56,0,1,1-56-56A56.06,56.06,0,0,1,184,128Z"></path></svg>
+);
+
+// Medal Icons for Tier Management
+export const BronzeMedalIcon = ({ className = 'w-6 h-6' }: IconProps) => (
+    <svg className={className} fill="currentColor" viewBox="0 0 256 256">
+        <circle cx="128" cy="128" r="96" fill="#CD7F32" stroke="#A0522D" strokeWidth="4"/>
+        <circle cx="128" cy="128" r="72" fill="#B8860B" stroke="#8B6914" strokeWidth="3"/>
+        <circle cx="128" cy="128" r="48" fill="#CD853F" stroke="#A0522D" strokeWidth="2"/>
+        <text x="128" y="145" fontSize="48" fontWeight="bold" fill="#8B4513" textAnchor="middle">3</text>
+        <rect x="118" y="20" width="20" height="40" fill="#8B4513" rx="2"/>
+        <path d="M128 20 L138 10 L118 10 Z" fill="#CD853F"/>
+    </svg>
+);
+
+export const SilverMedalIcon = ({ className = 'w-6 h-6' }: IconProps) => (
+    <svg className={className} fill="currentColor" viewBox="0 0 256 256">
+        <circle cx="128" cy="128" r="96" fill="#C0C0C0" stroke="#A9A9A9" strokeWidth="4"/>
+        <circle cx="128" cy="128" r="72" fill="#D3D3D3" stroke="#B0B0B0" strokeWidth="3"/>
+        <circle cx="128" cy="128" r="48" fill="#E5E5E5" stroke="#C0C0C0" strokeWidth="2"/>
+        <text x="128" y="145" fontSize="48" fontWeight="bold" fill="#696969" textAnchor="middle">2</text>
+        <rect x="118" y="20" width="20" height="40" fill="#696969" rx="2"/>
+        <path d="M128 20 L138 10 L118 10 Z" fill="#A9A9A9"/>
+    </svg>
+);
+
+export const GoldMedalIcon = ({ className = 'w-6 h-6' }: IconProps) => (
+    <svg className={className} fill="currentColor" viewBox="0 0 256 256">
+        <circle cx="128" cy="128" r="96" fill="#FFD700" stroke="#FFA500" strokeWidth="4"/>
+        <circle cx="128" cy="128" r="72" fill="#FFED4E" stroke="#FFD700" strokeWidth="3"/>
+        <circle cx="128" cy="128" r="48" fill="#FFF59D" stroke="#FFEB3B" strokeWidth="2"/>
+        <text x="128" y="145" fontSize="48" fontWeight="bold" fill="#FF8F00" textAnchor="middle">1</text>
+        <rect x="118" y="20" width="20" height="40" fill="#FF8F00" rx="2"/>
+        <path d="M128 20 L138 10 L118 10 Z" fill="#FFD700"/>
+    </svg>
 );

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Flash Express Railway Deployment Script
-echo "🚀 Deploying Flash Express to Railway..."
+# Shuhna Express Railway Deployment Script
+echo "🚀 Deploying Shuhna Express to Railway..."
 
 # Set production environment
 echo "Setting environment variables..."

@@ -160,7 +160,7 @@ export const BulkShipmentImport: React.FC = () => {
 
         const sampleData = [
             [
-                'testclient@flash.com',
+                'testclient@shuhna.com',
                 'John Doe',
                 '+201234567890',
                 'Electronics - Smartphone',
@@ -181,7 +181,7 @@ export const BulkShipmentImport: React.FC = () => {
                 'Sample shipment 1'
             ],
             [
-                'testclient@flash.com',
+                'testclient@shuhna.com',
                 'Jane Smith',
                 '+201987654321',
                 'Clothing - T-Shirt',

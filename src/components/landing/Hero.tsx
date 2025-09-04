@@ -25,7 +25,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
               <Zap className="h-16 w-16 text-[#FFD000] lightning-bolt opacity-30" />
             </div>
             <div className="absolute top-32 right-20 floating-element" style={{ animationDelay: '2s' }}>
-              <Truck className="h-12 w-12 text-[#FFD000] hero-truck opacity-20" />
+              <Truck className="h-12 w-12 text-[#FFD000] hero-truck opacity-20 transform scale-x-[-1]" />
             </div>
             <div className="absolute bottom-40 left-20 floating-element" style={{ animationDelay: '4s' }}>
               <Clock className="h-10 w-10 text-[#FFD000] opacity-25" />
@@ -45,7 +45,15 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
               
               <div className="will-animate flex flex-col sm:flex-row gap-6 justify-center items-center hero-cta">
                 <button
-                  onClick={() => scrollToSection('tracking')}
+                  onClick={() => {
+                    const element = document.getElementById('pricing');
+                    if (element) {
+                      const headerHeight = 80;
+                      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+                      const offsetPosition = elementPosition - headerHeight;
+                      window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+                    }
+                  }}
                   className="pulse-glow bg-[#FFD000] text-[#061A40] px-8 py-4 rounded-xl text-xl font-bold hover:bg-[#e6bb00] transition-all duration-300 flex items-center group"
                 >
                   {t('heroCTA')}
@@ -53,7 +61,15 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
                 </button>
                 
                 <button
-                  onClick={() => scrollToSection('about')}
+                  onClick={() => {
+                    const element = document.getElementById('about');
+                    if (element) {
+                      const headerHeight = 80;
+                      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+                      const offsetPosition = elementPosition - headerHeight;
+                      window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+                    }
+                  }}
                   className="border-2 border-[#FFD000] text-[#FFD000] px-8 py-4 rounded-xl text-xl font-bold hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300"
                 >
                   {t('learnMore')}

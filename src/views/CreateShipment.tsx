@@ -98,8 +98,8 @@ const CreateShipment = () => {
             addToast(canCreateForOthers ? 'Please select a client.' : 'User not found.', 'error');
             return;
         }
-        if (!clientForShipment.address || !clientForShipment.address.street) {
-             addToast(`${clientForShipment.name} does not have a complete default address in their profile.`, 'error');
+        if (!clientForShipment.address || !clientForShipment.address.street || !clientForShipment.address.city || !clientForShipment.address.zone) {
+             addToast(`${clientForShipment.name} does not have a complete default address (street, city, zone) in their profile. Please update their profile first.`, 'error');
             return;
         }
         if (!isValidPhoneNumber(recipientPhone)) {

@@ -1,6 +1,7 @@
 
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
+import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [react()],
@@ -8,6 +9,10 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        app: resolve(__dirname, 'app.html')
+      },
       output: {
         // Force new file names to bust cache
         entryFileNames: `assets/[name]-[hash]-${Date.now()}.js`,

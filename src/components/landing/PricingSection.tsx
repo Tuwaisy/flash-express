@@ -10,6 +10,16 @@ const PricingSection: React.FC<PricingSectionProps> = ({ t }) => {
   const [activeTab, setActiveTab] = useState(0);
   const sectionRef = useRef<HTMLDivElement>(null);
 
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      const headerHeight = 80;
+      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+      const offsetPosition = elementPosition - headerHeight;
+      window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+    }
+  };
+
   const tiers = [
     {
       id: 'standard',
@@ -152,6 +162,7 @@ const PricingSection: React.FC<PricingSectionProps> = ({ t }) => {
                   </div>
                   
                   <button
+                    onClick={() => scrollToSection('contact')}
                     className="w-full py-3 rounded-xl font-bold transition-all duration-300 mt-auto bg-[#FFD000] text-[#061A40] hover:bg-[#e6bb00]"
                   >
                     {tier.id === 'enterprise' ? t('largeOrdersCTA') : t('getStarted')}

@@ -8,7 +8,7 @@ import { exportToCsv } from '../utils/pdf';
 const AssetManagement = () => {
     const { assets, users, hasPermission, addAsset, updateAsset, assignAsset, deleteAsset } = useAppContext();
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalMode, setModalMode] = useState<'add' | 'edit' | 'assign'>('add');
+    const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
     const [currentAsset, setCurrentAsset] = useState<Asset | null>(null);
     const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
     
@@ -71,7 +71,7 @@ const AssetManagement = () => {
     }, [assets, searchTerm, filterStatus, filterAssignee]);
 
 
-    const openModal = (mode: 'add' | 'edit' | 'assign', asset?: Asset) => {
+    const openModal = (mode: 'add' | 'edit', asset?: Asset) => {
         setModalMode(mode);
         setCurrentAsset(asset || null);
         if (asset) {
@@ -79,6 +79,7 @@ const AssetManagement = () => {
             setAssigneeId(asset.assignedToUserId ? String(asset.assignedToUserId) : null);
         } else {
             setFormData({ type: AssetType.DEVICE, name: '', identifier: '' });
+            setAssigneeId(null);
         }
         setIsModalOpen(true);
     };
@@ -111,8 +112,12 @@ const AssetManagement = () => {
             addAsset(formData as Omit<Asset, 'id' | 'status'>);
         } else if (modalMode === 'edit' && currentAsset) {
             updateAsset(currentAsset.id, formData);
-        } else if (modalMode === 'assign' && currentAsset) {
-            assignAsset(currentAsset.id, assigneeId ? parseInt(assigneeId) : null);
+            // Handle assignment if assigneeId changed
+            const newAssigneeId = assigneeId ? parseInt(assigneeId) : null;
+            const currentAssigneeId = currentAsset.assignedToUserId;
+            if (newAssigneeId !== currentAssigneeId) {
+                assignAsset(currentAsset.id, newAssigneeId);
+            }
         }
         closeModal();
     };
@@ -211,7 +216,6 @@ const AssetManagement = () => {
                                     <td className="p-4">
                                         <div className="flex gap-2">
                                             <button onClick={() => openModal('edit', asset)} className="p-2 text-muted-foreground hover:text-primary hover:bg-accent rounded-md"><PencilIcon /></button>
-                                            <button onClick={() => openModal('assign', asset)} className="p-2 text-muted-foreground hover:text-green-500 hover:bg-accent rounded-md"><UserCircleIcon /></button>
                                             {hasPermission(Permission.DELETE_ASSET) && (
                                                 <button onClick={() => handleDeleteClick(asset)} className="p-2 text-muted-foreground hover:text-red-500 hover:bg-accent rounded-md"><TrashIcon /></button>
                                             )}
@@ -225,51 +229,47 @@ const AssetManagement = () => {
             </div>
 
             <Modal isOpen={isModalOpen} onClose={closeModal} title={
-                modalMode === 'add' ? 'Add New Asset' : modalMode === 'edit' ? 'Edit Asset' : 'Assign Asset'
+                modalMode === 'add' ? 'Add New Asset' : 'Edit Asset'
             }>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {modalMode !== 'assign' ? (
-                        <>
-                            <div>
-                                <label className="block text-sm font-medium text-muted-foreground mb-1">Asset Name</label>
-                                <input type="text" name="name" value={formData.name || ''} onChange={handleFormChange} className="w-full p-2 border border-border rounded-md bg-background" required />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-muted-foreground mb-1">Asset Type</label>
-                                    <select name="type" value={formData.type} onChange={handleFormChange} className="w-full p-2 border border-border rounded-md bg-background">
-                                        {Object.values(AssetType).map(t => <option key={t} value={t}>{t}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-muted-foreground mb-1">Identifier</label>
-                                    <input type="text" name="identifier" value={formData.identifier || ''} onChange={handleFormChange} className="w-full p-2 border border-border rounded-md bg-background" placeholder="e.g., License Plate, S/N" />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
-                                <div>
-                                    <label className="block text-sm font-medium text-muted-foreground mb-1">Purchase Price (EGP)</label>
-                                    <input type="number" step="0.01" name="purchasePrice" value={formData.purchasePrice || ''} onChange={handleFormChange} className="w-full p-2 border border-border rounded-md bg-background" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-muted-foreground mb-1">Purchase Date</label>
-                                    <input type="date" name="purchaseDate" value={formData.purchaseDate?.split('T')[0] || ''} onChange={handleFormChange} className="w-full p-2 border border-border rounded-md bg-background" />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-muted-foreground mb-1">Useful Life (in months)</label>
-                                <input type="number" name="usefulLifeMonths" value={formData.usefulLifeMonths || ''} onChange={handleFormChange} className="w-full p-2 border border-border rounded-md bg-background" />
-                            </div>
-                        </>
-                    ) : (
+                    <div>
+                        <label className="block text-sm font-medium text-muted-foreground mb-1">Asset Name</label>
+                        <input type="text" name="name" value={formData.name || ''} onChange={handleFormChange} className="w-full p-2 border border-border rounded-md bg-background" required />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <p className="mb-2">Assign <strong>{currentAsset?.name}</strong> to:</p>
-                            <select value={assigneeId || ''} onChange={e => setAssigneeId(e.target.value)} className="w-full p-2 border border-border rounded-md bg-background">
-                                <option value="">Unassigned</option>
-                                {assignableUsers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            <label className="block text-sm font-medium text-muted-foreground mb-1">Asset Type</label>
+                            <select name="type" value={formData.type} onChange={handleFormChange} className="w-full p-2 border border-border rounded-md bg-background">
+                                {Object.values(AssetType).map(t => <option key={t} value={t}>{t}</option>)}
                             </select>
                         </div>
-                    )}
+                        <div>
+                            <label className="block text-sm font-medium text-muted-foreground mb-1">Identifier</label>
+                            <input type="text" name="identifier" value={formData.identifier || ''} onChange={handleFormChange} className="w-full p-2 border border-border rounded-md bg-background" placeholder="e.g., License Plate, S/N" />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
+                        <div>
+                            <label className="block text-sm font-medium text-muted-foreground mb-1">Purchase Price (EGP)</label>
+                            <input type="number" step="0.01" name="purchasePrice" value={formData.purchasePrice || ''} onChange={handleFormChange} className="w-full p-2 border border-border rounded-md bg-background" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-muted-foreground mb-1">Purchase Date</label>
+                            <input type="date" name="purchaseDate" value={formData.purchaseDate?.split('T')[0] || ''} onChange={handleFormChange} className="w-full p-2 border border-border rounded-md bg-background" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-muted-foreground mb-1">Useful Life (in months)</label>
+                        <input type="number" name="usefulLifeMonths" value={formData.usefulLifeMonths || ''} onChange={handleFormChange} className="w-full p-2 border border-border rounded-md bg-background" />
+                    </div>
+                    <div className="pt-4 border-t border-border">
+                        <label className="block text-sm font-medium text-muted-foreground mb-1">Assign to User</label>
+                        <select value={assigneeId || ''} onChange={e => setAssigneeId(e.target.value)} className="w-full p-2 border border-border rounded-md bg-background">
+                            <option value="">Unassigned</option>
+                            {assignableUsers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                        <p className="text-xs text-muted-foreground mt-1">Optionally assign this asset to a user.</p>
+                    </div>
                     <div className="flex justify-end gap-4 pt-4">
                         <button type="button" onClick={closeModal} className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg font-semibold">Cancel</button>
                         <button type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-semibold">Save</button>

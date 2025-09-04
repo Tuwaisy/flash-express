@@ -1,6 +1,7 @@
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 
 export const exportToPdf = (title: string, head: string[][], body: any[][], fileName:string) => {
     const doc = new jsPDF();
@@ -60,4 +61,45 @@ export const exportToCsv = (headers: string[], data: any[][], fileName: string) 
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
     }
+};
+
+/**
+ * Generates a PDF with multiple shipping labels in A5 format
+ * @param labelElements Array of DOM elements containing the labels to convert
+ * @param fileName The name of the PDF file
+ */
+export const generateLabelsPDF = async (labelElements: HTMLElement[], fileName: string) => {
+    const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a5'
+    });
+
+    for (let i = 0; i < labelElements.length; i++) {
+        if (i > 0) {
+            pdf.addPage();
+        }
+
+        try {
+            const canvas = await html2canvas(labelElements[i], {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                width: 820, // A5 landscape width in pixels at 96 DPI
+                height: 580  // A5 landscape height in pixels at 96 DPI
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+            
+            // A5 landscape dimensions: 210mm x 148mm
+            pdf.addImage(imgData, 'PNG', 0, 0, 210, 148);
+        } catch (error) {
+            console.error('Error generating canvas for label', i, ':', error);
+            // Add a placeholder page with error message
+            pdf.setFontSize(16);
+            pdf.text('Error generating label', 20, 20);
+        }
+    }
+
+    pdf.save(`${fileName}_${new Date().toISOString().split('T')[0]}.pdf`);
 };

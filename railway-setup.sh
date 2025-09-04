@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Railway Setup Script for Flash Express
-echo "Setting up Flash Express on Railway..."
+# Railway Setup Script for Shuhna Express
+echo "Setting up Shuhna Express on Railway..."
 
 # Check if we're in the right directory
 if [ ! -f "package.json" ]; then

@@ -31,6 +31,27 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ t }) => {
       role: t('testimonial3Role'),
       avatar: 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?w=100&h=100&fit=crop&crop=face',
       rating: 5
+    },
+    {
+      quote: t('testimonial4'),
+      name: t('testimonial4Name'),
+      role: t('testimonial4Role'),
+      avatar: 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?w=100&h=100&fit=crop&crop=face',
+      rating: 5
+    },
+    {
+      quote: t('testimonial5'),
+      name: t('testimonial5Name'),
+      role: t('testimonial5Role'),
+      avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?w=100&h=100&fit=crop&crop=face',
+      rating: 5
+    },
+    {
+      quote: t('testimonial6'),
+      name: t('testimonial6Name'),
+      role: t('testimonial6Role'),
+      avatar: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?w=100&h=100&fit=crop&crop=face',
+      rating: 5
     }
   ];
 
@@ -58,10 +79,22 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ t }) => {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
-    }, 5000);
+    }, 6000);
 
     return () => clearInterval(interval);
   }, [testimonials.length]);
+
+  const nextTestimonial = () => {
+    setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
+  };
+
+  const prevTestimonial = () => {
+    setCurrentTestimonial((prev) => (prev - 1 + testimonials.length) % testimonials.length);
+  };
+
+  const goToTestimonial = (index: number) => {
+    setCurrentTestimonial(index);
+  };
 
   return (
       <section ref={sectionRef} id="testimonials" className="testimonials-bg py-20">
@@ -76,11 +109,32 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ t }) => {
           </div>
           
           <div className="max-w-4xl mx-auto">
-            {/* Main Featured Testimonial */}
+            {/* Main Featured Testimonial Carousel */}
             <div className={`testimonial-card rounded-2xl p-8 md:p-12 mb-12 relative will-animate ${isVisible ? 'slide-in-visible' : ''}`} style={{ animationDelay: '0.4s' }}>
               <Quote className="quote-icon absolute top-6 left-6 h-16 w-16 text-[#FFD000]" />
               
-              <div key={currentTestimonial} className="testimonial-transition">
+              {/* Carousel Navigation Arrows */}
+              <button
+                onClick={prevTestimonial}
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-gray-500/30 hover:bg-gray-500/50 text-gray-300 hover:text-white rounded-full p-3 transition-all duration-300 backdrop-blur-sm"
+                aria-label="Previous testimonial"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              
+              <button
+                onClick={nextTestimonial}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-gray-500/30 hover:bg-gray-500/50 text-gray-300 hover:text-white rounded-full p-3 transition-all duration-300 backdrop-blur-sm"
+                aria-label="Next testimonial"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+              
+              <div key={currentTestimonial} className="testimonial-transition px-12">
                 <div className="flex star-rating justify-center mb-6">
                   {[...Array(testimonials[currentTestimonial].rating)].map((_, i) => (
                     <Star key={i} className="h-6 w-6 text-[#FFD000] fill-current" />
@@ -111,52 +165,19 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ t }) => {
               </div>
             </div>
             
-            {/* Testimonial Navigation */}
-            <div className="flex justify-center space-x-4">
+            {/* Testimonial Navigation Dots */}
+            <div className="flex justify-center space-x-3">
               {testimonials.map((_, index) => (
                 <button
                   key={index}
-                  onClick={() => setCurrentTestimonial(index)}
+                  onClick={() => goToTestimonial(index)}
                   className={`w-4 h-4 rounded-full transition-all duration-300 ${
                     currentTestimonial === index
                       ? 'bg-[#FFD000] scale-125'
-                      : 'bg-white/30 hover:bg-white/50'
+                      : 'bg-gray-500/40 hover:bg-gray-400/60'
                   }`}
+                  aria-label={`Go to testimonial ${index + 1}`}
                 />
-              ))}
-            </div>
-            
-            {/* All Testimonials Grid */}
-            <div className="grid md:grid-cols-3 gap-8 mt-16">
-              {testimonials.map((testimonial, index) => (
-                <div
-                  key={index}
-                  className={`testimonial-card rounded-xl p-6 will-animate ${isVisible ? 'slide-in-visible' : ''}`}
-                  style={{ animationDelay: `${0.6 + index * 0.1}s` }}
-                >
-                  <div className="flex mb-4">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="h-5 w-5 text-[#FFD000] fill-current" />
-                    ))}
-                  </div>
-                  <p className="text-[#061A40] mb-6 leading-relaxed">
-                    {testimonial.quote.length > 100 
-                      ? testimonial.quote.substring(0, 100) + '...'
-                      : testimonial.quote
-                    }
-                  </p>
-                  <div className="flex items-center space-x-3">
-                    <img
-                      className="h-12 w-12 rounded-full object-cover"
-                      src={testimonial.avatar}
-                      alt={testimonial.name}
-                    />
-                    <div>
-                      <div className="font-semibold text-[#061A40]">{testimonial.name}</div>
-                      <div className="text-sm text-gray-600">{testimonial.role}</div>
-                    </div>
-                  </div>
-                </div>
               ))}
             </div>
           </div>

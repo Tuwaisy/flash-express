@@ -239,16 +239,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     useEffect(() => {
         if (currentUser && !socket) {
             console.log('Setting up WebSocket connection for user:', currentUser.id);
-            const newSocket = io({
+            
+            // Get the WebSocket URL from environment or construct from API URL
+            const getSocketUrl = () => {
+                const apiUrl = import.meta.env.VITE_API_URL;
+                if (apiUrl) {
+                    // Production: use the Railway URL
+                    return apiUrl;
+                }
+                // Development: use default (relative)
+                return undefined;
+            };
+            
+            const socketUrl = getSocketUrl();
+            console.log('WebSocket connecting to:', socketUrl || 'default/relative URL');
+            
+            const newSocket = io(socketUrl, {
                 autoConnect: true,
                 timeout: 10000,
                 reconnection: true,
                 reconnectionAttempts: 5,
                 reconnectionDelay: 1000,
+                transports: ['websocket', 'polling'], // Ensure both transports are available
             });
 
             newSocket.on('connect', () => {
-                console.log('WebSocket connected successfully');
+                console.log('WebSocket connected successfully to:', socketUrl || 'default URL');
+                console.log('Socket transport:', newSocket.io.engine.transport.name);
+                addToast('Real-time updates connected', 'success', 3000);
             });
 
             // Debounce socket events to prevent excessive calls
@@ -269,12 +287,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             });
 
             newSocket.on('disconnect', () => {
-                console.log('WebSocket disconnected');
+                console.log('WebSocket disconnected from:', socketUrl || 'default URL');
+                addToast('Real-time updates disconnected', 'info', 3000);
                 // Clear socket event timeout on disconnect
                 if (socketEventTimeout) {
                     clearTimeout(socketEventTimeout);
                     socketEventTimeout = null;
                 }
+            });
+
+            newSocket.on('connect_error', (error) => {
+                console.error('WebSocket connection error:', error);
+                console.log('Attempted connection to:', socketUrl || 'default URL');
+                addToast('Failed to connect to real-time updates', 'error', 5000);
             });
 
             newSocket.on('reconnect', (attemptNumber) => {

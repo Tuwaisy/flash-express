@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { TierSetting, PartnerTier } from '../types';
-import { ShieldIcon, AwardIcon, CrownIcon } from '../components/Icons';
+import { BronzeMedalIcon, SilverMedalIcon, GoldMedalIcon } from '../components/Icons';
 
 const PartnerTierManagement = () => {
     const { tierSettings, updateTierSettings, addToast } = useAppContext();
@@ -39,9 +39,9 @@ const PartnerTierManagement = () => {
     };
 
     const tierIcons: Record<PartnerTier, React.ReactElement> = {
-        [PartnerTier.BRONZE]: <ShieldIcon className="w-10 h-10 text-yellow-700" />,
-        [PartnerTier.SILVER]: <AwardIcon className="w-10 h-10 text-gray-500" />,
-        [PartnerTier.GOLD]: <CrownIcon className="w-10 h-10 text-yellow-500" />,
+        [PartnerTier.BRONZE]: <BronzeMedalIcon className="w-10 h-10" />,
+        [PartnerTier.SILVER]: <SilverMedalIcon className="w-10 h-10" />,
+        [PartnerTier.GOLD]: <GoldMedalIcon className="w-10 h-10" />,
     };
 
     return (

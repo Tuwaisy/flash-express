@@ -57,10 +57,14 @@ const Header: React.FC<HeaderProps> = ({ onLogout, user, onNavigate, onMenuClick
              <div className="flex items-center gap-2 sm:gap-4">
                  <button 
                     onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                    className="p-2 rounded-full text-foreground hover:bg-accent transition"
+                    className="p-2 rounded-full text-foreground hover:bg-accent transition flex items-center justify-center"
                     aria-label="Toggle theme"
                  >
-                     {theme === 'dark' ? <SunIcon className="w-6 h-6 text-yellow-400" /> : <MoonIcon className="w-6 h-6" />}
+                     {theme === 'dark' ? (
+                         <SunIcon className="w-5 h-5 text-yellow-500" />
+                     ) : (
+                         <MoonIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                     )}
                  </button>
                  <button 
                     onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}

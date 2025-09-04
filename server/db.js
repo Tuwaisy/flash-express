@@ -382,16 +382,22 @@ async function setupDatabase() {
       });
     }
 
-    // Seeding: inventory_items
-    console.log('Seeding inventory items...');
-    await knex('inventory_items').del();
-    await knex('inventory_items').insert([
-        { id: 'inv_label', name: 'Shipping Label', quantity: 10000, unit: 'labels', lastUpdated: new Date().toISOString(), minStock: 500, unitPrice: 0.50 },
-        { id: 'inv_box_sm', name: 'Small Cardboard Box', quantity: 1000, unit: 'boxes', lastUpdated: new Date().toISOString(), minStock: 100, unitPrice: 5.00 },
-        { id: 'inv_box_md', name: 'Medium Cardboard Box', quantity: 1000, unit: 'boxes', lastUpdated: new Date().toISOString(), minStock: 100, unitPrice: 7.50 },
-        { id: 'inv_box_lg', name: 'Large Cardboard Box', quantity: 500, unit: 'boxes', lastUpdated: new Date().toISOString(), minStock: 50, unitPrice: 10.00 },
-        { id: 'inv_plastic_wrap', name: 'Packaging Plastic', quantity: 200, unit: 'rolls', lastUpdated: new Date().toISOString(), minStock: 20, unitPrice: 30.00 },
-    ]);
+    // Seeding: inventory_items (only if empty)
+    const existingItems = await knex('inventory_items').count('id as count').first();
+    if (!existingItems || existingItems.count === 0) {
+        console.log('Seeding inventory items...');
+        await knex('inventory_items').insert([
+            { id: 'inv_box_sm', name: 'Small Cardboard Box', quantity: 1000, unit: 'boxes', lastUpdated: new Date().toISOString(), minStock: 100, unitPrice: 5.00 },
+            { id: 'inv_box_md', name: 'Medium Cardboard Box', quantity: 1000, unit: 'boxes', lastUpdated: new Date().toISOString(), minStock: 100, unitPrice: 7.50 },
+            { id: 'inv_box_lg', name: 'Large Cardboard Box', quantity: 500, unit: 'boxes', lastUpdated: new Date().toISOString(), minStock: 50, unitPrice: 10.00 },
+            { id: 'inv_flyer_sm', name: 'Small Flyer', quantity: 2000, unit: 'flyers', lastUpdated: new Date().toISOString(), minStock: 500, unitPrice: 0.25 },
+            { id: 'inv_flyer_md', name: 'Medium Flyer', quantity: 1500, unit: 'flyers', lastUpdated: new Date().toISOString(), minStock: 300, unitPrice: 0.35 },
+            { id: 'inv_flyer_lg', name: 'Large Flyer', quantity: 1000, unit: 'flyers', lastUpdated: new Date().toISOString(), minStock: 200, unitPrice: 0.50 },
+            { id: 'inv_plastic_wrap', name: 'Packaging Plastic', quantity: 200, unit: 'rolls', lastUpdated: new Date().toISOString(), minStock: 20, unitPrice: 30.00 },
+        ]);
+    } else {
+        console.log('Inventory items already exist, skipping seeding...');
+    }
     
     // Table: assets
     if (!(await knex.schema.hasTable('assets'))) {

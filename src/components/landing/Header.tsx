@@ -36,7 +36,17 @@ const Header: React.FC<HeaderProps> = ({ currentLang, setLanguage, t }) => {
   }, []);
 
   const scrollToSection = (sectionId: string) => {
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
+    const element = document.getElementById(sectionId);
+    if (element) {
+      const headerHeight = 80; // Approximate height of fixed header
+      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+      const offsetPosition = elementPosition - headerHeight;
+      
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
     setIsMenuOpen(false);
   };
 
@@ -74,7 +84,7 @@ const Header: React.FC<HeaderProps> = ({ currentLang, setLanguage, t }) => {
                   <button
                     key={item.id}
                     onClick={() => scrollToSection(item.id)}
-                    className={`nav-link text-base font-medium transition-all duration-300 ${
+                    className={`nav-link text-base font-medium transition-all duration-300 whitespace-nowrap ${
                       activeSection === item.id ? 'text-[#FFD000] active' : 'text-white hover:text-[#FFD000]'
                     }`}
                   >
@@ -84,18 +94,9 @@ const Header: React.FC<HeaderProps> = ({ currentLang, setLanguage, t }) => {
               </div>
             </div>
 
-            {/* Track Shipment Button - Same size as other buttons */}
-            <div className="hidden md:flex items-center">
-              <button
-                onClick={() => scrollToSection('tracking')}
-                className="bg-[#FFD000] text-[#061A40] px-6 py-3 rounded-lg font-semibold hover:bg-[#e6bb00] transition-all duration-300 shadow-lg hover:shadow-xl flex items-center mr-4"
-              >
-                <Package className="inline h-5 w-5 me-2" />
-                {t('navTrackShipment')}
-              </button>
-            </div>
 
-            {/* Login and Language buttons - Far right */}
+
+            {/* Right side buttons - Login, Language, and Track Shipment */}
             <div className="hidden md:flex items-center gap-x-3">
               <a href="/app.html" className="px-4 py-2 rounded-lg text-sm border border-white/60 text-white/80 hover:bg-white/10 hover:text-white transition-all duration-300 font-medium">
                 {t('navLogin')}
@@ -105,6 +106,13 @@ const Header: React.FC<HeaderProps> = ({ currentLang, setLanguage, t }) => {
                 className="px-4 py-2 rounded-lg border border-[#FFD000] text-[#FFD000] hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300 font-medium text-sm"
               >
                 {currentLang === 'en' ? 'AR' : 'EN'}
+              </button>
+              <button
+                onClick={() => scrollToSection('tracking')}
+                className="bg-[#FFD000] text-[#061A40] px-4 py-2 rounded-lg font-medium text-sm hover:bg-[#e6bb00] transition-all duration-300 flex items-center gap-2"
+              >
+                <Package className="h-4 w-4" />
+                {t('navTrackShipment')}
               </button>
             </div>
 

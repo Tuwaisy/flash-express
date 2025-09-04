@@ -324,8 +324,12 @@ async function main() {
     // Run jobs
     setInterval(checkForOverdueShipments, 4 * 60 * 60 * 1000); // 4 hours
     setInterval(updateClientTiers, 24 * 60 * 60 * 1000); // Daily
-    checkForOverdueShipments(); // Run on startup
-    updateClientTiers(); // Run on startup
+    
+    // Run startup jobs safely without blocking server start
+    setTimeout(() => {
+        checkForOverdueShipments().catch(err => console.error('Startup job error (overdue shipments):', err));
+        updateClientTiers().catch(err => console.error('Startup job error (client tiers):', err));
+    }, 5000); // Wait 5 seconds after server starts
 
 
     
@@ -2171,11 +2175,61 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 
                 // STEP 2: Delete ALL transactional data first (to remove foreign key dependencies)
                 console.log('🧹 Deleting all transactions and operational data...');
-                results.deleted.courier_transactions = await knex('courier_transactions').del();
-                results.deleted.client_transactions = await knex('client_transactions').del();
-                results.deleted.notifications = await knex('notifications').del();
-                results.deleted.in_app_notifications = await knex('in_app_notifications').del();
-                results.deleted.shipments = await knex('shipments').del();
+                
+                // Check if tables exist before trying to delete from them
+                const tableChecks = {};
+                const tablesToCheck = ['courier_transactions', 'client_transactions', 'notifications', 'in_app_notifications', 'shipments', 'assets', 'inventory_items', 'suppliers', 'supplier_transactions', 'shipment_counters'];
+                
+                for (const table of tablesToCheck) {
+                    try {
+                        tableChecks[table] = await knex.schema.hasTable(table);
+                    } catch (e) {
+                        tableChecks[table] = false;
+                    }
+                }
+                
+                // Delete from tables that exist
+                if (tableChecks.courier_transactions) {
+                    results.deleted.courier_transactions = await knex('courier_transactions').del();
+                }
+                if (tableChecks.client_transactions) {
+                    results.deleted.client_transactions = await knex('client_transactions').del();
+                }
+                if (tableChecks.notifications) {
+                    results.deleted.notifications = await knex('notifications').del();
+                }
+                if (tableChecks.in_app_notifications) {
+                    results.deleted.in_app_notifications = await knex('in_app_notifications').del();
+                }
+                if (tableChecks.shipments) {
+                    results.deleted.shipments = await knex('shipments').del();
+                }
+                
+                // STEP 2.5: Clear ALL assets and inventory as requested
+                console.log('🗑️ Clearing assets and inventory...');
+                if (tableChecks.assets) {
+                    results.deleted.assets = await knex('assets').del();
+                }
+                if (tableChecks.inventory_items) {
+                    // Reset inventory to initial state instead of deleting
+                    results.deleted.inventory_items = await knex('inventory_items').del();
+                    // Re-seed inventory with default items (no shipping labels)
+                    await knex('inventory_items').insert([
+                        { id: 'inv_box_sm', name: 'Small Cardboard Box', quantity: 1000, unit: 'boxes', lastUpdated: new Date().toISOString(), minStock: 100, unitPrice: 5.00 },
+                        { id: 'inv_box_md', name: 'Medium Cardboard Box', quantity: 1000, unit: 'boxes', lastUpdated: new Date().toISOString(), minStock: 100, unitPrice: 7.50 },
+                        { id: 'inv_box_lg', name: 'Large Cardboard Box', quantity: 500, unit: 'boxes', lastUpdated: new Date().toISOString(), minStock: 50, unitPrice: 10.00 },
+                        { id: 'inv_flyer_sm', name: 'Small Flyer', quantity: 2000, unit: 'flyers', lastUpdated: new Date().toISOString(), minStock: 500, unitPrice: 0.25 },
+                        { id: 'inv_flyer_md', name: 'Medium Flyer', quantity: 1500, unit: 'flyers', lastUpdated: new Date().toISOString(), minStock: 300, unitPrice: 0.35 },
+                        { id: 'inv_flyer_lg', name: 'Large Flyer', quantity: 1000, unit: 'flyers', lastUpdated: new Date().toISOString(), minStock: 200, unitPrice: 0.50 },
+                        { id: 'inv_plastic_wrap', name: 'Packaging Plastic', quantity: 200, unit: 'rolls', lastUpdated: new Date().toISOString(), minStock: 20, unitPrice: 30.00 },
+                    ]);
+                }
+                if (tableChecks.suppliers) {
+                    results.deleted.suppliers = await knex('suppliers').del();
+                }
+                if (tableChecks.supplier_transactions) {
+                    results.deleted.supplier_transactions = await knex('supplier_transactions').del();
+                }
                 
                 // STEP 3: Handle user deletions carefully with foreign key constraints
                 console.log('👥 Removing non-essential users...');
@@ -2222,7 +2276,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 if (existingEssentialUsers.length > 0) {
                     results.reset.user_balances = await knex('users').whereIn('email', essentialEmails).update({ 
                         walletBalance: 0,
-                        currentTier: 'Bronze'
+                        partnerTier: 'Bronze'  // Fixed: should be partnerTier, not currentTier
                     });
                 }
                 
@@ -2239,7 +2293,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                         phone: '+201000000000',
                         roles: '["Administrator"]',
                         walletBalance: 0,
-                        currentTier: 'Bronze'
+                        partnerTier: 'Bronze'  // Fixed: should be partnerTier, not currentTier
                     });
                 }
                 
@@ -2252,7 +2306,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                         phone: '+201000000001',
                         roles: '["Courier"]',
                         walletBalance: 0,
-                        currentTier: 'Bronze'
+                        partnerTier: 'Bronze'  // Fixed: should be partnerTier, not currentTier
                     });
                 }
                 
@@ -2265,12 +2319,12 @@ app.get('/api/debug/users/:id', async (req, res) => {
                         phone: '+201000000002',
                         roles: '["Client"]',
                         walletBalance: 0,
-                        currentTier: 'Bronze'
+                        partnerTier: 'Bronze'  // Fixed: should be partnerTier, not currentTier
                     });
                 }
                 
                 if (missingUsers.length > 0) {
-                    results.recreated.essential_users = await trx('users').insert(missingUsers).returning('*');
+                    results.recreated.essential_users = await knex('users').insert(missingUsers).returning('*');
                 } else {
                     results.recreated.essential_users = [];
                 }
@@ -2338,6 +2392,26 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     console.log('⚠️ Sequence reset skipped:', error.message);
                     results.reset.sequences = ['Error: ' + error.message];
                 }
+
+                // STEP 6.5: Reset shipment counter to start from 0 (so first shipment will be 0000)
+                console.log('📦 Resetting shipment counter to start from 0000...');
+                try {
+                    const hasShipmentCounters = await knex.schema.hasTable('shipment_counters');
+                    if (hasShipmentCounters) {
+                        results.reset.shipment_counter = await knex('shipment_counters')
+                            .where({ id: 'global' })
+                            .update({ count: 0 });
+                        console.log('📦 Shipment counter reset to 0 - next shipment will be 0000');
+                    } else {
+                        // Create the counter if it doesn't exist
+                        await knex('shipment_counters').insert({ id: 'global', count: 0 });
+                        results.reset.shipment_counter = 'created with count 0';
+                        console.log('📦 Shipment counter created and set to 0');
+                    }
+                } catch (error) {
+                    console.log('⚠️ Shipment counter reset failed:', error.message);
+                    results.reset.shipment_counter = 'Error: ' + error.message;
+                }
                 
                 // STEP 7: Get final counts for verification
                 console.log('📊 Getting final counts...');
@@ -2360,7 +2434,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     results: results,
                     preserved: 'Only Admin, Test Courier, Test Client + Inventory + Tiers',
                     cleared: 'ALL shipments, transactions, notifications, non-essential users',
-                    nextOrderNumber: 1
+                    nextOrderNumber: '0000'
                 });
             
         } catch (error) {
@@ -2784,15 +2858,15 @@ app.get('/api/debug/users/:id', async (req, res) => {
         }
 
         try {
-            const totalBoxes = Object.entries(materialsSummary)
-                .filter(([key]) => key.startsWith('inv_box_'))
+            const totalPackagingItems = Object.entries(materialsSummary)
+                .filter(([key]) => key.startsWith('inv_box_') || key.startsWith('inv_flyer_'))
                 .reduce((sum, [, value]) => sum + Number(value), 0);
             
-            if (totalBoxes < shipmentIds.length) {
-                return res.status(400).json({ error: `Not enough boxes (${totalBoxes}) for the selected shipments (${shipmentIds.length}).` });
+            if (totalPackagingItems < shipmentIds.length) {
+                return res.status(400).json({ error: `Not enough packaging items (${totalPackagingItems}) for the selected shipments (${shipmentIds.length}).` });
             }
-            if (totalBoxes > shipmentIds.length && (!packagingNotes || packagingNotes.trim() === '')) {
-                return res.status(400).json({ error: 'Packaging notes are mandatory when the number of boxes exceeds the number of shipments.' });
+            if (totalPackagingItems > shipmentIds.length && (!packagingNotes || packagingNotes.trim() === '')) {
+                return res.status(400).json({ error: 'Packaging notes are mandatory when the number of packaging items exceeds the number of shipments.' });
             }
 
             await knex.transaction(async trx => {
@@ -3110,14 +3184,21 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 .whereNotNull('transferEvidencePath')
                 .andWhere('timestamp', '<', threeDaysAgo);
 
+            let deletedCount = 0;
             for (const transaction of expiredTransactions) {
-                console.log(`Evidence for transaction ${transaction.id} is older than 3 days. Deleting.`);
-                const fullPath = path.join(__dirname, transaction.transferEvidencePath);
-                if (fs.existsSync(fullPath)) {
-                    fs.unlinkSync(fullPath);
-                    console.log(`Deleted file: ${fullPath}`);
+                try {
+                    console.log(`Evidence for transaction ${transaction.id} is older than 3 days. Deleting.`);
+                    const fullPath = path.join(__dirname, transaction.transferEvidencePath);
+                    if (fs.existsSync(fullPath)) {
+                        fs.unlinkSync(fullPath);
+                        deletedCount++;
+                        console.log(`Deleted evidence file: ${fullPath}`);
+                    }
+                } catch (fileError) {
+                    console.error(`Error deleting evidence file for transaction ${transaction.id}:`, fileError.message);
                 }
             }
+            console.log(`Evidence cleanup completed. Deleted ${deletedCount} files.`);
         } catch (error) {
             console.error('Error during evidence cleanup job:', error);
         }
@@ -3148,7 +3229,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                         }
                     }
                 } catch (err) {
-                    console.error(`Error processing shipment ${shipment.id} for photo cleanup:`, err);
+                    console.error(`Error processing shipment ${shipment.id} for photo cleanup:`, err.message);
                 }
             }
         } catch (error) {
@@ -3159,15 +3240,30 @@ app.get('/api/debug/users/:id', async (req, res) => {
     // Run the cleanup job every hour
     setInterval(cleanupExpiredFailurePhotos, 60 * 60 * 1000);
     setInterval(cleanupExpiredEvidence, 60 * 60 * 1000);
-    // Run once on startup as well
-    cleanupExpiredFailurePhotos();
-    cleanupExpiredEvidence();
 
     // Start the server
     const PORT = process.env.PORT || 8080;
+    console.log(`🚀 Starting server on port ${PORT}...`);
+    
     const server = httpServer.listen(PORT, '0.0.0.0', () => {
-      console.log(`Backend and WebSocket server listening on port ${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`✅ Backend and WebSocket server listening on port ${PORT}`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🎉 Server startup completed successfully!`);
+      
+      // Run cleanup jobs after server is fully started
+      setTimeout(() => {
+        cleanupExpiredFailurePhotos().catch(err => console.error('Cleanup job error (failure photos):', err));
+        cleanupExpiredEvidence().catch(err => console.error('Cleanup job error (evidence):', err));
+      }, 10000); // Wait 10 seconds after server starts
+    });
+    
+    // Handle server startup errors
+    server.on('error', (error) => {
+      console.error('❌ Server startup error:', error);
+      if (error.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${PORT} is already in use. Please use a different port.`);
+      }
+      process.exit(1);
     });
 
     // Graceful shutdown handling

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Zap, Facebook, Twitter, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
+import { InstagramIcon } from '../Icons';
 
 interface FooterProps {
   t: (key: string) => string;
@@ -9,7 +10,13 @@ const Footer: React.FC<FooterProps> = ({ t }) => {
   const currentYear = new Date().getFullYear();
 
   const scrollToSection = (sectionId: string) => {
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
+    const element = document.getElementById(sectionId);
+    if (element) {
+      const headerHeight = 80;
+      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+      const offsetPosition = elementPosition - headerHeight;
+      window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+    }
   };
 
   return (
@@ -75,19 +82,25 @@ const Footer: React.FC<FooterProps> = ({ t }) => {
               <h4 className="text-xl font-bold text-[#FFD000] mb-6">{t('footerFollow')}</h4>
               <div className="flex space-x-4">
                 <a
-                  href="#"
+                  href="https://www.instagram.com/shuhnaexpress/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="social-icon p-3 bg-white/10 rounded-full text-gray-300 hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300"
+                >
+                  <InstagramIcon className="h-5 w-5" />
+                </a>
+                <a
+                  href="https://www.facebook.com/profile.php?id=61580474210714"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="social-icon p-3 bg-white/10 rounded-full text-gray-300 hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300"
                 >
                   <Facebook className="h-5 w-5" />
                 </a>
                 <a
-                  href="#"
-                  className="social-icon p-3 bg-white/10 rounded-full text-gray-300 hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300"
-                >
-                  <Twitter className="h-5 w-5" />
-                </a>
-                <a
-                  href="#"
+                  href="https://www.linkedin.com/company/shuhna-express"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="social-icon p-3 bg-white/10 rounded-full text-gray-300 hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300"
                 >
                   <Linkedin className="h-5 w-5" />

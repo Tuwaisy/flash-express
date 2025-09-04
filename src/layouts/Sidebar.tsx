@@ -9,7 +9,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { 
     LogoIcon, DashboardIcon, PackageIcon, UsersIcon, WalletIcon, 
     ChartBarIcon, TruckIcon, ClipboardListIcon, PlusCircleIcon,
-    UserCircleIcon, BellIcon, TrendingUpIcon, CurrencyDollarIcon, XIcon, CogIcon, CheckCircleIcon, ArchiveBoxIcon, TagIcon, SwitchHorizontalIcon, MapPinIcon, CrownIcon, UploadIcon
+    UserCircleIcon, BellIcon, TrendingUpIcon, CurrencyDollarIcon, XIcon, CogIcon, CheckCircleIcon, ArchiveBoxIcon, TagIcon, SwitchHorizontalIcon, MapPinIcon, GoldMedalIcon, UploadIcon
 } from '../components/Icons';
 
 interface NavItemConfig {
@@ -49,7 +49,7 @@ const ALL_NAV_ITEMS: NavItemConfig[] = [
     { nameKey: 'nav.deliveryManagement', icon: <SwitchHorizontalIcon />, view: 'admin-delivery-management', permission: Permission.VIEW_ADMIN_DELIVERY_MANAGEMENT },
     { nameKey: 'nav.userManagement', icon: <UsersIcon />, view: 'users', permission: Permission.MANAGE_USERS },
     { nameKey: 'nav.roleManagement', icon: <CogIcon />, view: 'roles', permission: Permission.MANAGE_ROLES },
-    { nameKey: 'nav.partnerTiers', icon: <CrownIcon />, view: 'partner-tier-management', permission: Permission.MANAGE_PARTNER_TIERS },
+    { nameKey: 'nav.partnerTiers', icon: <GoldMedalIcon />, view: 'partner-tier-management', permission: Permission.MANAGE_PARTNER_TIERS },
     { nameKey: 'nav.inventory', icon: <ArchiveBoxIcon />, view: 'inventory', permission: Permission.MANAGE_INVENTORY },
     { nameKey: 'nav.assetManagement', icon: <TagIcon />, view: 'asset-management', permission: Permission.MANAGE_ASSETS },
     { nameKey: 'nav.supplierManagement', icon: <SwitchHorizontalIcon />, view: 'supplier-management', permission: Permission.MANAGE_SUPPLIERS },

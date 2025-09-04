@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { MailIcon, KeyIcon } from '../components/Icons';
+import { Package } from 'lucide-react';
 
 const LoginScreen = () => {
     const { login, isLoading, theme } = useAppContext();
@@ -45,7 +46,7 @@ const LoginScreen = () => {
                                     value={email} 
                                     onChange={e => setEmail(e.target.value)} 
                                     className="w-full pl-10 pr-4 py-3 bg-background/60 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary/80 focus:border-primary transition" 
-                                    placeholder="admin@shuhna.net" 
+                                    placeholder="example@shuhna.net" 
                                     required 
                                 />
                             </div>
@@ -77,6 +78,20 @@ const LoginScreen = () => {
                             {isLoading ? 'Logging in...' : 'Login'}
                         </button>
                     </form>
+
+                    {/* Track Shipment Button */}
+                    <div className="mt-6 pt-6 border-t border-border">
+                        <button 
+                            onClick={() => window.location.href = '/'}
+                            className="w-full flex items-center justify-center gap-2 bg-[#FFD000] text-[#061A40] font-medium py-3 px-4 rounded-lg hover:bg-[#e6bb00] transition duration-300"
+                        >
+                            <Package className="h-4 w-4" />
+                            Track Shipment
+                        </button>
+                        <p className="text-xs text-muted-foreground text-center mt-2">
+                            Go back to track your shipment without logging in
+                        </p>
+                    </div>
                 </div>
 
             </div>

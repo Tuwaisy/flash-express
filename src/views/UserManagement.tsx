@@ -6,23 +6,23 @@ import { useAppContext } from '../context/AppContext';
 import { User, UserRole, ZONES, ShipmentPriority, Permission, CustomRole, PartnerTier, Address } from '../types';
 import { Modal } from '../components/common/Modal';
 // FIX: Removed unused PhoneIcon
-import { PlusCircleIcon, PencilIcon, KeyIcon, TrashIcon, DocumentDownloadIcon, WalletIcon, UserCircleIcon, CrownIcon, MapPinIcon } from '../components/Icons';
+import { PlusCircleIcon, PencilIcon, KeyIcon, TrashIcon, DocumentDownloadIcon, WalletIcon, UserCircleIcon, GoldMedalIcon, MapPinIcon } from '../components/Icons';
 import { exportToCsv } from '../utils/pdf';
 
 const UserManagement = () => {
     const { users, addUser, updateUser, removeUser, resetPassword, currentUser, hasPermission, updateClientTaxCard, getTaxCardNumber, addToast, customRoles, updateClientTier } = useAppContext();
-    const [mode, setMode] = useState<'add' | 'edit' | 'reset' | 'delete' | 'taxCard' | 'priorityPricing' | 'tier' | 'address' | null>(null);
+    const [mode, setMode] = useState<'add' | 'edit' | 'reset' | 'delete' | 'taxCard' | 'clientEdit' | null>(null);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [formData, setFormData] = useState<Partial<User>>({});
     const [tempTaxCardNumber, setTempTaxCardNumber] = useState('');
-    const [tempPriorityMultipliers, setTempPriorityMultipliers] = useState<{
+    const [tempFixedPricing, setTempFixedPricing] = useState<{
         [ShipmentPriority.STANDARD]: number;
         [ShipmentPriority.URGENT]: number;
         [ShipmentPriority.EXPRESS]: number;
     }>({
-        [ShipmentPriority.STANDARD]: 100,
-        [ShipmentPriority.URGENT]: 150,
-        [ShipmentPriority.EXPRESS]: 200,
+        [ShipmentPriority.STANDARD]: 75,
+        [ShipmentPriority.URGENT]: 100,
+        [ShipmentPriority.EXPRESS]: 125,
     });
     const [tempTier, setTempTier] = useState<PartnerTier | null>(null);
     
@@ -75,8 +75,8 @@ const UserManagement = () => {
 
     const availableRoles = getAvailableRoles();
     
-    const openModal = (modalMode: 'add' | 'edit' | 'reset' | 'delete' | 'taxCard' | 'priorityPricing' | 'tier' | 'address', user?: User) => {
-        if ((modalMode === 'taxCard' || modalMode === 'priorityPricing' || modalMode === 'tier' || modalMode === 'address') && !currentUser?.roles?.includes(UserRole.ADMIN) && !currentUser?.roles?.includes(UserRole.SUPER_USER)) {
+    const openModal = (modalMode: 'add' | 'edit' | 'reset' | 'delete' | 'taxCard' | 'clientEdit', user?: User) => {
+        if (modalMode === 'clientEdit' && !currentUser?.roles?.includes(UserRole.ADMIN) && !currentUser?.roles?.includes(UserRole.SUPER_USER)) {
             addToast('Only administrators and super users can manage client settings', 'error');
             return;
         }
@@ -113,20 +113,21 @@ const UserManagement = () => {
             setTempTaxCardNumber(getTaxCardNumber(user.id) || '');
         }
         
-        if (modalMode === 'priorityPricing' && user) {
+        if (modalMode === 'clientEdit' && user) {
+            // Initialize client edit values with fixed pricing instead of multipliers
             const multipliers = user.priorityMultipliers || {
                 [ShipmentPriority.STANDARD]: 1.0,
                 [ShipmentPriority.URGENT]: 1.5,
                 [ShipmentPriority.EXPRESS]: 2.0,
             };
-            setTempPriorityMultipliers({
-                [ShipmentPriority.STANDARD]: multipliers[ShipmentPriority.STANDARD] * 100,
-                [ShipmentPriority.URGENT]: multipliers[ShipmentPriority.URGENT] * 100,
-                [ShipmentPriority.EXPRESS]: multipliers[ShipmentPriority.EXPRESS] * 100,
+            
+            // Convert multipliers to fixed prices based on base rate
+            const baseRate = user.flatRateFee || 75;
+            setTempFixedPricing({
+                [ShipmentPriority.STANDARD]: baseRate * multipliers[ShipmentPriority.STANDARD],
+                [ShipmentPriority.URGENT]: baseRate * multipliers[ShipmentPriority.URGENT],
+                [ShipmentPriority.EXPRESS]: baseRate * multipliers[ShipmentPriority.EXPRESS],
             });
-        }
-
-        if (modalMode === 'tier' && user) {
             setTempTier(user.partnerTier || null);
         }
     };
@@ -181,30 +182,72 @@ const UserManagement = () => {
     };
 
 
+    // Phone validation function (same as CreateShipment)
+    const isValidPhoneNumber = (phone: string): boolean => {
+        // Accept 11 digits starting with 01, or 10 digits starting with 1
+        return /^01\d{9}$/.test(phone) || /^1\d{9}$/.test(phone);
+    };
+
+    // Normalize phone number (add 0 if starts with 1 and is 10 digits)
+    const normalizePhoneNumber = (phone: string): string => {
+        if (phone.length === 10 && phone.startsWith('1')) {
+            return '0' + phone;
+        }
+        return phone;
+    };
+
     // FIX: Added explicit type for event parameter
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // Validate phone number for both add and edit
+        if ((mode === 'add' || mode === 'edit') && formData.phone) {
+            if (!isValidPhoneNumber(formData.phone)) {
+                addToast('Phone number must be 11 digits starting with 01 or 10 digits starting with 1', 'error');
+                return;
+            }
+            // Normalize the phone number
+            formData.phone = normalizePhoneNumber(formData.phone);
+        }
+        
         if (mode === 'add') {
             addUser(formData as Omit<User, 'id' | 'publicId'>);
         } else if (mode === 'edit' && selectedUser) {
             updateUser(selectedUser.id, formData);
-        } else if (mode === 'address' && selectedUser) {
-            updateUser(selectedUser.id, { address: formData.address });
-        } else if (mode === 'reset' && selectedUser && formData.password) {
-            resetPassword(selectedUser.id, formData.password);
-        } else if (mode === 'taxCard' && selectedUser) {
-            handleTaxCardUpdate();
-            return;
-        } else if (mode === 'priorityPricing' && selectedUser) {
-            handlePriorityPricingUpdate();
-            return;
-        } else if (mode === 'tier' && selectedUser) {
-            handleTierUpdate();
+        } else if (mode === 'clientEdit' && selectedUser) {
+            handleClientUpdate();
             return;
         }
         closeModal();
     };
     
+    const handleClientUpdate = () => {
+        if (!selectedUser) return;
+        
+        // Update client address
+        updateUser(selectedUser.id, { address: formData.address });
+        
+        // Update tier
+        updateClientTier(selectedUser.id, tempTier);
+        
+        // Update pricing - convert fixed prices back to multipliers
+        const baseRate = selectedUser.flatRateFee || 75;
+        const multipliers = {
+            [ShipmentPriority.STANDARD]: tempFixedPricing[ShipmentPriority.STANDARD] / baseRate,
+            [ShipmentPriority.URGENT]: tempFixedPricing[ShipmentPriority.URGENT] / baseRate,
+            [ShipmentPriority.EXPRESS]: tempFixedPricing[ShipmentPriority.EXPRESS] / baseRate,
+        };
+        
+        if (multipliers[ShipmentPriority.STANDARD] <= 0 || multipliers[ShipmentPriority.URGENT] <= 0 || multipliers[ShipmentPriority.EXPRESS] <= 0) {
+            addToast('All pricing values must be positive numbers', 'error');
+            return;
+        }
+        
+        updateUser(selectedUser.id, { priorityMultipliers: multipliers });
+        addToast(`Client settings updated for ${selectedUser.name}`, 'success');
+        closeModal();
+    };
+
     const handleTierUpdate = () => {
         if (!selectedUser) return;
         updateClientTier(selectedUser.id, tempTier);
@@ -230,31 +273,6 @@ const UserManagement = () => {
         
         updateClientTaxCard(selectedUser.id, tempTaxCardNumber);
         addToast(`Tax card number updated for ${selectedUser.name}`, 'success');
-        closeModal();
-    };
-
-    const handlePriorityPricingUpdate = () => {
-        if (!selectedUser) return;
-        
-        if (!currentUser?.roles?.includes(UserRole.ADMIN) && !currentUser?.roles?.includes(UserRole.SUPER_USER)) {
-            addToast('Only administrators and super users can manage priority pricing', 'error');
-            closeModal();
-            return;
-        }
-        
-        const multipliers = {
-            [ShipmentPriority.STANDARD]: tempPriorityMultipliers[ShipmentPriority.STANDARD] / 100,
-            [ShipmentPriority.URGENT]: tempPriorityMultipliers[ShipmentPriority.URGENT] / 100,
-            [ShipmentPriority.EXPRESS]: tempPriorityMultipliers[ShipmentPriority.EXPRESS] / 100,
-        };
-
-        if (multipliers[ShipmentPriority.STANDARD] <= 0 || multipliers[ShipmentPriority.URGENT] <= 0 || multipliers[ShipmentPriority.EXPRESS] <= 0) {
-            addToast('All priority percentages must be positive numbers', 'error');
-            return;
-        }
-        
-        updateUser(selectedUser.id, { priorityMultipliers: multipliers });
-        addToast(`Priority pricing updated for ${selectedUser.name}`, 'success');
         closeModal();
     };
 
@@ -307,104 +325,98 @@ const UserManagement = () => {
              )
         }
 
-        if (mode === 'address' && selectedUser) {
+        if (mode === 'clientEdit' && selectedUser) {
             const availableZones = getAvailableZones(formData.address?.city || 'Cairo');
-            return (
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <p>Editing default pickup address for <strong>{selectedUser.name}</strong>.</p>
-                    <div>
-                        <label htmlFor="address-street" className="block text-sm font-medium text-muted-foreground mb-1">Street Address</label>
-                        <input id="address-street" type="text" name="street" value={formData.address?.street || ''} onChange={handleAddressChange} className="w-full p-2 border border-border rounded bg-background" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="address-city" className="block text-sm font-medium text-muted-foreground mb-1">City</label>
-                            <select id="address-city" name="city" value={formData.address?.city || 'Cairo'} onChange={handleAddressChange} className="w-full p-2 border border-border rounded bg-background">
-                                <option value="Cairo">Cairo</option>
-                                <option value="Giza">Giza</option>
-                                <option value="Alexandria">Alexandria</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label htmlFor="address-zone" className="block text-sm font-medium text-muted-foreground mb-1">Zone</label>
-                            <select id="address-zone" name="zone" value={formData.address?.zone || ''} onChange={handleAddressChange} className="w-full p-2 border border-border rounded bg-background">
-                                {availableZones.map(z => <option key={z} value={z}>{z}</option>)}
-                            </select>
-                        </div>
-                    </div>
-                    <div>
-                        <label htmlFor="address-details" className="block text-sm font-medium text-muted-foreground mb-1">Address Details (Apt, Floor)</label>
-                        <input id="address-details" type="text" name="details" value={formData.address?.details || ''} onChange={handleAddressChange} className="w-full p-2 border border-border rounded bg-background" />
-                    </div>
-                    <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={closeModal} className="px-4 py-2 bg-secondary rounded-lg font-semibold">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-semibold">Save Address</button>
-                    </div>
-                </form>
-            );
-        }
-
-        if (mode === 'tier' && selectedUser) {
-            return (
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <p>Manually assign a partner tier for <strong>{selectedUser.name}</strong>.</p>
-                    <div>
-                        <label htmlFor="partner-tier" className="block text-sm font-medium text-muted-foreground mb-1">Partner Tier</label>
-                        <select
-                            id="partner-tier"
-                            value={tempTier || 'auto'}
-                            onChange={e => setTempTier(e.target.value === 'auto' ? null : e.target.value as PartnerTier)}
-                            className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-                        >
-                            <option value="auto">Automatic (Based on shipments)</option>
-                            {Object.values(PartnerTier).map(tier => (
-                                <option key={tier} value={tier}>{tier}</option>
-                            ))}
-                        </select>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            Manual assignment overrides the automatic tier calculation.
-                        </p>
-                    </div>
-                     <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={closeModal} className="px-4 py-2 bg-secondary rounded-lg font-semibold">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-semibold">Save Tier</button>
-                    </div>
-                </form>
-            )
-        }
-
-        if (mode === 'priorityPricing' && selectedUser) {
-            // FIX: Added explicit type for parameter
-            const handleMultiplierChange = (priority: ShipmentPriority, value: string) => {
-                setTempPriorityMultipliers(prev => ({
+            
+            const handleFixedPricingChange = (priority: ShipmentPriority, value: string) => {
+                setTempFixedPricing(prev => ({
                     ...prev,
                     [priority]: parseFloat(value) || 0,
                 }));
             };
-    
+            
             return (
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <p>Set custom priority fee percentages for <strong>{selectedUser.name}</strong> (e.g., 100 for standard rate, 150 for a 1.5x fee).</p>
-                    <div>
-                        <label htmlFor="priority-standard" className="block text-sm font-medium text-muted-foreground mb-1">{ShipmentPriority.STANDARD} (%)</label>
-                        <input id="priority-standard" type="number" min="0" value={tempPriorityMultipliers[ShipmentPriority.STANDARD]} onChange={e => handleMultiplierChange(ShipmentPriority.STANDARD, e.target.value)} className="w-full p-2 border border-border rounded bg-background" />
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <p>Editing client settings for <strong>{selectedUser.name}</strong>.</p>
+                    
+                    {/* Address Section */}
+                    <div className="p-4 border border-border rounded-lg space-y-4">
+                        <h4 className="font-semibold text-foreground">Default Address</h4>
+                        <div>
+                            <label htmlFor="address-street" className="block text-sm font-medium text-muted-foreground mb-1">Street Address</label>
+                            <input id="address-street" type="text" name="street" value={formData.address?.street || ''} onChange={handleAddressChange} className="w-full p-2 border border-border rounded bg-background" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label htmlFor="address-city" className="block text-sm font-medium text-muted-foreground mb-1">City</label>
+                                <select id="address-city" name="city" value={formData.address?.city || 'Cairo'} onChange={handleAddressChange} className="w-full p-2 border border-border rounded bg-background">
+                                    <option value="Cairo">Cairo</option>
+                                    <option value="Giza">Giza</option>
+                                    <option value="Alexandria">Alexandria</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label htmlFor="address-zone" className="block text-sm font-medium text-muted-foreground mb-1">Zone</label>
+                                <select id="address-zone" name="zone" value={formData.address?.zone || ''} onChange={handleAddressChange} className="w-full p-2 border border-border rounded bg-background">
+                                    {availableZones.map(z => <option key={z} value={z}>{z}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label htmlFor="address-details" className="block text-sm font-medium text-muted-foreground mb-1">Address Details (Apt, Floor)</label>
+                            <input id="address-details" type="text" name="details" value={formData.address?.details || ''} onChange={handleAddressChange} className="w-full p-2 border border-border rounded bg-background" />
+                        </div>
                     </div>
-                    <div>
-                        <label htmlFor="priority-urgent" className="block text-sm font-medium text-muted-foreground mb-1">{ShipmentPriority.URGENT} (%)</label>
-                        <input id="priority-urgent" type="number" min="0" value={tempPriorityMultipliers[ShipmentPriority.URGENT]} onChange={e => handleMultiplierChange(ShipmentPriority.URGENT, e.target.value)} className="w-full p-2 border border-border rounded bg-background" />
+                    
+                    {/* Tier Section */}
+                    <div className="p-4 border border-border rounded-lg space-y-4">
+                        <h4 className="font-semibold text-foreground">Partner Tier</h4>
+                        <div>
+                            <label htmlFor="partner-tier" className="block text-sm font-medium text-muted-foreground mb-1">Partner Tier</label>
+                            <select
+                                id="partner-tier"
+                                value={tempTier || 'auto'}
+                                onChange={e => setTempTier(e.target.value === 'auto' ? null : e.target.value as PartnerTier)}
+                                className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+                            >
+                                <option value="auto">Automatic (Based on shipments)</option>
+                                {Object.values(PartnerTier).map(tier => (
+                                    <option key={tier} value={tier}>{tier}</option>
+                                ))}
+                            </select>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Manual assignment overrides the automatic tier calculation.
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <label htmlFor="priority-express" className="block text-sm font-medium text-muted-foreground mb-1">{ShipmentPriority.EXPRESS} (%)</label>
-                        <input id="priority-express" type="number" min="0" value={tempPriorityMultipliers[ShipmentPriority.EXPRESS]} onChange={e => handleMultiplierChange(ShipmentPriority.EXPRESS, e.target.value)} className="w-full p-2 border border-border rounded bg-background" />
+                    
+                    {/* Fixed Pricing Section */}
+                    <div className="p-4 border border-border rounded-lg space-y-4">
+                        <h4 className="font-semibold text-foreground">Fixed Pricing (EGP)</h4>
+                        <p className="text-sm text-muted-foreground">Set fixed prices for each priority level instead of percentage multipliers.</p>
+                        <div>
+                            <label htmlFor="priority-standard" className="block text-sm font-medium text-muted-foreground mb-1">{ShipmentPriority.STANDARD} (EGP)</label>
+                            <input id="priority-standard" type="number" min="0" step="0.01" value={tempFixedPricing[ShipmentPriority.STANDARD]} onChange={e => handleFixedPricingChange(ShipmentPriority.STANDARD, e.target.value)} className="w-full p-2 border border-border rounded bg-background" />
+                        </div>
+                        <div>
+                            <label htmlFor="priority-urgent" className="block text-sm font-medium text-muted-foreground mb-1">{ShipmentPriority.URGENT} (EGP)</label>
+                            <input id="priority-urgent" type="number" min="0" step="0.01" value={tempFixedPricing[ShipmentPriority.URGENT]} onChange={e => handleFixedPricingChange(ShipmentPriority.URGENT, e.target.value)} className="w-full p-2 border border-border rounded bg-background" />
+                        </div>
+                        <div>
+                            <label htmlFor="priority-express" className="block text-sm font-medium text-muted-foreground mb-1">{ShipmentPriority.EXPRESS} (EGP)</label>
+                            <input id="priority-express" type="number" min="0" step="0.01" value={tempFixedPricing[ShipmentPriority.EXPRESS]} onChange={e => handleFixedPricingChange(ShipmentPriority.EXPRESS, e.target.value)} className="w-full p-2 border border-border rounded bg-background" />
+                        </div>
                     </div>
+                    
                     <div className="flex justify-end gap-4 pt-4">
                         <button type="button" onClick={closeModal} className="px-4 py-2 bg-secondary rounded-lg font-semibold">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-semibold">Save Pricing</button>
+                        <button type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-semibold">Save All Changes</button>
                     </div>
                 </form>
             );
         }
+
 
 
         if (mode === 'add' || mode === 'edit') {
@@ -593,12 +605,10 @@ const UserManagement = () => {
                                         <button onClick={() => openModal('reset', user)} title="Reset Password" className="p-2 text-muted-foreground hover:text-orange-500 hover:bg-secondary rounded-md"><KeyIcon /></button>
                                         <button onClick={() => openModal('delete', user)} title="Delete User" className="p-2 text-muted-foreground hover:text-red-500 hover:bg-secondary rounded-md"><TrashIcon /></button>
                                          {(user.roles || []).includes(UserRole.CLIENT) && hasPermission(Permission.EDIT_CLIENT_ADDRESS) && (
-                                            <button onClick={() => openModal('address', user)} title="Edit Default Address" className="p-2 text-muted-foreground hover:text-blue-500 hover:bg-secondary rounded-md">
-                                                <MapPinIcon className="w-5 h-5" />
+                                            <button onClick={() => openModal('clientEdit', user)} title="Edit Client Settings" className="p-2 text-muted-foreground hover:text-green-500 hover:bg-secondary rounded-md">
+                                                <WalletIcon className="w-5 h-5" />
                                             </button>
                                          )}
-                                         {(user.roles || []).includes(UserRole.CLIENT) && <button onClick={() => openModal('priorityPricing', user)} title="Set Priority Pricing" className="p-2 text-muted-foreground hover:text-green-500 hover:bg-secondary rounded-md"><WalletIcon className="w-5 h-5"/></button>}
-                                         {(user.roles || []).includes(UserRole.CLIENT) && <button onClick={() => openModal('tier', user)} title="Manage Tier" className="p-2 text-muted-foreground hover:text-yellow-500 hover:bg-secondary rounded-md"><CrownIcon className="w-5 h-5"/></button>}
                                     </div>
                                 </td>
                             </tr>
@@ -608,7 +618,7 @@ const UserManagement = () => {
             </div>
              <Modal isOpen={!!mode} onClose={closeModal} title={
                 mode === 'add' ? 'Create New User' :
-                mode === 'address' ? `Edit Address for ${selectedUser?.name}` :
+                mode === 'clientEdit' ? `Edit Client Settings for ${selectedUser?.name}` :
                 `Manage ${selectedUser?.name}`
              } size="2xl">
                 {renderModalContent()}
