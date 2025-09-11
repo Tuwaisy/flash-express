@@ -57,12 +57,12 @@ const ContactSection: React.FC<ContactSectionProps> = ({ t }) => {
                 </h3>
                 
                 <div className="text-3xl font-black text-[#061A40] mb-8 tracking-wider" dir="ltr">
-                  +2 010 3267 4447
+                  +2 011 1630 6013
                 </div>
                 
                 <div className="space-y-4">
                   <a
-                    href="tel:+201032674447"
+                    href="tel:+201116306013"
                     className="contact-button w-full bg-[#061A40] text-white py-4 px-6 rounded-xl font-bold flex items-center justify-center space-x-3 hover:bg-[#0A2F6B] shadow-lg"
                   >
                     <Phone className="h-5 w-5" />
@@ -70,7 +70,7 @@ const ContactSection: React.FC<ContactSectionProps> = ({ t }) => {
                   </a>
                   
                   <a
-                    href="https://wa.me/201032674447"
+                    href="https://wa.me/201116306013"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="contact-button w-full bg-green-500 text-white py-4 px-6 rounded-xl font-bold flex items-center justify-center space-x-3 hover:bg-green-600 shadow-lg"

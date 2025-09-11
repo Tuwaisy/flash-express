@@ -196,7 +196,7 @@ async function main() {
 
     // WebSocket connection handler with throttled data updates
     let lastDataUpdateEmit = 0;
-    const DATA_UPDATE_THROTTLE_MS = 3000; // Only emit data_updated every 3 seconds
+    const DATA_UPDATE_THROTTLE_MS = 1500; // Reduced from 3000ms to 1500ms for faster delivery updates
     let pendingDataUpdate = null;
     
     const throttledDataUpdate = () => {
@@ -272,7 +272,8 @@ async function main() {
         console.log('Running scheduled job: updating client partner tiers...');
         try {
             await knex.transaction(async (trx) => {
-                const tierSettings = await trx('tier_settings').orderBy('shipmentThreshold', 'desc');
+                // Order by shipment threshold ASC to get the correct tier (lowest threshold first)
+                const tierSettings = await trx('tier_settings').orderBy('shipmentThreshold', 'asc');
                 // PostgreSQL compatible JSON query using JSON functions
                 let clients;
                 if (process.env.DATABASE_URL) {
@@ -296,22 +297,29 @@ async function main() {
                         .count('id as count')
                         .first();
                     
-                    const count = shipmentCount.count;
+                    const count = parseInt(shipmentCount.count) || 0;
                     let newTier = null;
+                    
+                    // Find the highest tier the client qualifies for
+                    // We iterate through tiers from lowest to highest threshold
+                    // and keep updating newTier for each qualifying threshold
                     for (const setting of tierSettings) {
                         if (count >= setting.shipmentThreshold) {
                             newTier = setting.tierName;
-                            break;
+                            // Continue to check higher tiers - don't break here
                         }
                     }
 
                     if (client.partnerTier !== newTier) {
+                        console.log(`Updating client ${client.id} tier: ${client.partnerTier} -> ${newTier} (${count} shipments in last 30 days)`);
                         await trx('users').where({ id: client.id }).update({ partnerTier: newTier });
                         if(newTier) {
                             await createInAppNotification(trx, client.id, `Congratulations! You've been promoted to the ${newTier} partner tier.`);
                         } else {
                             await createInAppNotification(trx, client.id, `Your partner tier has been updated based on recent activity.`);
                         }
+                        // Emit immediate data update for frontend refresh
+                        console.log('🔄 Emitting immediate data update for tier change');
                         throttledDataUpdate();
                     }
                 }
@@ -324,6 +332,8 @@ async function main() {
     // Run jobs
     setInterval(checkForOverdueShipments, 4 * 60 * 60 * 1000); // 4 hours
     setInterval(updateClientTiers, 24 * 60 * 60 * 1000); // Daily
+    // Also run tier updates more frequently to ensure timely updates
+    setInterval(updateClientTiers, 4 * 60 * 60 * 1000); // Every 4 hours for more responsive tier updates
     
     // Run startup jobs safely without blocking server start
     setTimeout(() => {
@@ -456,6 +466,45 @@ async function main() {
 
         await trx('shipments').where({ id: shipment.id }).update(updatePayload);
         await createNotification(trx, shipment, newStatus);
+        
+        // For delivered shipments, immediately check if client qualifies for tier upgrade
+        if (newStatus === 'Delivered') {
+            console.log('🏆 Checking tier upgrade for client after delivery');
+            // Run tier update for this specific client
+            const clientUser = await trx('users').where({ id: shipment.clientId }).first();
+            if (clientUser && !clientUser.manualTierAssignment) {
+                const tierSettings = await trx('tier_settings').orderBy('shipmentThreshold', 'asc');
+                const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+                
+                const shipmentCount = await trx('shipments')
+                    .where({ clientId: clientUser.id })
+                    .andWhere('creationDate', '>=', thirtyDaysAgo)
+                    .count('id as count')
+                    .first();
+                
+                const count = parseInt(shipmentCount.count) || 0;
+                let newTier = null;
+                
+                // Find the highest tier the client qualifies for
+                for (const setting of tierSettings) {
+                    if (count >= setting.shipmentThreshold) {
+                        newTier = setting.tierName;
+                    }
+                }
+                
+                if (clientUser.partnerTier !== newTier) {
+                    console.log(`🏆 Immediate tier upgrade: Client ${clientUser.id} ${clientUser.partnerTier} -> ${newTier} (${count} shipments)`);
+                    await trx('users').where({ id: clientUser.id }).update({ partnerTier: newTier });
+                    if (newTier) {
+                        await createInAppNotification(trx, clientUser.id, `Congratulations! You've been promoted to the ${newTier} partner tier.`);
+                    }
+                    // Immediately emit data update for real-time tier display
+                    console.log('🔄 Emitting immediate data update for tier change');
+                    io.emit('data_updated');
+                }
+            }
+        }
+        }
     
         if (shipment.courierId) {
             // Standard commission for delivery
@@ -576,8 +625,7 @@ async function main() {
             // Note: Client wallet balance is calculated from transactions in /api/data
             // No need to update users.walletBalance as it's calculated real-time
         }
-    };
-
+    }; // End of processDeliveredShipment function
 
     // --- API Endpoints ---
 
@@ -827,6 +875,110 @@ app.get('/api/debug/users/:id', async (req, res) => {
         console.error('Error fetching data:', error);
         res.status(500).json({ error: 'Failed to fetch application data' });
       }
+    });
+
+    // Force data refresh endpoint for immediate UI updates
+    app.post('/api/force-refresh', async (req, res) => {
+        try {
+            io.emit('data_updated');
+            console.log('🔄 Forced data refresh requested');
+            res.json({ success: true, message: 'Data refresh triggered' });
+        } catch (error) {
+            res.status(500).json({ error: 'Failed to trigger refresh' });
+        }
+    });
+
+    // Debug endpoint for partner tier calculation
+    app.get('/api/debug/client/:id/tier-info', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const client = await knex('users').where({ id }).first();
+            if (!client) {
+                return res.status(404).json({ error: 'Client not found' });
+            }
+
+            const tierSettings = await knex('tier_settings').orderBy('shipmentThreshold', 'asc');
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+            
+            const shipmentCount = await knex('shipments')
+                .where({ clientId: id })
+                .andWhere('creationDate', '>=', thirtyDaysAgo)
+                .count('id as count')
+                .first();
+            
+            const totalShipments = await knex('shipments')
+                .where({ clientId: id })
+                .count('id as count')
+                .first();
+            
+            const count = parseInt(shipmentCount.count) || 0;
+            const totalCount = parseInt(totalShipments.count) || 0;
+            let qualifiedTier = null;
+            
+            for (const setting of tierSettings) {
+                if (count >= setting.shipmentThreshold) {
+                    qualifiedTier = setting.tierName;
+                }
+            }
+
+            res.json({
+                clientId: id,
+                clientName: client.name,
+                currentTier: client.partnerTier,
+                qualifiedTier,
+                shipmentsLast30Days: count,
+                totalShipments: totalCount,
+                manualTierAssignment: client.manualTierAssignment,
+                tierSettings,
+                thirtyDaysAgo
+            });
+        } catch (error) {
+            console.error('Error fetching tier debug info:', error);
+            res.status(500).json({ error: 'Failed to fetch tier debug info' });
+        }
+    });
+
+    // Debug endpoint for checking user data including partner tiers
+    app.get('/api/debug/users-with-tiers', async (req, res) => {
+        try {
+            const users = await knex('users')
+                .select('id', 'name', 'email', 'roles', 'partnerTier', 'manualTierAssignment')
+                .whereRaw(process.env.DATABASE_URL ? `roles @> '["Client"]'::jsonb` : `roles like '%"Client"%'`)
+                .limit(10);
+            
+            console.log('Sample users with tier data:', users);
+            
+            const parsedUsers = users.map(u => ({
+                ...u,
+                roles: JSON.parse(u.roles || '[]'),
+                partnerTier: u.partnerTier,
+                manualTierAssignment: u.manualTierAssignment
+            }));
+            
+            res.json({
+                totalUsers: users.length,
+                users: parsedUsers,
+                sampleUser: parsedUsers[0] || null
+            });
+        } catch (error) {
+            console.error('Error fetching users debug info:', error);
+            res.status(500).json({ error: 'Failed to fetch users debug info' });
+        }
+    });
+
+    // Manual trigger for tier update job (for testing)
+    app.post('/api/admin/update-tiers', async (req, res) => {
+        try {
+            console.log('Manual tier update triggered');
+            await updateClientTiers();
+            // Force immediate data update to refresh frontend
+            console.log('🔄 Forcing immediate data update after manual tier update');
+            io.emit('data_updated');
+            res.json({ success: true, message: 'Client tiers updated successfully and data refreshed' });
+        } catch (error) {
+            console.error('Manual tier update failed:', error);
+            res.status(500).json({ error: 'Failed to update client tiers', details: error.message });
+        }
     });
 
     // User Management
@@ -1345,6 +1497,12 @@ app.get('/api/debug/users/:id', async (req, res) => {
             });
     
             res.status(200).json({ success: true });
+            
+            // For delivery status changes, emit immediate updates for better UX
+            if (newStatus === 'Delivered' || newStatus === 'Delivery Failed' || newStatus === 'Out for Delivery') {
+                io.emit('data_updated');
+                console.log('🔄 Immediate data_updated emitted for delivery status change:', newStatus);
+            }
             throttledDataUpdate();
         } catch (error) {
             console.error("Error updating shipment status:", error);
@@ -1578,7 +1736,10 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 }
             });
             res.json({ success: true, message: 'Delivery confirmed successfully.' });
-            throttledDataUpdate();
+            // Force immediate data update for delivery completion to ensure UI updates quickly
+            io.emit('data_updated');
+            console.log('🔄 Immediate data_updated emitted for delivery completion');
+            throttledDataUpdate(); // Also schedule the normal throttled update
         } catch (error) {
             console.error('Delivery verification error:', error);
             const statusCode = error.statusCode || 500;
@@ -3289,7 +3450,6 @@ app.get('/api/debug/users/:id', async (req, res) => {
     // Listen for shutdown signals
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-}
 
 // Start the application
 main().catch((error) => {

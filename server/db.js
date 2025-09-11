@@ -97,6 +97,40 @@ async function setupDatabase() {
                 table.decimal('walletBalance', 10, 2).defaultTo(0);
             });
         }
+        
+        // Migration: Add partnerTier and manualTierAssignment columns if they don't exist
+        const hasPartnerTier = await knex.schema.hasColumn('users', 'partnerTier');
+        const hasManualTierAssignment = await knex.schema.hasColumn('users', 'manualTierAssignment');
+        
+        if (!hasPartnerTier || !hasManualTierAssignment) {
+            console.log('Adding partner tier columns to users table...');
+            await knex.schema.alterTable('users', table => {
+                if (!hasPartnerTier) {
+                    table.string('partnerTier');
+                }
+                if (!hasManualTierAssignment) {
+                    table.boolean('manualTierAssignment').defaultTo(false);
+                }
+            });
+            
+            // Initialize existing client users with default tier settings
+            console.log('Initializing existing client users with default tier settings...');
+            const clientUsers = await knex('users')
+                .where('partnerTier', null)
+                .andWhere(function() {
+                    this.where('roles', 'like', '%Client%')
+                        .orWhereRaw(process.env.DATABASE_URL ? `roles @> '["Client"]'::jsonb` : `roles like '%"Client"%'`);
+                });
+                
+            for (const user of clientUsers) {
+                await knex('users')
+                    .where('id', user.id)
+                    .update({ 
+                        partnerTier: null, // Will be calculated by the tier system
+                        manualTierAssignment: false 
+                    });
+            }
+        }
     }
 
     // Table: tier_settings

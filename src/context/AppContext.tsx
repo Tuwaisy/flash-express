@@ -158,8 +158,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const lastFetchTime = useRef<number>(0);
     const fetchTimeout = useRef<NodeJS.Timeout | null>(null);
     const isFetching = useRef<boolean>(false);
-    const FETCH_THROTTLE_MS = 5000; // Only allow fetching every 5 seconds (reduced from 10s for better responsiveness)
-    const FETCH_DEBOUNCE_MS = 1500; // Wait 1.5 seconds after last request before fetching (reduced from 3s)
+    const FETCH_THROTTLE_MS = 1500; // Further reduced for even more responsive tier updates
+    const FETCH_DEBOUNCE_MS = 600; // Further reduced for faster tier reflection
     
     const fetchAppData = useCallback(async (force = false) => {
         if (!currentUser) {
@@ -279,11 +279,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     clearTimeout(socketEventTimeout);
                 }
                 
-                // Debounce socket events for 500ms (reduced from 2s for better responsiveness)
+                // Debounce socket events for 300ms (reduced for faster delivery status updates)
                 socketEventTimeout = setTimeout(() => {
                     console.log('Executing debounced data fetch from socket event');
                     fetchAppData(); // This is already throttled internally
-                }, 500);
+                }, 300); // Reduced from 500ms for faster delivery updates
             });
 
             newSocket.on('disconnect', () => {
@@ -451,6 +451,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 body: JSON.stringify({ status, ...details }),
             });
             addToast(`Shipment ${shipmentId} updated to ${status}`, 'success');
+            
+            // For delivery-related status changes, force immediate refresh
+            if (status === ShipmentStatus.DELIVERED || status === ShipmentStatus.DELIVERY_FAILED || status === ShipmentStatus.OUT_FOR_DELIVERY) {
+                setTimeout(() => fetchAppData(true), 100);
+            }
+            
             return true;
         } catch (error: any) {
             addToast(`Error: ${error.message}`, 'error');
@@ -490,6 +496,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 body: JSON.stringify({ code })
             });
             addToast('Delivery confirmed!', 'success');
+            // Force immediate data refresh for delivery confirmation
+            setTimeout(() => fetchAppData(true), 100);
             return true;
         } catch (error: any) {
             addToast(`Verification failed: ${error.message}`, 'error');

@@ -54,7 +54,13 @@ const ClientAnalytics: React.FC<ClientAnalyticsProps> = ({ onSelectShipment, set
             data = data.filter(client => client.id === parseInt(selectedClientFilter));
         }
         if (selectedTierFilter !== 'all') {
-            data = data.filter(client => client.partnerTier === selectedTierFilter);
+            if (selectedTierFilter === '') {
+                // Filter for users with no assigned tier (null, undefined, or empty)
+                data = data.filter(client => !client.partnerTier);
+            } else {
+                // Filter for users with specific tier
+                data = data.filter(client => client.partnerTier === selectedTierFilter);
+            }
         }
 
         return data.sort((a, b) => {

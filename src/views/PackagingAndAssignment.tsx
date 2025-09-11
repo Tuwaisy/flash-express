@@ -328,7 +328,7 @@ export default function PackagingAndAssignment({ setLabelShipment }: PackagingAn
                         <div>
                             <h1 style="font-size: 20px; font-weight: bold; margin: 0; color: black;">Shuhna Express</h1>
                             <div style="font-size: 10px; color: #666; margin-top: 5px;">
-                                <span>📞 +2 010 3267 4447</span>
+                                <span>📞 +2 011 1630 6013</span>
                                 <span style="margin-left: 15px;">✉️ info@shuhna.net</span>
                             </div>
                         </div>
