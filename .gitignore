@@ -134,9 +134,9 @@ services/whatsapp-unified.*
 pre-deployment-test.*
 
 # Documentation files with credentials (keep sanitized versions)
-# WHATSAPP_FIX_SUMMARY.md
-# DEPLOYMENT_READY.md
-# deploy-railway.sh
+WHATSAPP_FIX_SUMMARY.md
+DEPLOYMENT_READY.md
+deploy-railway.sh
 
 # Build artifacts
 dist/
