@@ -1,0 +1,8 @@
+{
+  "name": "Shuhna Express Shipping",
+  "description": "A full-featured web application for managing the entire shipping lifecycle, catering to clients, couriers, and administrators with role-based access and features like real-time tracking, wallet management, and delivery assignments.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "prompt": ""
+}

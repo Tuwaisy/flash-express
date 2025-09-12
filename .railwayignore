@@ -1,0 +1,97 @@
+# Railway ignore file - exclude files from deployment upload
+
+# Dependencies
+node_modules/
+.npm/
+.yarn/
+
+# Development files
+.git/
+.vscode/
+.env.local
+.env.development
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts (we'll rebuild on Railway)
+build/
+
+# Documentation and markdown files
+*.md
+README.md
+DEPLOYMENT_*.md
+DATABASE_*.md
+PRD.md
+BULK_IMPORT_DOCUMENTATION.md
+DEBUG_FEATURES.md
+FIXES_DEPLOYED.txt
+DEPLOYMENT_SUCCESS.txt
+
+# Deployment scripts and configs
+deploy.sh
+railway-setup.sh
+setup-env.sh
+*.txt
+cleanup-database*.js
+database-reset.js
+database-reset.sql
+cleanup-endpoint.js
+create_bulk_template.py
+
+# Test files
+tests/
+test/
+__tests__/
+*.test.*
+*.spec.*
+
+# IDE files
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+dummy_file.txt
+
+# Large media files (keep only essential logos)
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.webm
+*.mkv
+
+# Spreadsheets and data files
+*.xlsx
+*.csv
+*.xls
+Flash_Express_Bulk_Shipments_Template.xlsx
+bulk-shipments-template.csv.xlsx
+"Untitled spreadsheet - Bulk Upload.csv"
+
+# Android build files
+android/
+
+# Capacitor
+.capacitor/
+ios/
+
+# Unused files
+index.tsx
+vite
+scripts/
