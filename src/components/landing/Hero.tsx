@@ -87,7 +87,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
                   <div className="text-gray-300">{t('heroStat2Text')}</div>
                 </div>
                 <div className="will-animate stats-counter text-center" style={{ animationDelay: '0.4s' }}>
-                  <div className="text-4xl font-black text-[#FFD000] mb-2">3 Days</div>
+                  <div className="text-4xl font-black text-[#FFD000] mb-2">{t('heroStat3Value')}</div>
                   <div className="text-gray-300">{t('heroStat3Text')}</div>
                 </div>
               </div>

@@ -15,42 +15,36 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ t }) => {
       quote: t('testimonial1'),
       name: t('testimonial1Name'),
       role: t('testimonial1Role'),
-      avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?w=100&h=100&fit=crop&crop=face',
       rating: 5
     },
     {
       quote: t('testimonial2'),
       name: t('testimonial2Name'),
       role: t('testimonial2Role'),
-      avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?w=100&h=100&fit=crop&crop=face',
       rating: 5
     },
     {
       quote: t('testimonial3'),
       name: t('testimonial3Name'),
       role: t('testimonial3Role'),
-      avatar: 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?w=100&h=100&fit=crop&crop=face',
       rating: 5
     },
     {
       quote: t('testimonial4'),
       name: t('testimonial4Name'),
       role: t('testimonial4Role'),
-      avatar: 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?w=100&h=100&fit=crop&crop=face',
       rating: 5
     },
     {
       quote: t('testimonial5'),
       name: t('testimonial5Name'),
       role: t('testimonial5Role'),
-      avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?w=100&h=100&fit=crop&crop=face',
       rating: 5
     },
     {
       quote: t('testimonial6'),
       name: t('testimonial6Name'),
       role: t('testimonial6Role'),
-      avatar: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?w=100&h=100&fit=crop&crop=face',
       rating: 5
     }
   ];
@@ -145,14 +139,7 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ t }) => {
                   {testimonials[currentTestimonial].quote}
                 </blockquote>
                 
-                <div className="flex items-center justify-center space-x-4">
-                  <div className="avatar-ring p-1 rounded-full">
-                    <img
-                      className="h-16 w-16 rounded-full object-cover"
-                      src={testimonials[currentTestimonial].avatar}
-                      alt={testimonials[currentTestimonial].name}
-                    />
-                  </div>
+                <div className="flex items-center justify-center">
                   <div className="text-center">
                     <div className="text-xl font-bold text-[#061A40]">
                       {testimonials[currentTestimonial].name}

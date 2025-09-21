@@ -9,11 +9,6 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     rollupOptions: {
-      input: {
-        main: resolve(__dirname, 'index.html'),
-        app: resolve(__dirname, 'app.html'),
-        privacy: resolve(__dirname, 'privacy-policy.html')
-      },
       output: {
         // Force new file names to bust cache
         entryFileNames: `assets/[name]-[hash]-${Date.now()}.js`,

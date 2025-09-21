@@ -47,7 +47,7 @@ class VerificationService {
             const expiresAt = new Date(Date.now() + this.codeExpiry);
             const formattedPhone = whatsAppService.formatPhoneNumber(phone);
 
-            // Try WhatsApp first
+            // Try WhatsApp via Twilio as primary method
             let whatsappResult = { success: false };
             let smsResult = { success: false };
             let primaryChannel = 'none';
@@ -60,13 +60,16 @@ class VerificationService {
                 }
             }
 
-            // If WhatsApp failed, try SMS as backup
+            // SMS backup is disabled - using WhatsApp via Twilio only
+            // Uncomment below to enable SMS fallback if needed
+            /*
             if (!whatsappResult.success && smsService.isAvailable()) {
                 smsResult = await smsService.sendVerificationCode(formattedPhone, code, purpose);
                 if (smsResult.success) {
                     backupChannel = 'sms';
                 }
             }
+            */
 
             const success = whatsappResult.success || smsResult.success;
             const channel = whatsappResult.success ? 'whatsapp' : (smsResult.success ? 'sms' : 'failed');
@@ -179,7 +182,7 @@ class VerificationService {
             const expiresAt = new Date(Date.now() + this.codeExpiry);
             const formattedPhone = whatsAppService.formatPhoneNumber(recipientPhone);
 
-            // Try WhatsApp first
+            // Try WhatsApp via Twilio as primary method
             let whatsappResult = { success: false };
             let smsResult = { success: false };
 
@@ -192,7 +195,9 @@ class VerificationService {
                 );
             }
 
-            // If WhatsApp failed, try SMS as backup
+            // SMS backup is disabled - using WhatsApp via Twilio only
+            // Uncomment below to enable SMS fallback if needed
+            /*
             if (!whatsappResult.success && smsService.isAvailable()) {
                 smsResult = await smsService.sendDeliveryVerificationCode(
                     shipmentId, 
@@ -201,6 +206,7 @@ class VerificationService {
                     recipientName
                 );
             }
+            */
 
             const success = whatsappResult.success || smsResult.success;
             const channel = whatsappResult.success ? 'whatsapp' : (smsResult.success ? 'sms' : 'failed');

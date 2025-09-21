@@ -95,15 +95,15 @@ const CreateShipment = () => {
     const handleSingleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!clientForShipment) {
-            addToast(canCreateForOthers ? 'Please select a client.' : 'User not found.', 'error');
+            addToast(canCreateForOthers ? t('selectClient') : t('userNotFound'), 'error');
             return;
         }
         if (!clientForShipment.address || !clientForShipment.address.street || !clientForShipment.address.city || !clientForShipment.address.zone) {
-             addToast(`${clientForShipment.name} does not have a complete default address (street, city, zone) in their profile. Please update their profile first.`, 'error');
+             addToast(`${clientForShipment.name} ${t('clientIncompleteAddress')}`, 'error');
             return;
         }
         if (!isValidPhoneNumber(recipientPhone)) {
-            addToast('Phone number must be 11 digits starting with 01 or 10 digits starting with 1', 'error');
+            addToast(t('phoneNumberValidationError'), 'error');
             return;
         }
 
@@ -128,7 +128,7 @@ const CreateShipment = () => {
         };
 
         addShipment(shipment);
-        addToast('Shipment created successfully!', 'success');
+        addToast(t('shipmentCreatedSuccess'), 'success');
         
         // Reset form
         if (canCreateForOthers) setSelectedClientId('');
@@ -166,7 +166,7 @@ const CreateShipment = () => {
 
     const handleParseAndVerify = () => {
         if (!file) {
-            addToast('Please select a file to upload.', 'error');
+            addToast(t('pleaseSelectFile'), 'error');
             return;
         }
 
@@ -246,18 +246,18 @@ const CreateShipment = () => {
         const clientForBulk = users.find(u => u.id === parseInt(bulkSelectedClientId));
 
         if (!clientForBulk) {
-            addToast('Please select a client to upload for.', 'error');
+            addToast(t('pleaseSelectClientUpload'), 'error');
             return;
         }
         if (!clientForBulk.address) {
-            addToast(`Client ${clientForBulk.name} does not have a default address.`, 'error');
+            addToast(`${clientForBulk.name} ${t('clientNoDefaultAddress')}`, 'error');
             return;
         }
 
         const validShipments = parsedData.filter((_, index) => verificationResults[index]?.isValid);
 
         if (validShipments.length === 0) {
-            addToast('No valid shipments to upload.', 'error');
+            addToast(t('noValidShipments'), 'error');
             return;
         }
         
@@ -292,7 +292,7 @@ const CreateShipment = () => {
             });
         });
         
-        addToast(`${validShipments.length} shipments uploaded successfully for ${clientForBulk.name}!`, 'success');
+        addToast(`${validShipments.length} ${t('shipmentsUploadedSuccess')} ${clientForBulk.name}!`, 'success');
         setFile(null);
         setParsedData([]);
         setVerificationResults([]);
@@ -426,23 +426,23 @@ const CreateShipment = () => {
                                 className={`w-full px-4 py-2 border rounded-lg focus:ring-primary focus:border-primary text-foreground bg-background ${
                                     recipientPhone.length > 0 && !isValidPhoneNumber(recipientPhone) ? 'border-red-500' : 'border-border'
                                 }`}
-                                placeholder="01000909899 or 1000909899" 
+                                placeholder={t('phoneExamplePlaceholder')} 
                                 required 
                             />
-                            <p className="text-xs text-muted-foreground mt-1">11 digits starting with 01 or 10 digits starting with 1</p>
+                            <p className="text-xs text-muted-foreground mt-1">{t('phoneValidation')}</p>
                             {recipientPhone.length > 0 && !isValidPhoneNumber(recipientPhone) && (
-                                <p className="text-xs text-red-500 mt-1">Phone must be 11 digits starting with 01 or 10 digits starting with 1</p>
+                                <p className="text-xs text-red-500 mt-1">{t('phoneError')}</p>
                             )}
                         </div>
                     </div>
                     {/* Address Info */}
                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-1">Recipient Street Address</label>
+                        <label className="block text-sm font-medium text-foreground mb-1">{t('recipientStreetAddress')}</label>
                         <input type="text" value={toAddress.street} onChange={e => setToAddress(prev => ({ ...prev, street: e.target.value }))} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background" required />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="block text-sm font-medium text-foreground mb-1">Zone</label>
+                            <label className="block text-sm font-medium text-foreground mb-1">{t('zone')}</label>
                             <select value={toAddress.zone} onChange={handleZoneChange} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background">
                                 <optgroup label="Cairo">
                                     {ZONES.GreaterCairo.Cairo.map(z => <option key={z} value={z}>{z}</option>)}
@@ -453,34 +453,36 @@ const CreateShipment = () => {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-foreground mb-1">Address Details (Apt, Floor, etc.)</label>
+                            <label className="block text-sm font-medium text-foreground mb-1">{t('addressDetails')}</label>
                             <input type="text" value={toAddress.details} onChange={e => setToAddress(prev => ({ ...prev, details: e.target.value }))} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background" />
                         </div>
                     </div>
 
                     {/* Package Info */}
                     <div>
-                        <label className="block text-sm font-medium text-foreground mb-1">Package Description</label>
+                        <label className="block text-sm font-medium text-foreground mb-1">{t('packageDescription')}</label>
                         <textarea value={packageDescription} onChange={e => setPackageDescription(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background" rows={2} required></textarea>
                     </div>
 
                      {/* Financial Info */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
-                            <label className="block text-sm font-medium text-foreground mb-1">Payment Method</label>
+                            <label className="block text-sm font-medium text-foreground mb-1">{t('paymentMethod')}</label>
                             <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as PaymentMethod)} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background">
-                                <option value={PaymentMethod.COD}>Cash on Delivery (COD)</option>
-                                <option value={PaymentMethod.TRANSFER}>InstaPay (Pre-paid)</option>
+                                <option value={PaymentMethod.COD}>{t('cashOnDelivery')}</option>
+                                <option value={PaymentMethod.TRANSFER}>{t('instaPay')}</option>
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-foreground mb-1">Priority</label>
+                            <label className="block text-sm font-medium text-foreground mb-1">{t('priority')}</label>
                             <select value={priority} onChange={e => setPriority(e.target.value as ShipmentPriority)} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background">
-                                {Object.values(ShipmentPriority).map(p => <option key={p} value={p}>{p}</option>)}
+                                <option value={ShipmentPriority.STANDARD}>{t('standard')}</option>
+                                <option value={ShipmentPriority.URGENT}>{t('urgent')}</option>
+                                <option value={ShipmentPriority.EXPRESS}>{t('express')}</option>
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-foreground mb-1">Package Value (EGP)</label>
+                            <label className="block text-sm font-medium text-foreground mb-1">{t('packageValue')}</label>
                             <input type="number" step="0.01" value={packageValue} onChange={e => setPackageValue(e.target.value)} disabled={paymentMethod === PaymentMethod.TRANSFER} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background" required />
                         </div>
                     </div>
@@ -489,14 +491,14 @@ const CreateShipment = () => {
                         <div className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
                                 <div>
-                                    <label className="block text-sm font-medium text-foreground mb-1">Amount Received from Client</label>
-                                    <input type="number" step="0.01" value={amountReceived} onChange={e => setAmountReceived(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background" placeholder="e.g., 500" required />
-                                    <p className="text-xs text-muted-foreground mt-1">The amount you already collected.</p>
+                                    <label className="block text-sm font-medium text-foreground mb-1">{t('amountReceived')}</label>
+                                    <input type="number" step="0.01" value={amountReceived} onChange={e => setAmountReceived(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background" placeholder={t('amountExamplePlaceholder')} required />
+                                    <p className="text-xs text-muted-foreground mt-1">{t('amountReceivedHelp')}</p>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-foreground mb-1">Amount to Collect from Recipient</label>
-                                    <input type="number" step="0.01" value={amountToCollect} onChange={e => setAmountToCollect(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background" placeholder="e.g., 200" required />
-                                    <p className="text-xs text-muted-foreground mt-1">Amount courier will collect (0 if none).</p>
+                                    <label className="block text-sm font-medium text-foreground mb-1">{t('amountToCollect')}</label>
+                                    <input type="number" step="0.01" value={amountToCollect} onChange={e => setAmountToCollect(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg text-foreground bg-background" placeholder={t('amountToCollectPlaceholder')} required />
+                                    <p className="text-xs text-muted-foreground mt-1">{t('amountToCollectHelp')}</p>
                                 </div>
                             </div>
                             
@@ -509,7 +511,7 @@ const CreateShipment = () => {
                                     className="w-4 h-4 text-primary bg-background border-border rounded focus:ring-primary focus:ring-2"
                                 />
                                 <label htmlFor="includeShippingFee" className="text-sm font-medium text-foreground cursor-pointer">
-                                    Include shipping fee ({(Number(finalFee) || 0).toFixed(2)} EGP) in total amount to collect
+                                    {t('includeShippingFeeText')} ({(Number(finalFee) || 0).toFixed(2)} EGP)
                                 </label>
                             </div>
                         </div>
@@ -518,29 +520,29 @@ const CreateShipment = () => {
                     {/* Pricing Summary */}
                     <div className="p-4 bg-secondary rounded-lg space-y-2">
                         <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Base Shipping Fee:</span>
+                            <span className="text-muted-foreground">{t('baseShippingFee')}</span>
                             <span className="font-semibold text-foreground">{(Number(feeBeforeDiscount) || 0).toFixed(2)} EGP</span>
                         </div>
                         {discountAmount > 0 && (
                             <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
                                 <div>
-                                    <span className="text-muted-foreground">Partner Discount </span>
+                                    <span className="text-muted-foreground">{t('partnerDiscount')} </span>
                                     <span className="font-semibold">({clientForShipment?.partnerTier} - {discountPercentage}%)</span>
                                 </div>
                                 <span className="font-semibold">- {(Number(discountAmount) || 0).toFixed(2)} EGP</span>
                             </div>
                         )}
                         <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground font-bold">Final Shipping Fee:</span>
+                            <span className="text-muted-foreground font-bold">{t('finalShippingFee')}</span>
                             <span className="font-bold text-foreground">{(Number(finalFee) || 0).toFixed(2)} EGP</span>
                         </div>
                          <div className="flex justify-between text-sm pt-2 border-t border-border">
-                            <span className="text-muted-foreground">Package Value:</span>
+                            <span className="text-muted-foreground">{t('packageValueLabel')}</span>
                             <span className="font-semibold text-foreground">{(Number(numericPackageValue) || 0).toFixed(2)} EGP</span>
                         </div>
                         <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2">
                             <span className="text-foreground">
-                                {paymentMethod === PaymentMethod.TRANSFER ? 'Total to Collect from Recipient:' : 'Total to Collect (COD):'}
+                                {paymentMethod === PaymentMethod.TRANSFER ? t('totalToCollectTransfer') : t('totalToCollectCOD')}
                             </span>
                             <span className="text-primary">{(Number(totalPrice) || 0).toFixed(2)} EGP</span>
                         </div>
@@ -550,7 +552,7 @@ const CreateShipment = () => {
                     <div className="flex justify-end">
                         <button type="submit" className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground font-bold rounded-lg hover:bg-primary/90 transition shadow-lg">
                             <PlusCircleIcon />
-                            Create Shipment
+                            {t('createShipmentBtn')}
                         </button>
                     </div>
                 </form>
@@ -559,9 +561,9 @@ const CreateShipment = () => {
                 <div className="space-y-6">
                     {canCreateForOthers && (
                         <div className="p-4 bg-secondary rounded-lg">
-                            <label className="block text-sm font-medium text-foreground mb-1">Upload Shipments For Client</label>
+                            <label className="block text-sm font-medium text-foreground mb-1">{t('uploadShipmentsForClient')}</label>
                             <select value={bulkSelectedClientId} onChange={e => setBulkSelectedClientId(e.target.value)} className="w-full px-4 py-2 border border-border rounded-lg focus:ring-primary focus:border-primary text-foreground bg-background" required>
-                                <option value="" disabled>Select a client...</option>
+                                <option value="" disabled>{t('selectClientForUpload')}</option>
                                 {clients.map(client => (
                                     <option key={client.id} value={client.id}>{client.name}</option>
                                 ))}
@@ -572,18 +574,18 @@ const CreateShipment = () => {
                     <div className="flex flex-col md:flex-row items-center gap-4 p-4 border-2 border-dashed border-border rounded-lg">
                         <input type="file" accept=".csv" onChange={handleFileChange} className="text-sm text-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"/>
                         <button onClick={downloadTemplate} className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground font-semibold rounded-lg hover:bg-accent transition text-sm">
-                            <DownloadIcon className="w-4 h-4" /> Download Template
+                            <DownloadIcon className="w-4 h-4" /> {t('downloadTemplate')}
                         </button>
                          <button onClick={handleParseAndVerify} disabled={!file} className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition text-sm disabled:bg-muted">
-                            <UploadIcon className="w-4 h-4" /> Verify File
+                            <UploadIcon className="w-4 h-4" /> {t('verifyFile')}
                         </button>
                     </div>
 
                     {verificationResults.length > 0 && (
                         <div className="space-y-4">
                             <div className="p-4 bg-secondary rounded-lg">
-                                <h3 className="font-bold text-lg text-foreground">Verification Results</h3>
-                                <p className="text-foreground">{parsedData.length} rows found. {parsedData.length - verificationResults.filter(r => !r.isValid).length} valid shipments.</p>
+                                <h3 className="font-bold text-lg text-foreground">{t('verificationResults')}</h3>
+                                <p className="text-foreground">{parsedData.length} {t('rowsFound')} {parsedData.length - verificationResults.filter(r => !r.isValid).length} {t('validShipments')}</p>
                             </div>
 
                             <div className="max-h-80 overflow-y-auto space-y-2">
@@ -607,7 +609,7 @@ const CreateShipment = () => {
                             <div className="flex justify-end">
                                  <button onClick={handleBulkUpload} disabled={!allVerified} className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground font-bold rounded-lg hover:bg-primary/90 transition shadow-lg disabled:bg-muted">
                                     <PlusCircleIcon />
-                                    Upload Valid Shipments
+                                    {t('uploadValidShipments')}
                                 </button>
                             </div>
                         </div>

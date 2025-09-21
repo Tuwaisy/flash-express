@@ -106,8 +106,9 @@ class WhatsAppService {
             return { success: false, error: 'WhatsApp service disabled' };
         }
         
-        // Try Business API first in production, fallback to Twilio if it fails
-        if (this.isProduction && this.businessApi.phoneId && this.businessApi.accessToken) {
+        // Use Twilio WhatsApp as primary method (Business API temporarily disabled)
+        // TODO: Re-enable Business API when access token is properly configured
+        if (false && this.isProduction && this.businessApi.phoneId && this.businessApi.accessToken) {
             try {
                 const result = await this.sendViaBusinessApi(to, message, mediaUrl);
                 return result;
