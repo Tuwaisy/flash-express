@@ -3637,8 +3637,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
 
             // Update shipment status to "Out for Delivery"
             const updatedData = {
-                status: 'Out for Delivery',
-                outForDeliveryAt: new Date()
+                status: 'Out for Delivery'
             };
 
             // If courier ID is provided, assign the courier
