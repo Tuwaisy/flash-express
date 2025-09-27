@@ -657,7 +657,7 @@ async function main() {
                 whatsappStatus = {
                     enabled: whatsAppService.isAvailable(),
                     provider: 'unknown',
-                    businessPhone: process.env.BUSINESS_PHONE_NUMBER || '+201008831881'
+                    businessPhone: process.env.BUSINESS_PHONE_NUMBER || '+201116306013'
                 };
             }
         } catch (error) {
@@ -665,7 +665,7 @@ async function main() {
             whatsappStatus = { 
                 enabled: false, 
                 provider: 'error', 
-                businessPhone: process.env.BUSINESS_PHONE_NUMBER || '+201008831881',
+                businessPhone: process.env.BUSINESS_PHONE_NUMBER || '+201116306013',
                 error: error.message 
             };
         }
@@ -1772,7 +1772,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 res.json({
                     enabled: false,
                     provider: 'unavailable',
-                    businessPhone: process.env.BUSINESS_PHONE_NUMBER || '+201008831881',
+                    businessPhone: process.env.BUSINESS_PHONE_NUMBER || '+201116306013',
                     error: 'WhatsApp service not properly initialized'
                 });
             }
@@ -1780,7 +1780,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             res.status(500).json({
                 enabled: false,
                 provider: 'error',
-                businessPhone: process.env.BUSINESS_PHONE_NUMBER || '+201008831881',
+                businessPhone: process.env.BUSINESS_PHONE_NUMBER || '+201116306013',
                 error: error.message
             });
         }
@@ -3589,6 +3589,197 @@ app.get('/api/debug/users/:id', async (req, res) => {
             console.error('Error during verification cleanup job:', error);
         }
     }, 60 * 60 * 1000);
+
+    // ==================== BARCODE SCANNER ROUTES ====================
+
+    // Barcode scanning endpoint for status updates
+    app.post('/api/barcode/scan', authenticateToken, async (req, res) => {
+        const { barcode, scannerId, courierId } = req.body;
+
+        if (!barcode) {
+            return res.status(400).json({ error: 'Barcode is required' });
+        }
+
+        try {
+            // Find shipment by barcode (shipment ID)
+            const shipment = await knex('shipments')
+                .where({ id: barcode })
+                .first();
+
+            if (!shipment) {
+                return res.status(404).json({ 
+                    error: 'Shipment not found',
+                    barcode: barcode
+                });
+            }
+
+            // Check if shipment can be marked as out for delivery
+            const validStatuses = [
+                'Waiting for Packaging',
+                'Packaged and Waiting for Assignment', 
+                'Assigned to Courier'
+            ];
+
+            if (!validStatuses.includes(shipment.status)) {
+                return res.status(400).json({ 
+                    error: 'Shipment cannot be marked as out for delivery',
+                    currentStatus: shipment.status,
+                    shipmentId: barcode
+                });
+            }
+
+            // Update shipment status to "Out for Delivery"
+            const updatedData = {
+                status: 'Out for Delivery',
+                updatedAt: new Date(),
+                outForDeliveryAt: new Date()
+            };
+
+            // If courier ID is provided, assign the courier
+            if (courierId) {
+                updatedData.courierId = courierId;
+            }
+
+            await knex('shipments')
+                .where({ id: barcode })
+                .update(updatedData);
+
+            // Get updated shipment with client and courier info
+            const updatedShipment = await knex('shipments')
+                .leftJoin('users as clients', 'shipments.clientId', 'clients.id')
+                .leftJoin('users as couriers', 'shipments.courierId', 'couriers.id')
+                .where('shipments.id', barcode)
+                .select([
+                    'shipments.*',
+                    'clients.firstName as clientFirstName',
+                    'clients.lastName as clientLastName', 
+                    'clients.email as clientEmail',
+                    'clients.phone as clientPhone',
+                    'couriers.firstName as courierFirstName',
+                    'couriers.lastName as courierLastName'
+                ])
+                .first();
+
+            // Create notification
+            await createNotification(
+                updatedShipment.id,
+                'Out for Delivery',
+                updatedShipment.clientId,
+                updatedShipment,
+                updatedShipment.clientFirstName,
+                updatedShipment.clientLastName,
+                updatedShipment.clientEmail,
+                updatedShipment.clientPhone
+            );
+
+            // Log the scan event
+            try {
+                await knex('barcode_scans').insert({
+                    shipmentId: barcode,
+                    scannerId: scannerId || null,
+                    courierId: courierId || req.user.id,
+                    previousStatus: shipment.status,
+                    newStatus: 'Out for Delivery',
+                    scannedAt: new Date(),
+                    scannedBy: req.user.id
+                });
+            } catch (scanLogError) {
+                console.warn('Failed to log barcode scan:', scanLogError.message);
+                // Continue execution even if logging fails
+            }
+
+            console.log(`📦 Barcode scanned: ${barcode} - Status updated to "Out for Delivery"`);
+
+            res.json({
+                success: true,
+                message: 'Shipment status updated successfully',
+                shipment: {
+                    id: updatedShipment.id,
+                    previousStatus: shipment.status,
+                    newStatus: 'Out for Delivery',
+                    recipientName: updatedShipment.recipientName,
+                    recipientPhone: updatedShipment.recipientPhone,
+                    courier: courierId ? `${updatedShipment.courierFirstName} ${updatedShipment.courierLastName}` : null,
+                    scannedAt: new Date()
+                }
+            });
+
+        } catch (error) {
+            console.error('Error processing barcode scan:', error);
+            res.status(500).json({ 
+                error: 'Failed to process barcode scan',
+                details: error.message 
+            });
+        }
+    });
+
+    // Get barcode scan history
+    app.get('/api/barcode/history', authenticateToken, async (req, res) => {
+        try {
+            const { page = 1, limit = 50, courierId, startDate, endDate } = req.query;
+            const offset = (page - 1) * limit;
+
+            let query = knex('barcode_scans')
+                .leftJoin('shipments', 'barcode_scans.shipmentId', 'shipments.id')
+                .leftJoin('users as couriers', 'barcode_scans.courierId', 'couriers.id')
+                .leftJoin('users as scanners', 'barcode_scans.scannedBy', 'scanners.id')
+                .select([
+                    'barcode_scans.*',
+                    'shipments.recipientName',
+                    'shipments.recipientPhone',
+                    'couriers.firstName as courierFirstName',
+                    'couriers.lastName as courierLastName',
+                    'scanners.firstName as scannerFirstName',
+                    'scanners.lastName as scannerLastName'
+                ])
+                .orderBy('barcode_scans.scannedAt', 'desc');
+
+            if (courierId) {
+                query = query.where('barcode_scans.courierId', courierId);
+            }
+
+            if (startDate) {
+                query = query.where('barcode_scans.scannedAt', '>=', startDate);
+            }
+
+            if (endDate) {
+                query = query.where('barcode_scans.scannedAt', '<=', endDate);
+            }
+
+            // Handle case where barcode_scans table might not exist yet
+            let scans = [];
+            let total = { count: 0 };
+
+            try {
+                scans = await query.limit(limit).offset(offset);
+                total = await query.clone().count('* as count').first();
+            } catch (tableError) {
+                if (tableError.message.includes('no such table: barcode_scans')) {
+                    console.warn('Barcode scans table does not exist yet. Returning empty results.');
+                    scans = [];
+                    total = { count: 0 };
+                } else {
+                    throw tableError;
+                }
+            }
+
+            res.json({
+                scans,
+                pagination: {
+                    total: total.count,
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    totalPages: Math.ceil(total.count / limit)
+                }
+            });
+
+        } catch (error) {
+            console.error('Error fetching scan history:', error);
+            res.status(500).json({ error: 'Failed to fetch scan history' });
+        }
+    });
+
+    // ==================== END BARCODE SCANNER ROUTES ====================
 
     // Start the server
     const PORT = process.env.PORT || 8080;

@@ -261,7 +261,7 @@ const PrivacyPolicy: React.FC = () => {
                     <Phone className="h-5 w-5 text-[#FFD000]" />
                     <div>
                       <p className="font-semibold">{t('privacyPhone')}</p>
-                      <p className="text-gray-300">+201008831881</p>
+                      <p className="text-gray-300">+201116306013</p>
                     </div>
                   </div>
                 </div>

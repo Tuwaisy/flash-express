@@ -65,7 +65,7 @@ export const ShipmentLabel: React.FC<{ shipment: Shipment }> = ({ shipment }) =>
                          <div>
                             <h1 className="text-2xl font-extrabold text-black">Shuhna Express</h1>
                             <div className="flex gap-4 text-xs text-gray-600 mt-1">
-                                <span>📞 +201008831881</span>
+                                <span>📞 +201116306013</span>
                                 <span>✉️ info@shuhna.net</span>
                             </div>
                         </div>

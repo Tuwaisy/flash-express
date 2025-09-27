@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Rocket, Eye, Target, Award } from 'lucide-react';
+import StarBorder from '../common/StarBorder';
 
 interface AboutSectionProps {
   t: (key: string) => string;
@@ -82,15 +83,19 @@ const AboutSection: React.FC<AboutSectionProps> = ({ t }) => {
             {/* Tab Buttons */}
             <div className="flex flex-col md:flex-row justify-center mb-12 space-y-4 md:space-y-0 md:space-x-8">
               {tabs.map((tab, index) => (
-                <button
+                <StarBorder
                   key={tab.id}
-                  onClick={() => setActiveTab(index)}
-                  className={`tab-button p-8 rounded-2xl text-center w-full md:w-auto will-animate ${
-                    activeTab === index
-                      ? 'active text-[#061A40] shadow-2xl'
-                      : 'bg-white text-gray-700 hover:shadow-lg'
-                  } ${isVisible ? 'slide-in-visible' : ''}`}
+                  as="button"
+                  className={`tab-button w-full md:w-auto will-animate ${isVisible ? 'slide-in-visible' : ''}`}
                   style={{ animationDelay: `${0.3 + index * 0.1}s` }}
+                  onClick={() => setActiveTab(index)}
+                  color={activeTab === index ? "#FFD000" : "purple"}
+                  speed={activeTab === index ? "3s" : "6s"}
+                  innerClassName={`p-8 text-center ${
+                    activeTab === index
+                      ? 'active bg-[#FFD000] text-[#061A40] shadow-2xl'
+                      : 'bg-white text-gray-700 hover:shadow-lg'
+                  }`}
                 >
                   <div className={`floating-icon mx-auto mb-4 ${activeTab === index ? 'text-[#061A40]' : 'text-[#FFD000]'}`}>
                     {tab.icon}
@@ -99,7 +104,7 @@ const AboutSection: React.FC<AboutSectionProps> = ({ t }) => {
                   <p className={`text-sm ${activeTab === index ? 'text-[#061A40]/80' : 'text-gray-600'}`}>
                     {t('aboutClickToLearn')}
                   </p>
-                </button>
+                </StarBorder>
               ))}
             </div>
             

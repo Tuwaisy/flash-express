@@ -1,6 +1,7 @@
 import React from 'react';
 import { Zap, Facebook, Twitter, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
 import { InstagramIcon } from '../Icons';
+import StarBorder from '../common/StarBorder';
 
 interface FooterProps {
   t: (key: string) => string;
@@ -40,7 +41,7 @@ const Footer: React.FC<FooterProps> = ({ t }) => {
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
                   <Phone className="h-5 w-5 text-[#FFD000]" />
-                  <span className="text-gray-300">+201008831881</span>
+                  <span className="text-gray-300">+201116306013</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <Mail className="h-5 w-5 text-[#FFD000]" />
@@ -81,30 +82,42 @@ const Footer: React.FC<FooterProps> = ({ t }) => {
             <div>
               <h4 className="text-xl font-bold text-[#FFD000] mb-6">{t('footerFollow')}</h4>
               <div className="flex space-x-4">
-                <a
+                <StarBorder
+                  as="a"
                   href="https://www.instagram.com/shuhnaexpress/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="social-icon p-3 bg-white/10 rounded-full text-gray-300 hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300"
+                  className="social-icon"
+                  color="purple"
+                  speed="6s"
+                  innerClassName="p-3 bg-white/10 rounded-full text-gray-300 hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300"
                 >
                   <InstagramIcon className="h-5 w-5" />
-                </a>
-                <a
+                </StarBorder>
+                <StarBorder
+                  as="a"
                   href="https://www.facebook.com/profile.php?id=61580474210714"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="social-icon p-3 bg-white/10 rounded-full text-gray-300 hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300"
+                  className="social-icon"
+                  color="blue"
+                  speed="7s"
+                  innerClassName="p-3 bg-white/10 rounded-full text-gray-300 hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300"
                 >
                   <Facebook className="h-5 w-5" />
-                </a>
-                <a
+                </StarBorder>
+                <StarBorder
+                  as="a"
                   href="https://www.linkedin.com/company/shuhna-express"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="social-icon p-3 bg-white/10 rounded-full text-gray-300 hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300"
+                  className="social-icon"
+                  color="cyan"
+                  speed="5s"
+                  innerClassName="p-3 bg-white/10 rounded-full text-gray-300 hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300"
                 >
                   <Linkedin className="h-5 w-5" />
-                </a>
+                </StarBorder>
               </div>
               
               <div className="mt-8">

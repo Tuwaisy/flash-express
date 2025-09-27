@@ -1,5 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Crown, Gem, Star, ArrowRight } from 'lucide-react';
+import ScrollFloat from '../common/ScrollFloat';
+import GlareHover from '../common/GlareHover';
+import StarBorder from '../common/StarBorder';
 
 interface SubscriptionsSectionProps {
   t: (key: string) => string;
@@ -64,9 +67,12 @@ const SubscriptionsSection: React.FC<SubscriptionsSectionProps> = ({ t }) => {
                   </div>
                 </div>
                 
-                <h2 className="text-4xl md:text-5xl font-black mb-6">
+                <ScrollFloat
+                  containerClassName="text-center mb-6"
+                  textClassName="text-4xl md:text-5xl font-black"
+                >
                   {t('subscriptionsTitle')}
-                </h2>
+                </ScrollFloat>
                 
                 <p className="text-xl text-gray-300 max-w-3xl mx-auto mb-8 leading-relaxed">
                   {t('subscriptionsDesc')}
@@ -74,30 +80,53 @@ const SubscriptionsSection: React.FC<SubscriptionsSectionProps> = ({ t }) => {
                 
                 {/* Benefits Grid */}
                 <div className="grid md:grid-cols-3 gap-6 mb-10">
-                  <div className="bg-white/10 backdrop-blur-md rounded-xl p-6">
-                    <Star className="h-10 w-10 text-[#FFD000] mx-auto mb-4" />
-                    <h4 className="text-lg font-bold mb-2">Exclusive Rates</h4>
-                    <p className="text-sm text-gray-300">Up to 30% discount on regular shipping rates</p>
-                  </div>
-                  <div className="bg-white/10 backdrop-blur-md rounded-xl p-6">
-                    <Crown className="h-10 w-10 text-[#FFD000] mx-auto mb-4" />
-                    <h4 className="text-lg font-bold mb-2">Priority Service</h4>
-                    <p className="text-sm text-gray-300">Jump the queue with priority processing</p>
-                  </div>
-                  <div className="bg-white/10 backdrop-blur-md rounded-xl p-6">
-                    <Gem className="h-10 w-10 text-[#FFD000] mx-auto mb-4" />
-                    <h4 className="text-lg font-bold mb-2">Dedicated Support</h4>
-                    <p className="text-sm text-gray-300">24/7 premium customer service</p>
-                  </div>
+                  <GlareHover
+                    className="backdrop-blur-md"
+                    style={{ background: 'rgba(255, 255, 255, 0.1)', borderColor: 'transparent', padding: '1.5rem' }}
+                    borderRadius="0.75rem"
+                    glareOpacity={0.1}
+                  >
+                    <div>
+                      <Star className="h-10 w-10 text-[#FFD000] mx-auto mb-4" />
+                      <h4 className="text-lg font-bold mb-2">Exclusive Rates</h4>
+                      <p className="text-sm text-gray-300">Up to 30% discount on regular shipping rates</p>
+                    </div>
+                  </GlareHover>
+                  <GlareHover
+                    className="backdrop-blur-md"
+                    style={{ background: 'rgba(255, 255, 255, 0.1)', borderColor: 'transparent', padding: '1.5rem' }}
+                    borderRadius="0.75rem"
+                    glareOpacity={0.1}
+                  >
+                    <div>
+                      <Crown className="h-10 w-10 text-[#FFD000] mx-auto mb-4" />
+                      <h4 className="text-lg font-bold mb-2">Priority Service</h4>
+                      <p className="text-sm text-gray-300">Jump the queue with priority processing</p>
+                    </div>
+                  </GlareHover>
+                  <GlareHover
+                    className="backdrop-blur-md"
+                    style={{ background: 'rgba(255, 255, 255, 0.1)', borderColor: 'transparent', padding: '1.5rem' }}
+                    borderRadius="0.75rem"
+                    glareOpacity={0.1}
+                  >
+                    <div>
+                      <Gem className="h-10 w-10 text-[#FFD000] mx-auto mb-4" />
+                      <h4 className="text-lg font-bold mb-2">Dedicated Support</h4>
+                      <p className="text-sm text-gray-300">24/7 premium customer service</p>
+                    </div>
+                  </GlareHover>
                 </div>
                 
-                <button
+                <StarBorder
                   onClick={() => scrollToSection('contact')}
-                  className="cta-button px-10 py-4 rounded-xl text-xl font-bold text-[#061A40] flex items-center mx-auto group"
+                  className="mx-auto"
+                  innerClassName="cta-button px-10 py-4 text-xl font-bold text-[#061A40] flex items-center group"
+                  color="#FFD000"
                 >
                   {t('subscriptionsCTA')}
                   <ArrowRight className="ml-2 h-6 w-6 group-hover:translate-x-1 transition-transform" />
-                </button>
+                </StarBorder>
                 
                 <div className="mt-8 text-sm text-gray-400">
                   * Partnership criteria based on monthly volume and business requirements

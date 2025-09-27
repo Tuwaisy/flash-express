@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Star, Quote } from 'lucide-react';
+import StarBorder from '../common/StarBorder';
 
 interface TestimonialsSectionProps {
   t: (key: string) => string;
@@ -108,25 +109,33 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ t }) => {
               <Quote className="quote-icon absolute top-6 left-6 h-16 w-16 text-[#FFD000]" />
               
               {/* Carousel Navigation Arrows */}
-              <button
+              <StarBorder
+                as="button"
                 onClick={prevTestimonial}
-                className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-gray-500/30 hover:bg-gray-500/50 text-gray-300 hover:text-white rounded-full p-3 transition-all duration-300 backdrop-blur-sm"
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 backdrop-blur-sm"
+                color="white"
+                speed="8s"
+                innerClassName="bg-gray-500/30 hover:bg-gray-500/50 text-gray-300 hover:text-white rounded-full p-3 transition-all duration-300"
                 aria-label="Previous testimonial"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
-              </button>
+              </StarBorder>
               
-              <button
+              <StarBorder
+                as="button"
                 onClick={nextTestimonial}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-gray-500/30 hover:bg-gray-500/50 text-gray-300 hover:text-white rounded-full p-3 transition-all duration-300 backdrop-blur-sm"
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 backdrop-blur-sm"
+                color="white"
+                speed="8s"
+                innerClassName="bg-gray-500/30 hover:bg-gray-500/50 text-gray-300 hover:text-white rounded-full p-3 transition-all duration-300"
                 aria-label="Next testimonial"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
-              </button>
+              </StarBorder>
               
               <div key={currentTestimonial} className="testimonial-transition px-12">
                 <div className="flex star-rating justify-center mb-6">

@@ -483,6 +483,22 @@ async function setupDatabase() {
         });
     }
 
+    // Table: barcode_scans
+    if (!(await knex.schema.hasTable('barcode_scans'))) {
+        console.log('Creating "barcode_scans" table...');
+        await knex.schema.createTable('barcode_scans', table => {
+            table.increments('id').primary();
+            table.string('shipmentId').notNullable();
+            table.integer('courierId').unsigned().references('id').inTable('users');
+            table.string('previousStatus').notNullable();
+            table.string('newStatus').notNullable();
+            table.timestamp('scannedAt').defaultTo(knex.fn.now());
+            table.index('shipmentId');
+            table.index('courierId');
+            table.index('scannedAt');
+        });
+    }
+
     // Final step: Reset primary key sequences for PostgreSQL
     if (process.env.DATABASE_URL) {
         console.log('🔄 Resetting PostgreSQL sequences...');

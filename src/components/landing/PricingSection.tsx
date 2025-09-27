@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, PackagePlus, Crown, Zap } from 'lucide-react';
+import ScrollFloat from '../common/ScrollFloat';
+import StarBorder from '../common/StarBorder';
 
 interface PricingSectionProps {
   t: (key: string) => string;
@@ -106,9 +108,12 @@ const PricingSection: React.FC<PricingSectionProps> = ({ t }) => {
       <section ref={sectionRef} id="pricing" className="pricing-bg py-20">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className={`will-animate text-4xl font-bold text-white mb-6 ${isVisible ? 'slide-in-visible' : ''}`}>
+            <ScrollFloat
+              containerClassName="text-center mb-6"
+              textClassName="text-4xl font-bold text-white"
+            >
               {t('pricingTitle')}
-            </h2>
+            </ScrollFloat>
             <p className={`will-animate text-xl text-gray-300 max-w-3xl mx-auto ${isVisible ? 'slide-in-visible' : ''}`} style={{ animationDelay: '0.2s' }}>
               {t('pricingSubtitle')}
             </p>
@@ -117,13 +122,16 @@ const PricingSection: React.FC<PricingSectionProps> = ({ t }) => {
           <div className="max-w-6xl mx-auto">
             <div className="grid md:grid-cols-3 gap-8">
               {tiers.map((tier, index) => (
-                <div
+                <StarBorder
                   key={tier.id}
-                  className={`tier-card flex flex-col bg-white rounded-2xl p-8 relative will-animate ${
+                  as="div"
+                  className={`will-animate ${
                     activeTab === index ? 'active' : ''
                   } ${isVisible ? 'slide-in-visible' : ''}`}
                   style={{ animationDelay: `${0.3 + index * 0.1}s` }}
                   onMouseEnter={() => setActiveTab(index)}
+                  innerClassName="tier-card flex flex-col bg-white p-8 h-full"
+                  color="#FFD000"
                 >
                   {tier.popular && (
                     <div className="popular-badge absolute -top-4 left-1/2 transform -translate-x-1/2">
@@ -161,13 +169,15 @@ const PricingSection: React.FC<PricingSectionProps> = ({ t }) => {
                     </div>
                   </div>
                   
-                  <button
+                  <StarBorder
                     onClick={() => scrollToSection('contact')}
-                    className="w-full py-3 rounded-xl font-bold transition-all duration-300 mt-auto bg-[#FFD000] text-[#061A40] hover:bg-[#e6bb00]"
+                    className="w-full mt-auto"
+                    innerClassName="py-3 font-bold transition-all duration-300 bg-[#FFD000] text-[#061A40] hover:bg-[#e6bb00]"
+                    color="#061A40"
                   >
                     {tier.id === 'enterprise' ? t('largeOrdersCTA') : t('getStarted')}
-                  </button>
-                </div>
+                  </StarBorder>
+                </StarBorder>
               ))}
             </div>
           </div>

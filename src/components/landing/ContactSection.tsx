@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Phone, MessageCircle, MapPin, Clock, Mail } from 'lucide-react';
+import StarBorder from '../common/StarBorder';
 
 interface ContactSectionProps {
   t: (key: string) => string;
@@ -57,27 +58,35 @@ const ContactSection: React.FC<ContactSectionProps> = ({ t }) => {
                 </h3>
                 
                 <div className="text-3xl font-black text-[#061A40] mb-8 tracking-wider" dir="ltr">
-                  +201008831881
+                  +201116306013
                 </div>
                 
                 <div className="space-y-4">
-                  <a
-                    href="tel:+201008831881"
-                    className="contact-button w-full bg-[#061A40] text-white py-4 px-6 rounded-xl font-bold flex items-center justify-center space-x-3 hover:bg-[#0A2F6B] shadow-lg"
+                  <StarBorder
+                    as="a"
+                    href="tel:+201116306013"
+                    className="contact-button w-full shadow-lg"
+                    color="#061A40"
+                    speed="3s"
+                    innerClassName="bg-[#061A40] text-white py-4 px-6 font-bold flex items-center justify-center space-x-3 hover:bg-[#0A2F6B]"
                   >
                     <Phone className="h-5 w-5" />
                     <span>{t('contactCall')}</span>
-                  </a>
+                  </StarBorder>
                   
-                  <a
-                    href="https://wa.me/201008831881"
+                  <StarBorder
+                    as="a"
+                    href="https://wa.me/201116306013"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="contact-button w-full bg-green-500 text-white py-4 px-6 rounded-xl font-bold flex items-center justify-center space-x-3 hover:bg-green-600 shadow-lg"
+                    className="contact-button w-full shadow-lg"
+                    color="green"
+                    speed="4s"
+                    innerClassName="bg-green-500 text-white py-4 px-6 font-bold flex items-center justify-center space-x-3 hover:bg-green-600"
                   >
                     <MessageCircle className="h-5 w-5" />
                     <span>{t('contactWhatsapp')}</span>
-                  </a>
+                  </StarBorder>
                 </div>
               </div>
               

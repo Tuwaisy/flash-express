@@ -9,7 +9,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { 
     LogoIcon, DashboardIcon, PackageIcon, UsersIcon, WalletIcon, 
     ChartBarIcon, TruckIcon, ClipboardListIcon, PlusCircleIcon,
-    UserCircleIcon, BellIcon, TrendingUpIcon, CurrencyDollarIcon, XIcon, CogIcon, CheckCircleIcon, ArchiveBoxIcon, TagIcon, SwitchHorizontalIcon, MapPinIcon, GoldMedalIcon, UploadIcon
+    UserCircleIcon, BellIcon, TrendingUpIcon, CurrencyDollarIcon, XIcon, CogIcon, CheckCircleIcon, ArchiveBoxIcon, TagIcon, SwitchHorizontalIcon, MapPinIcon, GoldMedalIcon, UploadIcon, QrcodeIcon
 } from '../components/Icons';
 
 interface NavItemConfig {
@@ -32,6 +32,7 @@ const ALL_NAV_ITEMS: NavItemConfig[] = [
     
     // Courier
     { nameKey: 'nav.myTasks', icon: <ClipboardListIcon />, view: 'tasks', permission: Permission.VIEW_COURIER_TASKS },
+    { nameKey: 'nav.barcodeScanner', icon: <QrcodeIcon />, view: 'barcode-scanner', permission: Permission.VIEW_COURIER_TASKS },
     { nameKey: 'nav.completedOrders', icon: <CheckCircleIcon />, view: 'completed-orders', permission: Permission.VIEW_COURIER_COMPLETED_ORDERS },
     { nameKey: 'nav.myEarnings', icon: <CurrencyDollarIcon />, view: 'courier-financials', permission: Permission.VIEW_COURIER_EARNINGS },
 
