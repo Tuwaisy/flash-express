@@ -14,8 +14,13 @@ export default defineConfig({
         entryFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
         chunkFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
         assetFileNames: `assets/[name]-[hash]-${Date.now()}.[ext]`
-      }
+      },
+      external: ['gsap', 'gsap/ScrollTrigger', '@yudiel/react-qr-scanner']
     }
+  },
+  optimizeDeps: {
+    include: ['gsap', 'gsap/ScrollTrigger'],
+    exclude: ['@yudiel/react-qr-scanner']
   },
   server: {
     // Listen on all network interfaces to allow ngrok/network access

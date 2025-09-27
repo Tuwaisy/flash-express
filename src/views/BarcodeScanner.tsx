@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Scanner } from '@yudiel/react-qr-scanner';
+// Dynamically import the scanner to avoid build issues
+const Scanner = React.lazy(() => import('@yudiel/react-qr-scanner').then(module => ({ default: module.Scanner })));
 import { Package, Zap, CheckCircle, X, Clock } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -311,10 +312,11 @@ const BarcodeScanner: React.FC = () => {
                 ) : (
                     <div>
                         <div className="relative bg-black rounded-lg overflow-hidden">
-                            <Scanner
-                                onScan={(result) => {
-                                    if (result && result.length > 0) {
-                                        const scannedValue = result[0]?.rawValue || '';
+                            <React.Suspense fallback={<div>Loading scanner...</div>}>
+                                <Scanner
+                                    onScan={(result: { text: string }) => {
+                                        if (result && result.text) {
+                                            const scannedValue = result.text;
                                         console.log('Barcode scanned:', scannedValue);
                                         handleScan(scannedValue);
                                     }
@@ -325,9 +327,11 @@ const BarcodeScanner: React.FC = () => {
                                     torch: true
                                 }}
                                 constraints={{
-                                    facingMode: { ideal: 'environment' },
-                                    width: { ideal: 1280 },
-                                    height: { ideal: 720 }
+                                    video: { 
+                                        facingMode: { ideal: 'environment' },
+                                        width: { ideal: 1280 },
+                                        height: { ideal: 720 }
+                                    }
                                 }}
                                 styles={{
                                     container: { 
@@ -339,6 +343,7 @@ const BarcodeScanner: React.FC = () => {
                                 }}
                                 formats={['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8']}
                             />
+                            </React.Suspense>
                         </div>
                         <div className="mt-3 md:mt-4 text-center space-y-2">
                             <button

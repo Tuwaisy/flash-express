@@ -1,8 +1,4 @@
-import React, { useEffect, useMemo, useRef, ReactNode, RefObject } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-gsap.registerPlugin(ScrollTrigger);
+import { useEffect, useMemo, useRef, ReactNode, RefObject } from 'react';
 
 interface ScrollFloatProps {
   children: ReactNode;
@@ -10,76 +6,61 @@ interface ScrollFloatProps {
   containerClassName?: string;
   textClassName?: string;
   animationDuration?: number;
-  ease?: string;
-  scrollStart?: string;
-  scrollEnd?: string;
-  stagger?: number;
 }
 
 const ScrollFloat: React.FC<ScrollFloatProps> = ({
   children,
-  scrollContainerRef,
   containerClassName = '',
   textClassName = '',
-  animationDuration = 5, // Set to 5 as requested
-  ease = 'back.inOut(2)',
-  scrollStart = 'center bottom+=50%',
-  scrollEnd = 'bottom center',
-  stagger = 0.05
+  animationDuration = 5
 }) => {
   const containerRef = useRef<HTMLHeadingElement>(null);
 
   const splitText = useMemo(() => {
     const text = typeof children === 'string' ? children : '';
     return text.split('').map((char, index) => (
-      <span className="inline-block" key={index}>
+      <span 
+        className="inline-block opacity-0 translate-y-full scale-y-[2.3] scale-x-[0.7] origin-top transition-all duration-1000" 
+        key={index}
+        style={{
+          transitionDelay: `${index * 50}ms`,
+          willChange: 'opacity, transform'
+        }}
+      >
         {char === ' ' ? '\u00A0' : char}
       </span>
     ));
   }, [children]);
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    const scroller = scrollContainerRef && scrollContainerRef.current ? scrollContainerRef.current : window;
-
-    const charElements = Array.from(el.querySelectorAll('.inline-block'));
-
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        charElements,
-        {
-          willChange: 'opacity, transform',
-          opacity: 0,
-          yPercent: 120,
-          scaleY: 2.3,
-          scaleX: 0.7,
-          transformOrigin: '50% 0%'
-        },
-        {
-          duration: animationDuration,
-          ease: ease,
-          opacity: 1,
-          yPercent: 0,
-          scaleY: 1,
-          scaleX: 1,
-          stagger: stagger,
-          scrollTrigger: {
-            trigger: el,
-            scroller,
-            start: scrollStart,
-            end: scrollEnd,
-          scrub: 1, // Using a numeric value for smoother scrubbing
-          toggleActions: "play reverse play reverse" // Ensures animation plays on scroll up and down
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const spans = entry.target.querySelectorAll('span');
+            spans.forEach(span => {
+              span.classList.remove('opacity-0', 'translate-y-full', 'scale-y-[2.3]', 'scale-x-[0.7]');
+              span.classList.add('opacity-100', 'translate-y-0', 'scale-100');
+            });
           }
-        }
-      );
-    }, el);
+        });
+      },
+      {
+        threshold: 0.1,
+        rootMargin: '0px 0px -10% 0px'
+      }
+    );
 
-    return () => ctx.revert();
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
 
-  }, [scrollContainerRef, animationDuration, ease, scrollStart, scrollEnd, stagger, children]);
+    return () => {
+      if (containerRef.current) {
+        observer.unobserve(containerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <h2 ref={containerRef} className={`overflow-hidden ${containerClassName}`}>

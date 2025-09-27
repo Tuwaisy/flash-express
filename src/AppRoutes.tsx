@@ -5,6 +5,8 @@ import { ToastContainer } from './components/common/Toast';
 import LoginScreen from './views/Login';
 import MainLayout from './layouts/MainLayout';
 import TrackShipment from './views/TrackShipment';
+import ShippingResources from './views/resources/ShippingResources';
+import ResourceDetail from './views/resources/ResourceDetail';
 
 const AppRoutes = () => {
     const { currentUser, isLoading } = useAppContext();
@@ -27,6 +29,8 @@ const AppRoutes = () => {
             <BrowserRouter>
                 <Routes>
                     <Route path="/track/:shipmentId" element={<TrackShipment />} />
+                <Route path="/resources/shipping" element={<ShippingResources />} />
+                <Route path="/resources/shipping/:slug" element={<ResourceDetail />} />
                 </Routes>
                 <ToastContainer />
             </BrowserRouter>

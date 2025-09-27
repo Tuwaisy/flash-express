@@ -1,0 +1,180 @@
+// src/views/TotalShipments.tsx
+import React, { useMemo, useState } from 'react';
+import { useAppContext } from '../context/AppContext';
+import { Shipment, ShipmentStatus, Permission } from '../types';
+import { StatCard } from '../components/common/StatCard';
+import { PackageIcon, CheckCircleIcon, ClockIcon, XCircleIcon, TruckIcon, DocumentDownloadIcon } from '../components/Icons';
+import { ShipmentList } from '../components/specific/ShipmentList';
+import { exportToCsv } from '../utils/pdf';
+
+interface TotalShipmentsProps {
+    onSelectShipment?: (shipment: Shipment) => void;
+}
+
+function TotalShipments({ onSelectShipment }: TotalShipmentsProps) {
+    const { shipments, hasPermission, getCourierName, updateShipmentFees } = useAppContext();
+    
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedStatus, setSelectedStatus] = useState<'all' | 'Overdue' | ShipmentStatus>('all');
+    const [selectedDate, setSelectedDate] = useState('');
+
+    const canSeeAdminFinancials = hasPermission(Permission.VIEW_ADMIN_FINANCIALS);
+
+    const isShipmentOverdue = (shipment: Shipment) => {
+        if ([ShipmentStatus.DELIVERED, ShipmentStatus.DELIVERY_FAILED].includes(shipment.status)) {
+            return false;
+        }
+        // A shipment is overdue if it's been more than 2.5 days since creation and not yet delivered.
+        const twoAndHalfDaysAgo = new Date(Date.now() - 2.5 * 24 * 60 * 60 * 1000);
+        return new Date(shipment.creationDate) < twoAndHalfDaysAgo;
+    };
+
+    const stats = useMemo(() => {
+        const total = shipments.length;
+        const delivered = shipments.filter(s => s.status === ShipmentStatus.DELIVERED).length;
+        const failed = shipments.filter(s => s.status === ShipmentStatus.DELIVERY_FAILED).length;
+        const outForDelivery = shipments.filter(s => s.status === ShipmentStatus.OUT_FOR_DELIVERY).length;
+        const overdue = shipments.filter(isShipmentOverdue).length;
+        return { total, delivered, failed, outForDelivery, overdue };
+    }, [shipments]);
+
+    const filteredShipments = useMemo(() => {
+        let filtered = [...shipments];
+
+        if (selectedDate) {
+            filtered = filtered.filter(s => s.creationDate.startsWith(selectedDate));
+        }
+
+        if (searchTerm.trim()) {
+            const lowerCaseSearch = searchTerm.trim().toLowerCase();
+            filtered = filtered.filter(s => 
+                s.id.toString().includes(lowerCaseSearch) ||
+                s.clientName.toLowerCase().includes(lowerCaseSearch) ||
+                s.recipientName?.toLowerCase()?.includes(lowerCaseSearch) ||
+                getCourierName(s.courierId)?.toLowerCase()?.includes(lowerCaseSearch)
+            );
+        }
+
+        switch (selectedStatus) {
+            case 'Overdue':
+                filtered = filtered.filter(isShipmentOverdue);
+                break;
+            case ShipmentStatus.PENDING:
+            case ShipmentStatus.ASSIGNED:
+            case ShipmentStatus.OUT_FOR_DELIVERY:
+            case ShipmentStatus.DELIVERED:
+            case ShipmentStatus.DELIVERY_FAILED:
+                filtered = filtered.filter(s => s.status === selectedStatus);
+                break;
+        }
+
+        return filtered;
+    }, [shipments, selectedStatus, searchTerm, selectedDate]);
+
+    const handleExport = () => {
+        const data = filteredShipments.map(s => ({
+            ID: s.id,
+            Status: s.status,
+            'Creation Date': s.creationDate,
+            'Client Name': s.clientName,
+            'Recipient Name': s.recipientName || 'N/A',
+            'To Address': `${s.toAddress.street}, ${s.toAddress.city}`,
+            'COD Amount': s.cashOnDelivery ? `${s.cashOnDelivery} EGP` : 'N/A',
+            'Courier': getCourierName(s.courierId) || 'Unassigned'
+        }));
+        exportToCsv('shipments.csv', data);
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <StatCard 
+                    title="Total Shipments"
+                    value={stats.total}
+                    icon={<PackageIcon className="w-8 h-8" />}
+                    color="bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300"
+                />
+                <StatCard 
+                    title="Delivered"
+                    value={stats.delivered}
+                    icon={<CheckCircleIcon className="w-8 h-8" />}
+                    color="bg-green-50 text-green-600 dark:bg-green-900/40 dark:text-green-300"
+                />
+                <StatCard 
+                    title="Out for Delivery"
+                    value={stats.outForDelivery}
+                    icon={<TruckIcon className="w-8 h-8" />}
+                    color="bg-yellow-50 text-yellow-600 dark:bg-yellow-900/40 dark:text-yellow-300"
+                />
+                <StatCard 
+                    title="Failed"
+                    value={stats.failed}
+                    icon={<XCircleIcon className="w-8 h-8" />}
+                    color="bg-red-50 text-red-600 dark:bg-red-900/40 dark:text-red-300"
+                />
+                <StatCard 
+                    title="Overdue"
+                    value={stats.overdue}
+                    icon={<ClockIcon className="w-8 h-8" />}
+                    color="bg-rose-50 text-rose-600 dark:bg-rose-900/40 dark:text-rose-300"
+                />
+            </div>
+
+            <div className="flex flex-wrap gap-4 items-start">
+                <div className="flex-grow">
+                    <input 
+                        type="text"
+                        placeholder="Search by ID, client, recipient, or courier..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="px-4 py-2 w-full rounded-lg bg-background border border-border focus:ring-primary focus:border-primary"
+                    />
+                </div>
+                <div className="flex-none flex gap-4">
+                    <select 
+                        value={selectedStatus} 
+                        onChange={e => setSelectedStatus(e.target.value as any)}
+                        className="px-4 py-2 rounded-lg bg-background border border-border focus:ring-primary focus:border-primary"
+                    >
+                        <option value="all">All Status</option>
+                        <option value="PENDING">Pending</option>
+                        <option value="ASSIGNED">Assigned</option>
+                        <option value="OUT_FOR_DELIVERY">Out For Delivery</option>
+                        <option value="DELIVERED">Delivered</option>
+                        <option value="DELIVERY_FAILED">Failed</option>
+                        <option value="Overdue">Overdue</option>
+                    </select>
+                    <input 
+                        type="date"
+                        value={selectedDate}
+                        onChange={e => setSelectedDate(e.target.value)}
+                        className="px-4 py-2 rounded-lg bg-background border border-border focus:ring-primary focus:border-primary"
+                    />
+                    <button 
+                        onClick={handleExport}
+                        className="px-4 py-2 flex items-center gap-2 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 transition"
+                    >
+                        <DocumentDownloadIcon className="w-5 h-5"/>
+                        Export CSV
+                    </button>
+                </div>
+            </div>
+
+            <div className="card overflow-hidden">
+                <ShipmentList 
+                    shipments={filteredShipments} 
+                    onSelectShipment={onSelectShipment}
+                    showPackageValue={true}
+                    priceColumnTitle="Total COD"
+                    showClientFee={canSeeAdminFinancials}
+                    showCourierCommission={canSeeAdminFinancials}
+                    showNetProfit={canSeeAdminFinancials}
+                    showEditableFees={canSeeAdminFinancials}
+                    updateShipmentFees={canSeeAdminFinancials ? updateShipmentFees : undefined}
+                />
+            </div>
+        </div>
+    );
+}
+
+export default TotalShipments;
