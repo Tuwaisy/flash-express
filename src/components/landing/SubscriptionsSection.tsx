@@ -2,7 +2,6 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Crown, Gem, Star, ArrowRight } from 'lucide-react';
 import ScrollFloat from '../common/ScrollFloat';
 import GlareHover from '../common/GlareHover';
-import StarBorder from '../common/StarBorder';
 
 interface SubscriptionsSectionProps {
   t: (key: string) => string;
@@ -118,15 +117,13 @@ const SubscriptionsSection: React.FC<SubscriptionsSectionProps> = ({ t }) => {
                   </GlareHover>
                 </div>
                 
-                <StarBorder
+                <button
                   onClick={() => scrollToSection('contact')}
-                  className="mx-auto"
-                  innerClassName="cta-button px-10 py-4 text-xl font-bold text-[#061A40] flex items-center group"
-                  color="#FFD000"
+                  className="mx-auto cta-button px-10 py-4 text-xl font-bold text-[#061A40] flex items-center group bg-[#FFD000] rounded-lg hover:bg-[#FFE033] transition-colors duration-300"
                 >
                   {t('subscriptionsCTA')}
                   <ArrowRight className="ml-2 h-6 w-6 group-hover:translate-x-1 transition-transform" />
-                </StarBorder>
+                </button>
                 
                 <div className="mt-8 text-sm text-gray-400">
                   * Partnership criteria based on monthly volume and business requirements

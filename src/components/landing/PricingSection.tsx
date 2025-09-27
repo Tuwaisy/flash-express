@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, PackagePlus, Crown, Zap } from 'lucide-react';
 import ScrollFloat from '../common/ScrollFloat';
-import StarBorder from '../common/StarBorder';
 
 interface PricingSectionProps {
   t: (key: string) => string;
@@ -105,7 +104,7 @@ const PricingSection: React.FC<PricingSectionProps> = ({ t }) => {
   }, [tiers.length]);
 
   return (
-      <section ref={sectionRef} id="pricing" className="pricing-bg py-20">
+      <section ref={sectionRef} id="pricing" className="pricing-bg py-12 md:py-20" style={{ display: 'block', visibility: 'visible', opacity: 1, zIndex: 10, position: 'relative' }}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <ScrollFloat
@@ -120,24 +119,25 @@ const PricingSection: React.FC<PricingSectionProps> = ({ t }) => {
           </div>
           
           <div className="max-w-6xl mx-auto">
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
               {tiers.map((tier, index) => (
-                <StarBorder
+                <div
                   key={tier.id}
-                  as="div"
-                  className={`will-animate ${
-                    activeTab === index ? 'active' : ''
+                  className={`will-animate tier-card flex flex-col bg-white p-6 md:p-8 h-full rounded-[20px] border border-gray-200 hover:shadow-xl transition-all duration-300 relative ${
+                    activeTab === index ? 'active shadow-lg transform md:scale-105' : ''
                   } ${isVisible ? 'slide-in-visible' : ''}`}
-                  style={{ animationDelay: `${0.3 + index * 0.1}s` }}
+                  style={{ 
+                    animationDelay: `${0.3 + index * 0.1}s`,
+                    minHeight: '400px',
+                    display: 'flex'
+                  }}
                   onMouseEnter={() => setActiveTab(index)}
-                  innerClassName="tier-card flex flex-col bg-white p-8 h-full"
-                  color="#FFD000"
                 >
                   {tier.popular && (
                     <div className="popular-badge absolute -top-4 left-1/2 transform -translate-x-1/2">
                       <div className="bg-[#FFD000] text-[#061A40] px-6 py-2 rounded-full text-sm font-bold flex items-center">
                         <Zap className="h-4 w-4 mr-1" />
-                        Most Popular
+                        Fastest Delivery
                       </div>
                     </div>
                   )}
@@ -169,15 +169,13 @@ const PricingSection: React.FC<PricingSectionProps> = ({ t }) => {
                     </div>
                   </div>
                   
-                  <StarBorder
+                  <button
                     onClick={() => scrollToSection('contact')}
-                    className="w-full mt-auto"
-                    innerClassName="py-3 font-bold transition-all duration-300 bg-[#FFD000] text-[#061A40] hover:bg-[#e6bb00]"
-                    color="#061A40"
+                    className="w-full mt-auto py-3 px-6 font-bold transition-all duration-300 bg-[#FFD000] text-[#061A40] hover:bg-[#e6bb00] rounded-lg hover:shadow-lg"
                   >
                     {tier.id === 'enterprise' ? t('largeOrdersCTA') : t('getStarted')}
-                  </StarBorder>
-                </StarBorder>
+                  </button>
+                </div>
               ))}
             </div>
           </div>

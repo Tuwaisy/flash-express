@@ -7,6 +7,7 @@ interface LanguageContextType {
     language: Language;
     setLanguage: (lang: Language) => void;
     t: (key: string) => string;
+    direction: 'ltr' | 'rtl';
 }
 
 const translations = {
@@ -496,8 +497,16 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return translations[language][key as keyof typeof translations['en']] || key;
     };
 
+    const direction = language === 'ar' ? 'rtl' : 'ltr';
+
+    // Apply direction to document
+    useEffect(() => {
+        document.documentElement.dir = direction;
+        document.documentElement.lang = language;
+    }, [direction, language]);
+
     return (
-        <LanguageContext.Provider value={{ language, setLanguage, t }}>
+        <LanguageContext.Provider value={{ language, setLanguage, t, direction }}>
             {children}
         </LanguageContext.Provider>
     );

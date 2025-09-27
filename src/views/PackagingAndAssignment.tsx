@@ -318,7 +318,8 @@ export default function PackagingAndAssignment({ setLabelShipment }: PackagingAn
     // Helper function to generate label HTML
     const generateLabelHTML = (shipment: Shipment): string => {
         const shippingFee = shipment.clientFlatRateFee || (shipment.price - shipment.packageValue);
-        const serialNumber = shipment.id.split('-').slice(2).join('-');
+        // Use full shipment ID for barcode to ensure scanner can match it
+        const barcodeText = shipment.id;
         
         return `
             <div style="font-family: sans-serif; color: black; height: 100%; display: flex; flex-direction: column;">
@@ -370,7 +371,10 @@ export default function PackagingAndAssignment({ setLabelShipment }: PackagingAn
                             <p style="margin: 0;">${shipment.packageDescription}${shipment.isLargeOrder ? ' (Large Order)' : ''}</p>
                         </div>
                         <div style="text-align: center;">
-                            <div style="font-family: monospace; background: repeating-linear-gradient(90deg, transparent, transparent 1px, black 1px, black 2px); height: 40px; margin-bottom: 10px;"></div>
+                            <div style="margin-bottom: 15px;">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(barcodeText)}" alt="QR Code for ${shipment.id}" style="width: 60px; height: 60px; margin: 0 auto; display: block;" />
+                                <p style="font-size: 8px; color: #666; margin: 5px 0 0 0;">Scan me!</p>
+                            </div>
                             <p style="font-family: monospace; letter-spacing: 2px; font-size: 12px; margin: 0;">${shipment.id}</p>
                         </div>
                     </div>

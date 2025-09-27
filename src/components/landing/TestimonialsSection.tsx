@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Star, Quote } from 'lucide-react';
-import StarBorder from '../common/StarBorder';
 
 interface TestimonialsSectionProps {
   t: (key: string) => string;
@@ -109,33 +108,25 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ t }) => {
               <Quote className="quote-icon absolute top-6 left-6 h-16 w-16 text-[#FFD000]" />
               
               {/* Carousel Navigation Arrows */}
-              <StarBorder
-                as="button"
+              <button
                 onClick={prevTestimonial}
-                className="absolute left-4 top-1/2 transform -translate-y-1/2 backdrop-blur-sm"
-                color="white"
-                speed="8s"
-                innerClassName="bg-gray-500/30 hover:bg-gray-500/50 text-gray-300 hover:text-white rounded-full p-3 transition-all duration-300"
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white text-[#061A40] hover:text-[#0A2F6B] rounded-full p-4 transition-all duration-300 shadow-lg hover:shadow-xl z-10"
                 aria-label="Previous testimonial"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
                 </svg>
-              </StarBorder>
+              </button>
               
-              <StarBorder
-                as="button"
+              <button
                 onClick={nextTestimonial}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 backdrop-blur-sm"
-                color="white"
-                speed="8s"
-                innerClassName="bg-gray-500/30 hover:bg-gray-500/50 text-gray-300 hover:text-white rounded-full p-3 transition-all duration-300"
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white text-[#061A40] hover:text-[#0A2F6B] rounded-full p-4 transition-all duration-300 shadow-lg hover:shadow-xl z-10"
                 aria-label="Next testimonial"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
                 </svg>
-              </StarBorder>
+              </button>
               
               <div key={currentTestimonial} className="testimonial-transition px-12">
                 <div className="flex star-rating justify-center mb-6">
@@ -162,7 +153,7 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ t }) => {
             </div>
             
             {/* Testimonial Navigation Dots */}
-            <div className="flex justify-center space-x-3">
+            <div className="flex justify-center space-x-3 rtl:space-x-reverse rtl:space-x-0 rtl:gap-3">
               {testimonials.map((_, index) => (
                 <button
                   key={index}

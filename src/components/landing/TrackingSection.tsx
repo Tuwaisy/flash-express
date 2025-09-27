@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Search, Package, MapPin, CheckCircle, Clock, AlertTriangle, Truck } from 'lucide-react';
-import StarBorder from '../common/StarBorder';
 
 interface TrackingSectionProps {
   t: (key: string) => string;
@@ -168,14 +167,10 @@ const TrackingSection: React.FC<TrackingSectionProps> = ({ t }) => {
                         />
                     </div>
                 </div>
-                <StarBorder
-                  as="button"
+                <button
                   type="submit"
                   disabled={isLoading}
-                  className="tracking-button w-full disabled:opacity-50"
-                  color="#FFD000"
-                  speed="3s"
-                  innerClassName="px-8 py-4 text-lg font-bold bg-[#FFD000] text-[#061A40] flex items-center justify-center space-x-2 hover:bg-[#e6bb00]"
+                  className="tracking-button w-full disabled:opacity-50 px-8 py-4 text-lg font-bold bg-[#FFD000] text-[#061A40] flex items-center justify-center space-x-2 hover:bg-[#e6bb00] rounded-xl transition-colors duration-300"
                 >
                   {isLoading ? (
                     <div className="loading-spinner w-6 h-6 border-2 border-[#061A40] border-t-transparent rounded-full"></div>
@@ -185,7 +180,7 @@ const TrackingSection: React.FC<TrackingSectionProps> = ({ t }) => {
                       <span>{t('trackButton')}</span>
                     </>
                   )}
-                </StarBorder>
+                </button>
               </form>
               
               {trackingResult && (

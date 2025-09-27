@@ -26,20 +26,125 @@ const BarcodeScanner: React.FC = () => {
     const [scanResult, setScanResult] = useState<BarcodeScannedResult | null>(null);
     const [loading, setLoading] = useState(false);
     const [scanHistory, setScanHistory] = useState<any[]>([]);
+    const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+    const [permissionError, setPermissionError] = useState<string | null>(null);
+    const [isRequestingPermission, setIsRequestingPermission] = useState(false);
 
     useEffect(() => {
         // Load recent scan history
         loadScanHistory();
+        // Don't auto-request permission on load for iOS compatibility
+        checkCameraAvailability();
     }, []);
+
+    const checkCameraAvailability = () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            setHasPermission(false);
+            setPermissionError('Camera not supported on this device');
+            return;
+        }
+        // Set initial state as null - requiring user action to request permission
+        setHasPermission(null);
+    };
+
+    const requestCameraPermission = async () => {
+        setIsRequestingPermission(true);
+        setPermissionError(null);
+        
+        try {
+            console.log('🔒 Requesting camera permission for iOS/mobile device...');
+            
+            // iPhone Safari optimized camera constraints
+            const iOSConstraints = {
+                video: {
+                    facingMode: { ideal: 'environment', exact: undefined },
+                    width: { min: 320, ideal: 640, max: 1920 },
+                    height: { min: 240, ideal: 480, max: 1080 },
+                    aspectRatio: { ideal: 1.333 }
+                }
+            };
+
+            console.log('📱 Attempting camera access with iOS constraints:', iOSConstraints);
+            const stream = await navigator.mediaDevices.getUserMedia(iOSConstraints);
+            
+            // Test successful, stop the stream
+            stream.getTracks().forEach(track => {
+                console.log('🎥 Camera track obtained:', track.getSettings());
+                track.stop();
+            });
+
+            console.log('✅ iPhone camera permission granted successfully');
+            setHasPermission(true);
+            setPermissionError(null);
+            
+            // Small delay to ensure state is updated before scanning
+            setTimeout(() => {
+                console.log('🚀 Starting scanner after permission success...');
+                setIsScanning(true);
+            }, 500);
+            
+        } catch (error: any) {
+            console.error('❌ iPhone camera permission failed:', error.name, error.message);
+            console.error('Full error details:', error);
+            setHasPermission(false);
+            
+            let errorMessage = '';
+            
+            switch (error.name) {
+                case 'NotAllowedError':
+                    errorMessage = 'Camera permission denied. For iPhone Safari:\n• Tap the camera icon in the address bar\n• Select "Allow" for camera access\n• Then tap "Try Again" below';
+                    break;
+                case 'NotFoundError':
+                    errorMessage = 'No camera found on this device.';
+                    break;
+                case 'NotSupportedError':
+                case 'NotReadableError':
+                    errorMessage = 'Camera is not supported or in use by another application.';
+                    break;
+                case 'OverconstrainedError':
+                    errorMessage = 'Camera constraints not supported. Trying with basic settings...';
+                    // Try again with basic constraints for iOS Safari compatibility
+                    try {
+                        console.log('Retrying with iOS-compatible constraints...');
+                        const basicStream = await navigator.mediaDevices.getUserMedia({ 
+                            video: { 
+                                facingMode: 'environment',
+                                width: { ideal: 640 },
+                                height: { ideal: 480 }
+                            } 
+                        });
+                        basicStream.getTracks().forEach(track => track.stop());
+                        console.log('✅ iOS-compatible camera access successful');
+                        setHasPermission(true);
+                        setPermissionError(null);
+                        setTimeout(() => setIsScanning(true), 500);
+                        setIsRequestingPermission(false);
+                        return;
+                    } catch (basicError) {
+                        console.error('iOS-compatible camera request failed:', basicError);
+                        errorMessage = 'Camera access failed. Please enable camera permissions in Safari Settings > Camera.';
+                    }
+                    break;
+                case 'SecurityError':
+                    errorMessage = 'Camera access blocked. Please use HTTPS or enable camera access in browser settings.';
+                    break;
+                case 'AbortError':
+                    errorMessage = 'Camera request cancelled. Please try again and allow camera access.';
+                    break;
+                default:
+                    errorMessage = `Camera error: ${error.message || 'Please enable camera access in your browser settings'}`;
+            }
+            
+            console.error('Setting permission error:', errorMessage);
+            setPermissionError(errorMessage);
+        } finally {
+            setIsRequestingPermission(false);
+        }
+    };
 
     const loadScanHistory = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch('/api/barcode/history?limit=10', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            const response = await fetch('/api/barcode/history?limit=10');
             if (response.ok) {
                 const data = await response.json();
                 setScanHistory(data.scans);
@@ -56,12 +161,10 @@ const BarcodeScanner: React.FC = () => {
         setIsScanning(false);
         
         try {
-            const token = localStorage.getItem('token');
             const response = await fetch('/api/barcode/scan', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     barcode: result.trim(),
@@ -121,32 +224,88 @@ const BarcodeScanner: React.FC = () => {
     };
 
     return (
-        <div className="card max-w-4xl mx-auto">
+        <div className="card max-w-4xl mx-auto mobile-safe-area">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4 md:mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-foreground">Barcode Scanner</h1>
-                    <p className="text-muted-foreground">
+                    <h1 className="text-xl md:text-2xl font-bold text-foreground">Barcode Scanner</h1>
+                    <p className="text-sm text-muted-foreground">
                         {currentUser ? currentUser.name : 'Courier Scanner'}
                     </p>
                 </div>
-                <Package className="h-8 w-8 text-primary" />
+                <Package className="h-6 w-6 md:h-8 md:w-8 text-primary flex-shrink-0" />
             </div>
 
             {/* Scanner Section */}
-            <div className="bg-secondary rounded-lg p-6 mb-6">
-                {!isScanning ? (
+            <div className="bg-secondary rounded-lg p-4 md:p-6 mb-4 md:mb-6">
+                {hasPermission === null && !isRequestingPermission ? (
+                    <div className="text-center">
+                        <div className="mb-6">
+                            <div className="p-4 bg-[#FFD000] rounded-full inline-block mb-4">
+                                <Package className="h-12 w-12 text-[#061A40]" />
+                            </div>
+                            <h3 className="text-xl font-semibold text-foreground mb-2">Camera Access Required</h3>
+                            <p className="text-muted-foreground mb-6">
+                                To scan barcodes, we need access to your device's camera.
+                                <br />
+                                <span className="text-sm">Tap the button below to grant permission.</span>
+                            </p>
+                        </div>
+                        <button
+                            onClick={requestCameraPermission}
+                            disabled={isRequestingPermission}
+                            className="bg-primary text-primary-foreground px-6 py-3 md:px-8 md:py-4 rounded-lg hover:bg-primary/90 transition-colors text-base md:text-lg font-semibold shadow-lg disabled:opacity-50 min-h-[48px] w-full sm:w-auto"
+                        >
+                            <Zap className="h-5 w-5 md:h-6 md:w-6 mr-2 inline" />
+                            Enable Camera Access
+                        </button>
+                    </div>
+                ) : isRequestingPermission ? (
+                    <div className="text-center">
+                        <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                        <p className="text-muted-foreground">Requesting camera access...</p>
+                        <p className="text-sm text-muted-foreground mt-2">
+                            Please allow camera access when prompted by your browser.
+                        </p>
+                    </div>
+                ) : hasPermission === false ? (
+                    <div className="text-center">
+                        <div className="mb-6">
+                            <X className="h-16 w-16 text-red-500 mx-auto mb-4" />
+                            <h3 className="text-xl font-semibold text-red-600 dark:text-red-400 mb-2">Camera Access Denied</h3>
+                            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-4 mb-4">
+                                <p className="text-sm text-red-700 dark:text-red-300">{permissionError}</p>
+                            </div>
+                            <div className="text-sm text-muted-foreground mb-4">
+                                <p className="mb-2"><strong>To fix this:</strong></p>
+                                <ul className="text-left inline-block space-y-1">
+                                    <li>• Tap the camera icon in your browser's address bar</li>
+                                    <li>• Select "Allow" for camera permissions</li>
+                                    <li>• Or go to your browser settings and enable camera access</li>
+                                    <li>• Then tap "Try Again" below</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <button
+                            onClick={requestCameraPermission}
+                            disabled={isRequestingPermission}
+                            className="bg-primary text-primary-foreground px-4 py-3 md:px-6 md:py-3 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 min-h-[48px] w-full sm:w-auto"
+                        >
+                            {isRequestingPermission ? 'Requesting...' : 'Try Again'}
+                        </button>
+                    </div>
+                ) : !isScanning ? (
                     <div className="text-center">
                         <button
                             onClick={() => setIsScanning(true)}
                             disabled={loading}
-                            className="bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors flex items-center mx-auto disabled:opacity-50"
+                            className="bg-primary text-primary-foreground px-6 py-3 md:px-8 md:py-4 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center mx-auto disabled:opacity-50 text-base md:text-lg font-semibold shadow-lg min-h-[48px] w-full sm:w-auto"
                         >
-                            <Zap className="h-5 w-5 mr-2" />
+                            <Zap className="h-5 w-5 md:h-6 md:w-6 mr-2" />
                             {loading ? 'Processing...' : 'Start Scanning'}
                         </button>
-                        <p className="text-sm text-muted-foreground mt-2">
-                            Point your camera at the shipment barcode
+                        <p className="text-sm text-muted-foreground mt-3">
+                            Point your camera at the shipment barcode to update its status
                         </p>
                     </div>
                 ) : (
@@ -155,25 +314,42 @@ const BarcodeScanner: React.FC = () => {
                             <Scanner
                                 onScan={(result) => {
                                     if (result && result.length > 0) {
-                                        handleScan(result[0]?.rawValue || '');
+                                        const scannedValue = result[0]?.rawValue || '';
+                                        console.log('Barcode scanned:', scannedValue);
+                                        handleScan(scannedValue);
                                     }
                                 }}
                                 onError={handleError}
                                 components={{
-                                    finder: true
+                                    finder: true,
+                                    torch: true
+                                }}
+                                constraints={{
+                                    facingMode: { ideal: 'environment' },
+                                    width: { ideal: 1280 },
+                                    height: { ideal: 720 }
                                 }}
                                 styles={{
-                                    container: { width: '100%', height: '300px' },
+                                    container: { 
+                                        width: '100%', 
+                                        height: '250px',
+                                        minHeight: '250px',
+                                        borderRadius: '8px'
+                                    },
                                 }}
+                                formats={['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8']}
                             />
                         </div>
-                        <div className="mt-4 text-center">
+                        <div className="mt-3 md:mt-4 text-center space-y-2">
                             <button
                                 onClick={() => setIsScanning(false)}
-                                className="text-muted-foreground hover:text-foreground px-4 py-2 rounded-lg border border-border"
+                                className="text-muted-foreground hover:text-foreground px-4 py-2 md:px-6 md:py-3 rounded-lg border border-border hover:bg-accent transition-colors min-h-[44px] w-full sm:w-auto"
                             >
                                 Cancel Scanning
                             </button>
+                            <p className="text-xs text-muted-foreground">
+                                Position the barcode within the square frame
+                            </p>
                         </div>
                     </div>
                 )}
@@ -214,39 +390,35 @@ const BarcodeScanner: React.FC = () => {
             )}
 
             {/* Recent Scans */}
-            <div className="bg-card border border-border rounded-lg">
-                <div className="p-4 border-b border-border">
-                    <h2 className="text-lg font-semibold text-card-foreground flex items-center">
-                        <Clock className="h-5 w-5 mr-2 text-primary" />
+            <div className="bg-card border border-border rounded-lg mobile-safe-area">
+                <div className="p-3 md:p-4 border-b border-border">
+                    <h2 className="text-base md:text-lg font-semibold text-card-foreground flex items-center">
+                        <Clock className="h-4 w-4 md:h-5 md:w-5 mr-2 text-primary" />
                         Recent Scans
                     </h2>
                 </div>
                 <div className="divide-y divide-border">
-                    {scanHistory.map((scan) => (
-                        <div key={scan.id} className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="font-medium text-card-foreground">{scan.shipmentId}</p>
-                                    <p className="text-sm text-muted-foreground">{scan.recipientName}</p>
+                    {scanHistory.length > 0 ? scanHistory.map((scan) => (
+                        <div key={scan.id} className="p-3 md:p-4">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-card-foreground truncate">{scan.shipmentId}</p>
+                                    <p className="text-sm text-muted-foreground truncate">{scan.recipientName}</p>
                                     <p className="text-xs text-muted-foreground">
                                         {scan.previousStatus} → {scan.newStatus}
                                     </p>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-sm text-card-foreground">
+                                <div className="text-right flex-shrink-0">
+                                    <p className="text-xs text-muted-foreground">
                                         {formatTime(scan.scannedAt)}
                                     </p>
-                                    <div className="flex items-center mt-1">
-                                        <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
-                                        <span className="text-xs text-green-600 dark:text-green-400">Completed</span>
-                                    </div>
                                 </div>
                             </div>
                         </div>
-                    ))}
-                    {scanHistory.length === 0 && (
-                        <div className="p-8 text-center text-muted-foreground">
-                            No recent scans found
+                    )) : (
+                        <div className="p-6 text-center text-muted-foreground">
+                            <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No scans yet</p>
                         </div>
                     )}
                 </div>

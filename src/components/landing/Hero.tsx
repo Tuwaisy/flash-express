@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowRight, Zap, Truck, Clock } from 'lucide-react';
-import StarBorder from '../common/StarBorder';
 
 interface HeroProps {
   t: (key: string) => string;
@@ -45,12 +44,8 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
               </p>
               
               <div className="will-animate flex flex-col sm:flex-row gap-6 justify-center items-center hero-cta">
-                <StarBorder
-                  as="button"
-                  color="#FFD000"
-                  speed="4s"
-                  className="pulse-glow"
-                  innerClassName="bg-[#FFD000] text-[#061A40] px-8 py-4 text-xl font-bold hover:bg-[#e6bb00] transition-all duration-300 flex items-center group"
+                <button
+                  className="bg-[#FFD000] text-[#061A40] px-8 py-4 text-xl font-bold hover:bg-[#e6bb00] transition-all duration-300 flex items-center group rounded-lg shadow-lg hover:shadow-xl pulse-glow"
                   onClick={() => {
                     const element = document.getElementById('pricing');
                     if (element) {
@@ -63,13 +58,10 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
                 >
                   {t('heroCTA')}
                   <ArrowRight className="ml-2 h-6 w-6 group-hover:translate-x-1 transition-transform" />
-                </StarBorder>
+                </button>
                 
-                <StarBorder
-                  as="button"
-                  color="cyan"
-                  speed="5s"
-                  innerClassName="border-2 border-[#FFD000] bg-transparent text-[#FFD000] px-8 py-4 text-xl font-bold hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300"
+                <button
+                  className="border-2 border-[#FFD000] bg-transparent text-[#FFD000] px-8 py-4 text-xl font-bold hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300 rounded-lg"
                   onClick={() => {
                     const element = document.getElementById('about');
                     if (element) {
@@ -81,7 +73,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
                   }}
                 >
                   {t('learnMore')}
-                </StarBorder>
+                </button>
               </div>
               
               {/* Stats */}

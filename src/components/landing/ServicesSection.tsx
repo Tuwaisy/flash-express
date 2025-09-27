@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PackageCheck, Truck, Shield, Clock, Star, Users } from 'lucide-react';
-import StarBorder from '../common/StarBorder';
 
 interface ServicesSectionProps {
   t: (key: string) => string;
@@ -80,19 +79,15 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ t }) => {
             {/* Service Tabs */}
             <div className="flex flex-col md:flex-row justify-center mb-12 space-y-4 md:space-y-0 md:space-x-4">
               {services.map((service, index) => (
-                <StarBorder
+                <button
                   key={service.id}
-                  as="button"
-                  className={`service-tab w-full md:w-auto will-animate ${isVisible ? 'slide-in-visible' : ''}`}
-                  style={{ animationDelay: `${0.3 + index * 0.1}s` }}
-                  onClick={() => setActiveTab(index)}
-                  color={activeTab === index ? "#FFD000" : "cyan"}
-                  speed={activeTab === index ? "3s" : "5s"}
-                  innerClassName={`p-6 text-left ${
+                  className={`service-tab w-full md:w-auto will-animate rounded-lg transition-all duration-300 ${isVisible ? 'slide-in-visible' : ''} ${
                     activeTab === index
                       ? 'active bg-white text-[#061A40] shadow-2xl'
                       : 'bg-white/10 text-white hover:bg-white/20'
-                  }`}
+                  } p-6 text-left`}
+                  style={{ animationDelay: `${0.3 + index * 0.1}s` }}
+                  onClick={() => setActiveTab(index)}
                 >
                   <div className="flex items-center space-x-3 mb-2">
                     <div className={`floating-icon ${activeTab === index ? 'text-[#061A40]' : 'text-[#FFD000]'}`}>
@@ -103,7 +98,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ t }) => {
                   <p className={`text-sm ${activeTab === index ? 'text-[#061A40]/80' : 'text-gray-300'}`}>
                     {service.description.substring(0, 60)}...
                   </p>
-                </StarBorder>
+                </button>
               ))}
             </div>
             

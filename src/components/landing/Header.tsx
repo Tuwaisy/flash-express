@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Zap, Menu, X, Package } from 'lucide-react';
-import StarBorder from '../common/StarBorder';
 
 interface HeaderProps {
   currentLang: string;
@@ -99,28 +98,22 @@ const Header: React.FC<HeaderProps> = ({ currentLang, setLanguage, t }) => {
 
             {/* Right side buttons - Login, Language, and Track Shipment */}
             <div className="hidden md:flex items-center gap-x-3">
-              <a href="/app.html" className="px-4 py-2 rounded-lg text-sm border border-white/60 text-white/80 hover:bg-white/10 hover:text-white transition-all duration-300 font-medium">
+              <a href="/app.html" className="px-4 py-2 rounded-lg text-sm border border-white/60 text-white/80 hover:bg-white/10 hover:text-white transition-all duration-300 font-medium min-h-[44px] flex items-center">
                 {t('navLogin')}
               </a>
-              <StarBorder
-                as="button"
+              <button
                 onClick={() => setLanguage(currentLang === 'en' ? 'ar' : 'en')}
-                color="cyan"
-                speed="4s"
-                innerClassName="px-4 py-2 border border-[#FFD000] bg-transparent text-[#FFD000] hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300 font-medium text-sm"
+                className="px-4 py-2 border border-[#FFD000] bg-transparent text-[#FFD000] hover:bg-[#FFD000] hover:text-[#061A40] transition-all duration-300 font-medium text-sm rounded-lg min-h-[44px]"
               >
                 {currentLang === 'en' ? 'AR' : 'EN'}
-              </StarBorder>
-              <StarBorder
-                as="button"
+              </button>
+              <button
                 onClick={() => scrollToSection('tracking')}
-                color="#FFD000"
-                speed="3s"
-                innerClassName="bg-[#FFD000] text-[#061A40] px-4 py-2 font-medium text-sm hover:bg-[#e6bb00] transition-all duration-300 flex items-center gap-2"
+                className="bg-[#FFD000] text-[#061A40] px-4 py-2 font-medium text-sm hover:bg-[#e6bb00] transition-all duration-300 flex items-center gap-2 rounded-lg min-h-[44px]"
               >
                 <Package className="h-4 w-4" />
                 {t('navTrackShipment')}
-              </StarBorder>
+              </button>
             </div>
 
             {/* Mobile Menu Button */}
@@ -150,29 +143,22 @@ const Header: React.FC<HeaderProps> = ({ currentLang, setLanguage, t }) => {
                   </button>
                 ))}
                 <div className="pt-4 border-t border-white/20">
-                  <StarBorder
-                    as="button"
+                  <button
                     onClick={() => scrollToSection('tracking')}
-                    className="w-full mb-4"
-                    color="#FFD000"
-                    speed="3s"
-                    innerClassName="w-full bg-[#FFD000] text-[#061A40] px-6 py-3 font-semibold text-center"
+                    className="w-full mb-4 bg-[#FFD000] text-[#061A40] px-6 py-3 font-semibold text-center rounded-lg min-h-[44px] flex items-center justify-center"
                   >
                     {t('navTrackShipment')}
-                  </StarBorder>
+                  </button>
                   <div className="flex space-x-4">
-                    <a href="/app.html" className="flex-1 text-center bg-transparent border border-white/80 text-white/80 px-6 py-3 rounded-lg font-semibold">
+                    <a href="/app.html" className="flex-1 text-center bg-transparent border border-white/80 text-white/80 px-6 py-3 rounded-lg font-semibold min-h-[44px] flex items-center justify-center">
                       {t('navLogin')}
                     </a>
-                    <StarBorder
-                      as="button"
+                    <button
                       onClick={() => setLanguage(currentLang === 'en' ? 'ar' : 'en')}
-                      color="cyan"
-                      speed="5s"
-                      innerClassName="px-6 py-3 border border-[#FFD000] bg-transparent text-[#FFD000] font-semibold"
+                      className="px-6 py-3 border border-[#FFD000] bg-transparent text-[#FFD000] font-semibold rounded-lg min-h-[44px] flex items-center justify-center"
                     >
                       {currentLang === 'en' ? 'AR' : 'EN'}
-                    </StarBorder>
+                    </button>
                   </div>
                 </div>
               </div>

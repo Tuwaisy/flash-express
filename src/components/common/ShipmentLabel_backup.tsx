@@ -22,8 +22,8 @@ const generateBarcodeSVG = (text: string) => {
     const fullText = `*${text.toUpperCase().replace(/[^A-Z0-9-]/g, '')}*`;
     let path = '';
     let currentX = 0;
-    const barWidth = 1.5;
-    const wideBarWidth = barWidth * 2.5;
+    const barWidth = 2; // Increased width for better scanning
+    const wideBarWidth = barWidth * 3; // Increased wide bar width
     
     for (const char of fullText) {
         const encoding = CODE39_MAP[char];
@@ -34,7 +34,7 @@ const generateBarcodeSVG = (text: string) => {
                 const width = isWide ? wideBarWidth : barWidth;
                 
                 if (isBar) {
-                    path += `M${currentX},0 V60 `;
+                    path += `M${currentX},0 V80 `; // Increased height for better scanning
                 }
                 currentX += width;
             }
@@ -44,17 +44,24 @@ const generateBarcodeSVG = (text: string) => {
     }
 
     return (
-        <svg x="0px" y="0px" viewBox={`0 0 ${currentX} 60`} className="w-full h-12">
-            <path d={path} stroke="#000000" strokeWidth={barWidth} />
+        <svg x="0px" y="0px" viewBox={`0 0 ${currentX} 80`} className="w-full h-16">
+            <path d={path} stroke="#000000" strokeWidth={barWidth} fill="#000000" />
         </svg>
     );
+};
+
+// Simple QR Code generation using a service (for better mobile scanning)
+const generateQRCodeURL = (text: string) => {
+    // Using a simple QR code generation service
+    return `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(text)}`;
 };
 // --- End Barcode Logic ---
 
 export const ShipmentLabel: React.FC<{ shipment: Shipment }> = ({ shipment }) => {
 
     const shippingFee = shipment.clientFlatRateFee || (shipment.price - shipment.packageValue);
-    const serialNumber = shipment.id.split('-').slice(2).join('-');
+    // Use full shipment ID for barcode to ensure scanner can match it
+    const barcodeText = shipment.id;
 
     return (
         <div className="bg-white p-8 border-4 border-dashed border-slate-300 w-full printable-label-container">
@@ -108,9 +115,19 @@ export const ShipmentLabel: React.FC<{ shipment: Shipment }> = ({ shipment }) =>
                              <p className="text-xs uppercase font-bold text-slate-600 mt-4">Package</p>
                              <p>{shipment.packageDescription}{shipment.isLargeOrder && ' (Large Order)'}</p>
                         </div>
-                        <div className="text-center">
-                            {generateBarcodeSVG(serialNumber)}
-                            <p className="font-mono tracking-widest text-sm mt-1">{shipment.id}</p>
+                        <div className="text-center space-y-3">
+                            <div>
+                                {generateBarcodeSVG(barcodeText)}
+                                <p className="font-mono tracking-widest text-sm mt-1">{shipment.id}</p>
+                            </div>
+                            <div className="border-t pt-3">
+                                <img 
+                                    src={generateQRCodeURL(barcodeText)} 
+                                    alt={`QR Code for ${shipment.id}`}
+                                    className="w-20 h-20 mx-auto"
+                                />
+                                <p className="text-xs text-gray-600 mt-1">Scan me!</p>
+                            </div>
                         </div>
                     </div>
                 </footer>

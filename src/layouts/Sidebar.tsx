@@ -37,6 +37,7 @@ const ALL_NAV_ITEMS: NavItemConfig[] = [
     { nameKey: 'nav.myEarnings', icon: <CurrencyDollarIcon />, view: 'courier-financials', permission: Permission.VIEW_COURIER_EARNINGS },
 
     // Assigner
+    { nameKey: 'nav.barcodeScanner', icon: <QrcodeIcon />, view: 'barcode-scanner', permission: Permission.ASSIGN_SHIPMENTS },
     { nameKey: 'nav.deliveredShipments', icon: <PackageIcon />, view: 'delivered-shipments', permission: Permission.VIEW_DELIVERED_SHIPMENTS },
     { nameKey: 'nav.couriersByZone', icon: <MapPinIcon />, view: 'couriers-by-zone', permission: Permission.VIEW_COURIERS_BY_ZONE },
 

@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Phone, MessageCircle, MapPin, Clock, Mail } from 'lucide-react';
-import StarBorder from '../common/StarBorder';
 
 interface ContactSectionProps {
   t: (key: string) => string;
@@ -62,31 +61,23 @@ const ContactSection: React.FC<ContactSectionProps> = ({ t }) => {
                 </div>
                 
                 <div className="space-y-4">
-                  <StarBorder
-                    as="a"
+                  <a
                     href="tel:+201116306013"
-                    className="contact-button w-full shadow-lg"
-                    color="#061A40"
-                    speed="3s"
-                    innerClassName="bg-[#061A40] text-white py-4 px-6 font-bold flex items-center justify-center space-x-3 hover:bg-[#0A2F6B]"
+                    className="contact-button w-full shadow-lg rounded-lg bg-[#061A40] text-white py-4 px-6 font-bold flex items-center justify-center space-x-3 hover:bg-[#0A2F6B] transition-colors duration-300"
                   >
                     <Phone className="h-5 w-5" />
                     <span>{t('contactCall')}</span>
-                  </StarBorder>
+                  </a>
                   
-                  <StarBorder
-                    as="a"
+                  <a
                     href="https://wa.me/201116306013"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="contact-button w-full shadow-lg"
-                    color="green"
-                    speed="4s"
-                    innerClassName="bg-green-500 text-white py-4 px-6 font-bold flex items-center justify-center space-x-3 hover:bg-green-600"
+                    className="contact-button w-full shadow-lg rounded-lg bg-green-500 text-white py-4 px-6 font-bold flex items-center justify-center space-x-3 hover:bg-green-600 transition-colors duration-300"
                   >
                     <MessageCircle className="h-5 w-5" />
                     <span>{t('contactWhatsapp')}</span>
-                  </StarBorder>
+                  </a>
                 </div>
               </div>
               

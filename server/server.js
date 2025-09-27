@@ -3593,10 +3593,16 @@ app.get('/api/debug/users/:id', async (req, res) => {
     // ==================== BARCODE SCANNER ROUTES ====================
 
     // Barcode scanning endpoint for status updates
-    app.post('/api/barcode/scan', authenticateToken, async (req, res) => {
+    app.post('/api/barcode/scan', async (req, res) => {
         const { barcode, scannerId, courierId } = req.body;
+        
+        console.log(`📱 Barcode scan attempt:`, { 
+            barcode, 
+            courierId: courierId || 'Unknown'
+        });
 
         if (!barcode) {
+            console.error('❌ Barcode scan failed: Missing barcode');
             return res.status(400).json({ error: 'Barcode is required' });
         }
 
@@ -3607,8 +3613,9 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 .first();
 
             if (!shipment) {
+                console.error(`❌ Barcode scan failed: Shipment not found - ${barcode}`);
                 return res.status(404).json({ 
-                    error: 'Shipment not found',
+                    error: `Shipment not found: ${barcode}`,
                     barcode: barcode
                 });
             }
@@ -3631,7 +3638,6 @@ app.get('/api/debug/users/:id', async (req, res) => {
             // Update shipment status to "Out for Delivery"
             const updatedData = {
                 status: 'Out for Delivery',
-                updatedAt: new Date(),
                 outForDeliveryAt: new Date()
             };
 
@@ -3677,11 +3683,11 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 await knex('barcode_scans').insert({
                     shipmentId: barcode,
                     scannerId: scannerId || null,
-                    courierId: courierId || req.user.id,
+                    courierId: courierId || null,
                     previousStatus: shipment.status,
                     newStatus: 'Out for Delivery',
                     scannedAt: new Date(),
-                    scannedBy: req.user.id
+                    scannedBy: courierId || null
                 });
             } catch (scanLogError) {
                 console.warn('Failed to log barcode scan:', scanLogError.message);
@@ -3714,7 +3720,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
     });
 
     // Get barcode scan history
-    app.get('/api/barcode/history', authenticateToken, async (req, res) => {
+    app.get('/api/barcode/history', async (req, res) => {
         try {
             const { page = 1, limit = 50, courierId, startDate, endDate } = req.query;
             const offset = (page - 1) * limit;

@@ -154,7 +154,65 @@ export const TrendingUpIcon = ({ className = 'w-6 h-6' }: IconProps) => (
 );
 
 export const QrcodeIcon = ({ className = 'w-6 h-6' }: IconProps) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11v1m-6-16v1m12 11v1M4 12H3m10 6H3m10-12H3m18 12h-1M4 20v-1m0-6V3m0 18v-1M20 4v1m0 12v1M4 4h1m15 15h1M4 8h1m15 7h1m-6-4h.01M12 12h.01M8 12h.01M12 16h.01M16 12h.01M16 16h.01M8 16h.01M12 8h.01M16 8h.01M8 8h.01"></path></svg>
+    <svg className={className} fill="currentColor" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        {/* Main QR Code squares */}
+        <rect x="3" y="3" width="6" height="6" rx="1" stroke="none" />
+        <rect x="15" y="3" width="6" height="6" rx="1" stroke="none" />
+        <rect x="3" y="15" width="6" height="6" rx="1" stroke="none" />
+        
+        {/* Inner squares */}
+        <rect x="4.5" y="4.5" width="3" height="3" rx="0.5" fill="white" />
+        <rect x="16.5" y="4.5" width="3" height="3" rx="0.5" fill="white" />
+        <rect x="4.5" y="16.5" width="3" height="3" rx="0.5" fill="white" />
+        
+        {/* QR pattern dots */}
+        <rect x="11" y="3" width="1" height="1" />
+        <rect x="13" y="3" width="1" height="1" />
+        <rect x="11" y="5" width="1" height="1" />
+        <rect x="13" y="5" width="1" height="1" />
+        <rect x="11" y="7" width="1" height="1" />
+        <rect x="13" y="7" width="1" height="1" />
+        
+        <rect x="3" y="11" width="1" height="1" />
+        <rect x="5" y="11" width="1" height="1" />
+        <rect x="7" y="11" width="1" height="1" />
+        <rect x="9" y="11" width="1" height="1" />
+        
+        <rect x="11" y="11" width="1" height="1" />
+        <rect x="13" y="11" width="1" height="1" />
+        <rect x="15" y="11" width="1" height="1" />
+        <rect x="17" y="11" width="1" height="1" />
+        <rect x="19" y="11" width="1" height="1" />
+        <rect x="21" y="11" width="1" height="1" />
+        
+        <rect x="11" y="13" width="1" height="1" />
+        <rect x="13" y="13" width="1" height="1" />
+        <rect x="15" y="13" width="1" height="1" />
+        <rect x="17" y="13" width="1" height="1" />
+        <rect x="19" y="13" width="1" height="1" />
+        <rect x="21" y="13" width="1" height="1" />
+        
+        <rect x="11" y="15" width="1" height="1" />
+        <rect x="13" y="15" width="1" height="1" />
+        <rect x="15" y="17" width="1" height="1" />
+        <rect x="17" y="17" width="1" height="1" />
+        <rect x="19" y="17" width="1" height="1" />
+        <rect x="21" y="17" width="1" height="1" />
+        
+        <rect x="11" y="19" width="1" height="1" />
+        <rect x="13" y="19" width="1" height="1" />
+        <rect x="15" y="19" width="1" height="1" />
+        <rect x="17" y="19" width="1" height="1" />
+        <rect x="19" y="19" width="1" height="1" />
+        <rect x="21" y="19" width="1" height="1" />
+        
+        <rect x="11" y="21" width="1" height="1" />
+        <rect x="13" y="21" width="1" height="1" />
+        <rect x="15" y="21" width="1" height="1" />
+        <rect x="17" y="21" width="1" height="1" />
+        <rect x="19" y="21" width="1" height="1" />
+        <rect x="21" y="21" width="1" height="1" />
+    </svg>
 );
 
 export const BellIcon = ({ className = 'w-6 h-6' }: IconProps) => (
