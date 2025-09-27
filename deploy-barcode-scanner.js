@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 
 // Deploy barcode scanner table to Railway PostgreSQL
-require('dotenv').config();
-
-const { setupDatabase } = require('./server/db.js');
+import 'dotenv/config';
+import { setupDatabase } from './server/db.js';
 
 async function deployBarcodeScanner() {
     console.log('🚀 Deploying barcode scanner to Railway PostgreSQL...');
@@ -22,7 +21,7 @@ async function deployBarcodeScanner() {
         
         // Test the barcode scanner API endpoints
         console.log('🧪 Testing barcode scanner API endpoints...');
-        const { knex } = require('./server/db.js');
+        const { knex } = await import('./server/db.js');
         
         // Check if barcode_scans table exists and is accessible
         const tableExists = await knex.schema.hasTable('barcode_scans');

@@ -8,10 +8,10 @@
  * 
  * Usage:
  *   1. Ensure DATABASE_URL is set in your Railway environment
- *   2. Run: node deploy-barcode-scanner-railway.js
+ *   2. Run: node deploy-barcode-scanner-railway.cjs
  */
 
-import knex from 'knex';
+const knex = require('knex');
 
 async function deployToRailway() {
     console.log('🚀 Starting Railway PostgreSQL Barcode Scanner Deployment...');
@@ -159,8 +159,8 @@ async function deployToRailway() {
 }
 
 // Handle command line execution
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
     deployToRailway();
 }
 
-export { deployToRailway };
+module.exports = { deployToRailway };

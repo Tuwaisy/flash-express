@@ -19,7 +19,7 @@ Run the Railway deployment script to create the `barcode_scans` table:
 ```bash
 # Option 1: Using environment variable
 export DATABASE_URL="your-railway-postgresql-url"
-node deploy-barcode-scanner-railway.js
+node deploy-barcode-scanner-railway.cjs
 
 # Option 2: Set in Railway dashboard and redeploy
 # Add DATABASE_URL to Railway environment variables
