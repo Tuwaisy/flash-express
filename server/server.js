@@ -181,7 +181,13 @@ async function main() {
         fs.mkdirSync(evidenceDir);
         console.log('Created "uploads/evidence" directory.');
     }
-
+    
+    // Ensure backups directory exists
+    const BACKUP_DIR = path.join(__dirname, '../backups');
+    if (!fs.existsSync(BACKUP_DIR)) {
+        fs.mkdirSync(BACKUP_DIR, { recursive: true });
+        console.log('Created "backups" directory.');
+    }
 
     // Explicitly configure CORS for better proxy compatibility
     app.use(cors({
@@ -2678,15 +2684,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
     });
 
     // --- BACKUP & RESTORE SYSTEM ---
-    const fs = require('fs');
-    const path = require('path');
-    const BACKUP_DIR = path.join(__dirname, '../backups');
     
-    // Ensure backup directory exists
-    if (!fs.existsSync(BACKUP_DIR)) {
-        fs.mkdirSync(BACKUP_DIR, { recursive: true });
-    }
-
     // Helper function to backup database tables
     async function backupDatabase() {
         try {
