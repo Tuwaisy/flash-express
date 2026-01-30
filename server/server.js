@@ -205,10 +205,43 @@ async function main() {
     app.use('/api/', apiLimiter);
 
     // Stricter limiter for auth endpoints
+    // Increase threshold and add a custom handler so legitimate logins (e.g., after wallet updates)
+    // are less likely to be blocked. Make adjustable via env `AUTH_MAX_REQUESTS`.
+    // Auth limiter: prefer rate-limiting by username/email when available
+    // This prevents users behind a NAT (shared IP) from causing global 429s.
+    // Also allow trusted internal IPs or services to skip the limiter via `AUTH_TRUSTED_IPS`
+    const trustedIpsEnv = process.env.AUTH_TRUSTED_IPS || '';
+    const trustedIps = trustedIpsEnv.split(',').map(s => s.trim()).filter(Boolean);
+
     const authLimiter = rateLimit({
-        windowMs: 15 * 60 * 1000,
-        max: 10,
-        message: { error: 'Too many attempts, please try again later.' }
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: Number(process.env.AUTH_MAX_REQUESTS) || 30,
+        standardHeaders: true,
+        legacyHeaders: false,
+        // Skip limiter for trusted internal IPs or when a special internal header is present
+        skip: (req, res) => {
+            try {
+                const remote = (req.headers['x-forwarded-for'] || req.ip || req.connection.remoteAddress || '').toString();
+                if (trustedIps.includes(remote)) return true;
+                if (req.get('x-internal-request') === '1') return true;
+            } catch (e) {
+                // ignore
+            }
+            return false;
+        },
+        // Use email/username when present so we rate-limit per account rather than per IP
+        keyGenerator: (req /*, res*/) => {
+            try {
+                if (req.body && req.body.email) return `user:${String(req.body.email).toLowerCase()}`;
+            } catch (e) {}
+            return (req.headers['x-forwarded-for'] || req.ip || req.connection.remoteAddress || 'unknown').toString();
+        },
+        handler: (req, res /*, next*/) => {
+            const retryAfterSeconds = Math.ceil(15 * 60 / 1);
+            console.warn(`429 - Auth rate limit exceeded for key=${req.ip} UA=${req.get('User-Agent')}`);
+            res.set('Retry-After', String(retryAfterSeconds));
+            res.status(429).json({ error: 'Too many login attempts. Please try again later.' });
+        }
     });
     app.use('/api/login', authLimiter);
     
