@@ -122,7 +122,7 @@ const Wallet = () => {
                                         </div>
                                    </td>
                                    <td className={`px-6 py-4 font-semibold text-right ${
-                                       t.amount >= 0 ? 'text-green-600' : 'text-red-600'
+                                       t.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                                    }`}>
                                        {(Number(t.amount) || 0).toFixed(2)} EGP
                                    </td>
@@ -138,7 +138,7 @@ const Wallet = () => {
             
             <Modal isOpen={isPayoutModalOpen} onClose={() => setPayoutModalOpen(false)} title="Request a Payout">
                 <div className="space-y-4">
-                    <p className="text-foreground">Your current available balance is <strong className="text-green-600">{(Number(availableBalance) || 0).toFixed(2)} EGP</strong>.</p>
+                    <p className="text-foreground">Your current available balance is <strong className="text-green-600 dark:text-green-400">{(Number(availableBalance) || 0).toFixed(2)} EGP</strong>.</p>
                     <div>
                         <label htmlFor="payout-amount" className="block text-sm font-medium text-foreground mb-1">
                             Amount to withdraw (EGP)
