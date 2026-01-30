@@ -25,6 +25,9 @@ const notificationService = require('./services/notifications');
 
 const saltRounds = 10; // For bcrypt hashing
 
+// Backup directory path (module-level constant)
+const BACKUP_DIR = path.join(__dirname, '../backups');
+
 // --- Helper Functions ---
 const generateId = (prefix) => `${prefix}_${Date.now()}${Math.random().toString(36).substring(2, 9)}`;
 
@@ -183,7 +186,6 @@ async function main() {
     }
     
     // Ensure backups directory exists
-    const BACKUP_DIR = path.join(__dirname, '../backups');
     if (!fs.existsSync(BACKUP_DIR)) {
         fs.mkdirSync(BACKUP_DIR, { recursive: true });
         console.log('Created "backups" directory.');
