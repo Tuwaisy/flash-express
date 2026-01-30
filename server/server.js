@@ -925,6 +925,24 @@ app.get('/api/debug/users/:id', async (req, res) => {
             res.status(500).json({ error: 'Server error' });
         }
     });
+
+    // Temporary protected admin endpoint to run historical shipping-fee refunds
+    // Protect with an environment variable ADMIN_SECRET; send via header 'x-admin-secret'
+    app.post('/internal/run-restore-shipping-fees', async (req, res) => {
+        try {
+            const secret = req.get('x-admin-secret');
+            if (!process.env.ADMIN_SECRET || secret !== process.env.ADMIN_SECRET) {
+                return res.status(403).json({ error: 'Forbidden' });
+            }
+            // Run the repair logic
+            const { runRestore } = require('./scripts/restore_shipping_fees');
+            const result = await runRestore();
+            return res.json({ success: true, result });
+        } catch (error) {
+            console.error('Error running restore endpoint:', error);
+            return res.status(500).json({ error: error.message });
+        }
+    });
         app.get('/api/data', async (req, res) => {
             try {
                 // Serve from short-lived cache unless client forces fresh data
