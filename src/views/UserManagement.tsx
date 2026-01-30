@@ -218,6 +218,9 @@ const UserManagement = () => {
             addUser(formData as Omit<User, 'id' | 'publicId'>);
         } else if (mode === 'edit' && selectedUser) {
             updateUser(selectedUser.id, formData);
+        } else if (mode === 'reset' && selectedUser && formData.password) {
+            resetPassword(selectedUser.id, formData.password);
+            return;
         } else if (mode === 'clientEdit' && selectedUser) {
             handleClientUpdate();
             return;
