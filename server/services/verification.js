@@ -412,11 +412,10 @@ class VerificationService {
                     if (shipment.paymentMethod === 'COD') {
                         const packageValue = Number(shipment.packageValue) || 0;
                         const transactions = [
-                            { id: this.generateId('TRN'), userId: client.id, type: 'Deposit', amount: packageValue, date: new Date().toISOString(), description: `Package value collected for delivered shipment ${shipment.id}`, status: 'Processed' },
-                            { id: this.generateId('TRN'), userId: client.id, type: 'Payment', amount: -shippingFee, date: new Date().toISOString(), description: `Shipping fee for delivered shipment ${shipment.id}`, status: 'Processed' }
+                            { id: this.generateId('TRN'), userId: client.id, type: 'Deposit', amount: packageValue, date: new Date().toISOString(), description: `Package value collected for delivered shipment ${shipment.id}`, status: 'Processed' }
                         ];
                         await trx('client_transactions').insert(transactions);
-                        walletChange = packageValue - shippingFee;
+                        walletChange = packageValue; // Do not deduct shipping fee from client on COD
                     } else if (shipment.paymentMethod === 'Transfer') {
                         const amountToCollect = Number(shipment.amountToCollect) || 0;
                         if (amountToCollect > 0) {

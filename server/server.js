@@ -647,20 +647,25 @@ async function main() {
             let walletChange = 0;
             
             if (shipment.paymentMethod === 'COD') {
-                // For COD: Credit package value collected, deduct shipping fee
+                // For COD: Credit package value collected. Shipping fee should NOT be deducted from client wallet.
                 const packageValue = Number(shipment.packageValue) || 0;
                 const transactions = [];
-                
-                // Always credit package value (even if 0) and deduct shipping fee
-                transactions.push(
-                    { id: generateId('TRN'), userId: client.id, type: 'Deposit', amount: packageValue, date: new Date().toISOString(), description: `Package value collected for delivered shipment ${shipment.id}`, status: 'Processed' },
-                    { id: generateId('TRN'), userId: client.id, type: 'Payment', amount: -shippingFee, date: new Date().toISOString(), description: `Shipping fee for delivered shipment ${shipment.id}`, status: 'Processed' }
-                );
-                
+
+                // Only credit package value collected from recipient
+                transactions.push({
+                    id: generateId('TRN'),
+                    userId: client.id,
+                    type: 'Deposit',
+                    amount: packageValue,
+                    date: new Date().toISOString(),
+                    description: `Package value collected for delivered shipment ${shipment.id}`,
+                    status: 'Processed'
+                });
+
                 await trx('client_transactions').insert(transactions);
-                walletChange = packageValue - shippingFee;
-                console.log(`💳 COD delivery: Client ${client.id} wallet change: +${packageValue} - ${shippingFee} = ${walletChange.toFixed(2)} EGP`);
-                
+                walletChange = packageValue; // Do not subtract shipping fee here
+                console.log(`💳 COD delivery: Client ${client.id} wallet change: +${packageValue.toFixed(2)} EGP (shipping fee NOT deducted)`);
+
                 // Update stored wallet balance
                 await updateClientWalletBalance(trx, client.id);
             } else if (shipment.paymentMethod === 'Transfer') {
