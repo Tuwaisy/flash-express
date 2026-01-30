@@ -2815,8 +2815,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 
                 if (!existingEmails.includes('admin@shuhna.net')) {
                     missingUsers.push({
-                        firstName: 'Admin',
-                        lastName: 'User',
+                        name: 'Admin User',
                         email: 'admin@shuhna.net',
                         password: 'password123', // Will be hashed by the system
                         phone: '+201000000000',
@@ -2828,8 +2827,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 
                 if (!existingEmails.includes('testcourier@flash.com')) {
                     missingUsers.push({
-                        firstName: 'Test',
-                        lastName: 'Courier',
+                        name: 'Test Courier',
                         email: 'testcourier@flash.com',
                         password: 'password123',
                         phone: '+201000000001',
@@ -2841,8 +2839,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 
                 if (!existingEmails.includes('testclient@flash.com')) {
                     missingUsers.push({
-                        firstName: 'Test',
-                        lastName: 'Client',
+                        name: 'Test Client',
                         email: 'testclient@flash.com',
                         password: 'password123',
                         phone: '+201000000002',
@@ -2951,7 +2948,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     client_transactions: await knex('client_transactions').count('id as count').first(),
                     notifications: await knex('notifications').count('id as count').first(),
                     courier_stats: await knex('courier_stats').count('courierId as count').first(),
-                    essential_users: await knex('users').whereIn('email', essentialEmails).select('id', 'email', 'firstName', 'lastName', 'roles')
+                    essential_users: await knex('users').whereIn('email', essentialEmails).select('id', 'email', 'name', 'roles')
                 };
                 
                 console.log('✅ COMPLETE DATABASE RESET FINISHED');
