@@ -529,9 +529,9 @@ async function main() {
                 case 'Waiting for Packaging':
                 case 'Packaged and Waiting for Assignment':
                     // Template 1: Order Received (sent to CLIENT who placed the order)
-                    if (whatsappService.isAvailable() && client.phone) {
+                    if (whatsAppService.isAvailable() && client.phone) {
                         const clientFirstName = client.name ? client.name.split(' ')[0] : 'عميلنا الكريم';
-                        await whatsappService.sendOrderReceived(
+                        await whatsAppService.sendOrderReceived(
                             shipment.id, 
                             client.phone, // Send to CLIENT's phone, not recipient's phone
                             clientFirstName,
@@ -542,8 +542,8 @@ async function main() {
                     break;
                 case 'Out for Delivery':
                     // Template 2: Out for Delivery
-                    if (whatsappService.isAvailable()) {
-                        await whatsappService.sendOutForDelivery(
+                    if (whatsAppService.isAvailable()) {
+                        await whatsAppService.sendOutForDelivery(
                             shipment.id, 
                             shipment.recipientPhone, 
                             firstName
@@ -553,8 +553,8 @@ async function main() {
                     break;
                 default:
                     // For other statuses, use legacy method
-                    if (whatsappService.isAvailable()) {
-                        await whatsappService.sendStatusUpdate(
+                    if (whatsAppService.isAvailable()) {
+                        await whatsAppService.sendStatusUpdate(
                             shipment.id, 
                             shipment.recipientPhone, 
                             firstName, 
@@ -1828,6 +1828,27 @@ app.get('/api/debug/users/:id', async (req, res) => {
             if (!shipment) return res.status(404).json({ error: "Shipment not found." });
             if (!shipment.recipientPhone) return res.status(400).json({ error: "Recipient phone number not available for this shipment." });
 
+            // Check if too many attempts in short time (rate limiting)
+            const recentAttempts = await knex('delivery_verification_attempts')
+                .where({ shipmentId: id })
+                .where('created_at', '>', new Date(Date.now() - 60000)) // Last 60 seconds
+                .count('* as count')
+                .first();
+
+            if (recentAttempts.count >= 3) {
+                return res.status(429).json({ 
+                    error: 'Too many attempts',
+                    message: 'Please wait before requesting another code. (Maximum 3 attempts per minute)',
+                    retryAfter: 60
+                });
+            }
+
+            // Log the attempt
+            await knex('delivery_verification_attempts').insert({
+                shipmentId: id,
+                created_at: new Date()
+            });
+
             // Use verification service to send delivery code
             const result = await verificationService.sendDeliveryVerificationCode(
                 id, 
@@ -1841,18 +1862,33 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 res.json({ 
                     success: true, 
                     message: result.message,
-                    channel: result.channel
+                    channel: result.channel,
+                    codeExpiresIn: 600 // 10 minutes in seconds
                 });
             } else {
-                // Return 400 instead of 500 for verification service failures
-                console.error('Verification service failed:', result.error || 'Unknown error', result);
-                res.status(400).json({ 
-                    error: result.error || 'Failed to send delivery code',
-                    message: result.error || 'Could not send verification code. Please try again or contact support.',
-                    details: {
-                        whatsappResult: result.whatsappResult,
-                        smsResult: result.smsResult
-                    }
+                // Provide more detailed error information
+                const errorMessage = result.error || 'Failed to send delivery code';
+                let statusCode = 400;
+                let userMessage = 'Could not send verification code. Please try again or contact support.';
+
+                // Check if error is due to service limits
+                if (errorMessage.includes('exceeded') || errorMessage.includes('limit')) {
+                    statusCode = 503; // Service Unavailable
+                    userMessage = 'Verification service is temporarily unavailable due to rate limits. Please try again in a few moments.';
+                } else if (errorMessage.includes('invalid') || errorMessage.includes('format')) {
+                    statusCode = 400;
+                    userMessage = 'Invalid phone number. Please check the recipient\'s phone number.';
+                }
+
+                console.error('Verification service failed:', errorMessage, result);
+                res.status(statusCode).json({ 
+                    error: errorMessage,
+                    message: userMessage,
+                    serviceStatus: {
+                        whatsapp: result.whatsappResult?.success ? 'available' : 'unavailable',
+                        sms: result.smsResult?.success ? 'available' : 'unavailable'
+                    },
+                    retryAfter: statusCode === 503 ? 60 : undefined
                 });
             }
             throttledDataUpdate();
@@ -1873,9 +1909,33 @@ app.get('/api/debug/users/:id', async (req, res) => {
         if (!id || !code) {
             return res.status(400).json({ error: 'Shipment ID and code are required' });
         }
+
+        // Validate code format
+        if (code.length !== 6 || !/^\d+$/.test(code)) {
+            return res.status(400).json({ 
+                error: 'Invalid code format',
+                message: 'Verification code must be a 6-digit number'
+            });
+        }
         
         try {
             console.log(`🔍 Verifying delivery code for shipment ${id}`);
+            
+            // Check attempt count
+            const attempts = await knex('delivery_verification_attempts')
+                .where({ shipmentId: id })
+                .where('created_at', '>', new Date(Date.now() - 300000)) // Last 5 minutes
+                .count('* as count')
+                .first();
+
+            if (attempts.count > 5) {
+                return res.status(429).json({ 
+                    error: 'Too many verification attempts',
+                    message: 'Please wait before trying again. (Maximum 5 attempts per 5 minutes)',
+                    retryAfter: 300
+                });
+            }
+
             const result = await verificationService.verifyDeliveryCode(id, code);
             
             if (result.success) {
@@ -1896,17 +1956,41 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 
                 res.json({ 
                     success: true, 
-                    message: result.message 
+                    message: result.message || 'Delivery verified successfully'
                 });
             } else {
+                // Log failed attempt
+                await knex('delivery_verification_attempts').insert({
+                    shipmentId: id,
+                    created_at: new Date()
+                });
+
                 console.warn(`❌ Delivery code verification failed for shipment ${id}: ${result.error}`);
-                res.status(400).json({ 
-                    error: result.error 
+                
+                let statusCode = 400;
+                let userMessage = 'Verification failed. Please check your code and try again.';
+
+                if (result.error?.includes('expired')) {
+                    statusCode = 410; // Gone
+                    userMessage = 'Your verification code has expired. Please request a new one.';
+                } else if (result.error?.includes('not found')) {
+                    userMessage = 'Code not found. Please check the code you entered.';
+                } else if (result.error?.includes('attempts')) {
+                    statusCode = 429; // Too Many Requests
+                    userMessage = 'Too many failed attempts. Please request a new code.';
+                }
+
+                res.status(statusCode).json({ 
+                    error: result.error,
+                    message: userMessage
                 });
             }
         } catch (error) {
             console.error('Delivery code verification error:', error);
-            res.status(500).json({ error: 'Failed to verify delivery code.' });
+            res.status(500).json({ 
+                error: 'Failed to verify delivery code',
+                message: 'An unexpected error occurred. Please try again later.'
+            });
         }
     });
 
@@ -1929,18 +2013,36 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     message: result.message,
                     verificationId: result.verificationId,
                     channel: result.channel,
-                    expiresAt: result.expiresAt
+                    expiresAt: result.expiresAt,
+                    codeExpiresIn: 600 // 10 minutes in seconds
                 });
             } else {
-                res.status(400).json({
+                // Determine appropriate HTTP status code
+                let statusCode = 400;
+                let userMessage = result.error || 'Could not send verification code';
+
+                if (result.error?.includes('exceeded') || result.error?.includes('limit')) {
+                    statusCode = 503; // Service Unavailable
+                    userMessage = 'Verification service is temporarily unavailable. Please try again in a few moments.';
+                } else if (result.error?.includes('wait')) {
+                    statusCode = 429; // Too Many Requests
+                    userMessage = result.error;
+                }
+
+                res.status(statusCode).json({
                     success: false,
                     error: result.error,
-                    cooldownRemaining: result.cooldownRemaining
+                    message: userMessage,
+                    cooldownRemaining: result.cooldownRemaining,
+                    retryAfter: statusCode === 429 ? Math.ceil(result.cooldownRemaining / 1000) : (statusCode === 503 ? 60 : undefined)
                 });
             }
         } catch (error) {
             console.error('Send verification code error:', error);
-            res.status(500).json({ error: 'Failed to send verification code' });
+            res.status(500).json({ 
+                error: 'Failed to send verification code',
+                message: 'An unexpected error occurred. Please try again later.'
+            });
         }
     });
 
@@ -1953,24 +2055,50 @@ app.get('/api/debug/users/:id', async (req, res) => {
         }
 
         try {
+            // Validate code format
+            if (code.length !== 6 || !/^\d+$/.test(code)) {
+                return res.status(400).json({ 
+                    error: 'Invalid code format',
+                    message: 'Verification code must be a 6-digit number'
+                });
+            }
+
             const result = await verificationService.verifyCode(phone, code, purpose);
             
             if (result.success) {
                 res.json({
                     success: true,
-                    message: result.message,
+                    message: result.message || 'Code verified successfully',
                     verificationId: result.verificationId,
                     metadata: result.metadata
                 });
             } else {
-                res.status(400).json({
+                // Provide specific error information
+                let statusCode = 400;
+                let userMessage = 'Verification failed. Please check your code and try again.';
+
+                if (result.error?.includes('expired')) {
+                    statusCode = 410; // Gone
+                    userMessage = 'Your verification code has expired. Please request a new one.';
+                } else if (result.error?.includes('not found')) {
+                    userMessage = 'Code not found. Please check the code you entered.';
+                } else if (result.error?.includes('attempts')) {
+                    statusCode = 429; // Too Many Requests
+                    userMessage = 'Too many failed attempts. Please request a new code.';
+                }
+
+                res.status(statusCode).json({
                     success: false,
-                    error: result.error
+                    error: result.error,
+                    message: userMessage
                 });
             }
         } catch (error) {
             console.error('Verify code error:', error);
-            res.status(500).json({ error: 'Failed to verify code' });
+            res.status(500).json({ 
+                error: 'Verification failed',
+                message: 'An unexpected error occurred. Please try again later.'
+            });
         }
     });
 
@@ -2013,6 +2141,66 @@ app.get('/api/debug/users/:id', async (req, res) => {
     // Get WhatsApp and SMS service status
     app.get('/api/verification/status', (req, res) => {
         res.json(verificationService.getStatus());
+    });
+
+    // Enhanced verification service health check
+    app.get('/api/verification/health', async (req, res) => {
+        try {
+            const whatsappStatus = whatsAppService.getStatus();
+            
+            // Check verification table for recent activity
+            const recentVerifications = await knex('verifications')
+                .where('created_at', '>', new Date(Date.now() - 3600000)) // Last hour
+                .count('* as count')
+                .first();
+
+            const recentDeliveryVerifications = await knex('delivery_verifications')
+                .where('created_at', '>', new Date(Date.now() - 3600000)) // Last hour
+                .count('* as count')
+                .first();
+
+            const failedAttempts = await knex('delivery_verifications')
+                .where('created_at', '>', new Date(Date.now() - 3600000))
+                .where('verified', false)
+                .count('* as count')
+                .first();
+
+            const health = {
+                status: whatsappStatus.enabled ? 'healthy' : 'degraded',
+                timestamp: new Date().toISOString(),
+                services: {
+                    whatsapp: {
+                        enabled: whatsappStatus.enabled,
+                        provider: whatsappStatus.provider
+                    },
+                    verification_database: {
+                        accessible: true,
+                        recentVerifications: recentVerifications?.count || 0,
+                        recentDeliveryVerifications: recentDeliveryVerifications?.count || 0,
+                        failedAttempts: failedAttempts?.count || 0
+                    }
+                },
+                recommendations: []
+            };
+
+            // Add recommendations based on status
+            if (!whatsappStatus.enabled) {
+                health.recommendations.push('WhatsApp service is not available. Verification codes cannot be sent.');
+            }
+            
+            if ((failedAttempts?.count || 0) > 10) {
+                health.recommendations.push('High number of failed verification attempts. Check rate limiting.');
+            }
+
+            res.json(health);
+        } catch (error) {
+            console.error('Verification health check error:', error);
+            res.status(500).json({
+                status: 'error',
+                error: error.message,
+                timestamp: new Date().toISOString()
+            });
+        }
     });
 
     app.get('/api/whatsapp/status', (req, res) => {

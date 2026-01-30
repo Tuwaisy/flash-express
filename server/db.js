@@ -363,6 +363,19 @@ async function setupDatabase() {
         }
     }
     
+    // Table: delivery_verification_attempts (for rate limiting)
+    if (!(await knex.schema.hasTable('delivery_verification_attempts'))) {
+        console.log('Creating "delivery_verification_attempts" table...');
+        await knex.schema.createTable('delivery_verification_attempts', (table) => {
+            table.increments('id').primary(); // Use auto-incrementing ID instead of UUID
+            table.string('shipmentId').notNullable();
+            table.timestamp('created_at').defaultTo(knex.fn.now());
+            table.index('shipmentId');
+            table.index('created_at');
+            table.foreign('shipmentId').references('shipments.id').onDelete('CASCADE');
+        });
+    }
+    
     // Table: inventory_items
     if (!(await knex.schema.hasTable('inventory_items'))) {
       console.log('Creating "inventory_items" table...');
