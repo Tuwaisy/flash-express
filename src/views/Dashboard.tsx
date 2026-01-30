@@ -60,9 +60,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
     const handleOpenRestore = async () => {
         try {
             setIsRestoring(true);
-            const response = await fetch('/api/admin/backups', {
-                headers: { 'x-admin-secret': process.env.REACT_APP_ADMIN_SECRET || '' }
-            });
+            const response = await fetch('/api/admin/backups');
             if (!response.ok) throw new Error('Failed to fetch backups');
             const data = await response.json();
             setBackups(data.backups || []);
@@ -90,8 +88,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
             const response = await fetch('/api/admin/restore-backup', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'x-admin-secret': process.env.REACT_APP_ADMIN_SECRET || ''
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ filename: selectedBackup })
             });

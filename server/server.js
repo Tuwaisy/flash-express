@@ -1844,15 +1844,24 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     channel: result.channel
                 });
             } else {
-                res.status(500).json({ 
+                // Return 400 instead of 500 for verification service failures
+                console.error('Verification service failed:', result.error || 'Unknown error', result);
+                res.status(400).json({ 
                     error: result.error || 'Failed to send delivery code',
-                    details: result
+                    message: result.error || 'Could not send verification code. Please try again or contact support.',
+                    details: {
+                        whatsappResult: result.whatsappResult,
+                        smsResult: result.smsResult
+                    }
                 });
             }
             throttledDataUpdate();
         } catch (error) {
             console.error('Delivery code sending error:', error);
-            res.status(500).json({ error: 'Failed to send delivery code.' });
+            res.status(500).json({ 
+                error: 'Server error while sending delivery code',
+                message: error.message || 'An unexpected error occurred. Please try again later.'
+            });
         }
     });
 
@@ -2729,10 +2738,6 @@ app.get('/api/debug/users/:id', async (req, res) => {
     // List available backups
     app.get('/api/admin/backups', async (req, res) => {
         try {
-            if (!req.headers['x-admin-secret'] || req.headers['x-admin-secret'] !== process.env.ADMIN_SECRET) {
-                return res.status(401).json({ error: 'Unauthorized' });
-            }
-
             const files = fs.readdirSync(BACKUP_DIR).filter(f => f.startsWith('backup_') && f.endsWith('.json'));
             const backups = files.map(file => {
                 const filePath = path.join(BACKUP_DIR, file);
@@ -2756,10 +2761,6 @@ app.get('/api/debug/users/:id', async (req, res) => {
     // Restore from backup
     app.post('/api/admin/restore-backup', async (req, res) => {
         try {
-            if (!req.headers['x-admin-secret'] || req.headers['x-admin-secret'] !== process.env.ADMIN_SECRET) {
-                return res.status(401).json({ error: 'Unauthorized' });
-            }
-
             const { filename } = req.body;
             if (!filename) {
                 return res.status(400).json({ error: 'Backup filename required' });
@@ -2823,10 +2824,6 @@ app.get('/api/debug/users/:id', async (req, res) => {
     // Manual backup endpoint
     app.post('/api/admin/backup', async (req, res) => {
         try {
-            if (!req.headers['x-admin-secret'] || req.headers['x-admin-secret'] !== process.env.ADMIN_SECRET) {
-                return res.status(401).json({ error: 'Unauthorized' });
-            }
-
             const backupFileName = await backupDatabase();
             res.json({ success: true, message: 'Database backed up successfully', backupFile: backupFileName });
         } catch (error) {

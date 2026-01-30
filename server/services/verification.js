@@ -210,6 +210,12 @@ class VerificationService {
                     code, 
                     recipientName
                 );
+            } else {
+                console.warn('⚠️ WhatsApp service is not available for delivery verification');
+                whatsappResult = { 
+                    success: false, 
+                    error: 'WhatsApp service is not configured or disabled. Please contact support.' 
+                };
             }
 
             // SMS backup is disabled - using WhatsApp via Twilio only
@@ -249,7 +255,8 @@ class VerificationService {
                 expiresAt,
                 message: success 
                     ? `Delivery verification code sent via ${channel}` 
-                    : 'Failed to send delivery verification code',
+                    : 'Failed to send delivery verification code. ' + (whatsappResult.error || 'WhatsApp/SMS service unavailable'),
+                error: success ? null : (whatsappResult.error || 'All notification channels failed'),
                 whatsappResult,
                 smsResult
             };
@@ -258,7 +265,9 @@ class VerificationService {
             console.error('❌ Delivery verification error:', error);
             return {
                 success: false,
-                error: error.message
+                error: error.message || 'Unexpected error in verification service',
+                whatsappResult: { success: false, error: error.message },
+                smsResult: { success: false }
             };
         }
     }

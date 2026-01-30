@@ -624,10 +624,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 body: JSON.stringify(userData)
             });
             addToast(`User ${userData.name} created successfully.`, 'success');
+            // Trigger immediate refresh to show new user
+            setTimeout(() => fetchAppData(), 500);
         } catch (error: any) {
             addToast(error.message, 'error');
         }
-    }, [addToast]);
+    }, [addToast, fetchAppData]);
     
     const updateUser = useCallback(async (userId: number, userData: Partial<User>, silent = false) => {
         try {
