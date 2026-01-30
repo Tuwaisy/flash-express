@@ -41,6 +41,12 @@
     "socket.io": "^4.7.5",
     "socket.io-client": "^4.7.5",
     "twilio": "^4.19.0"
+    ,
+    "jsonwebtoken": "^9.0.0",
+    "cookie-parser": "^1.4.6",
+    "helmet": "^7.0.0",
+    "express-rate-limit": "^6.10.0",
+    "compression": "^1.7.4"
   },
   "devDependencies": {
     "@capacitor/cli": "^6.1.0",

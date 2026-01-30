@@ -11,6 +11,11 @@ const twilio = require('twilio');
 const bcrypt = require('bcrypt');
 const fs = require('fs');
 const { knex, setupDatabase } = require('./db');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const compression = require('compression');
 
 // Import verification and notification services
 const whatsAppService = require('./services/whatsapp');
@@ -161,6 +166,9 @@ async function main() {
             methods: ["GET", "POST"]
         }
     });
+    // In-memory cache for /api/data to reduce DB load under high concurrency
+    const API_DATA_CACHE_TTL_MS = Number(process.env.API_DATA_CACHE_TTL_MS) || 2000; // 2s by default
+    let apiDataCache = { ts: 0, data: null };
     
     // Ensure uploads directory exists
     const uploadsDir = path.join(__dirname, 'uploads');
@@ -182,13 +190,35 @@ async function main() {
         allowedHeaders: ['Content-Type', 'Authorization'],
         credentials: true
     }));
+    // Security and performance middlewares
+    app.use(helmet());
+    app.use(compression());
+    app.use(cookieParser());
+
+    // Global rate limiter (gentle)
+    const apiLimiter = rateLimit({
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 500, // limit each IP to 500 requests per windowMs
+        standardHeaders: true,
+        legacyHeaders: false
+    });
+    app.use('/api/', apiLimiter);
+
+    // Stricter limiter for auth endpoints
+    const authLimiter = rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 10,
+        message: { error: 'Too many attempts, please try again later.' }
+    });
+    app.use('/api/login', authLimiter);
     
-    // Add request logging middleware
+    // Add request logging middleware (reduced in production)
     app.use((req, res, next) => {
-        console.log(`🌐 ${new Date().toISOString()} - ${req.method} ${req.path} - IP: ${req.ip}`);
-        console.log(`   Headers:`, req.headers);
-        if (req.body && Object.keys(req.body).length > 0) {
-            console.log(`   Body:`, req.body);
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`🌐 ${new Date().toISOString()} - ${req.method} ${req.path} - IP: ${req.ip}`);
+            if (req.body && Object.keys(req.body).length > 0) {
+                console.log(`   Body:`, req.body);
+            }
         }
         next();
     });
@@ -695,6 +725,17 @@ async function main() {
         });
     });
 
+    // Logout endpoint - clears the auth cookie
+    app.post('/api/logout', (req, res) => {
+        try {
+            res.clearCookie('token');
+            res.json({ success: true });
+        } catch (error) {
+            console.error('Error clearing session cookie:', error);
+            res.status(500).json({ error: 'Failed to logout' });
+        }
+    });
+
     // Role Management
     app.get('/api/roles', async (req, res) => {
         try {
@@ -766,6 +807,22 @@ async function main() {
                     console.log('✅ Password match successful');
                     // The user object is passed to parseUser which handles password removal and parsing
                     const finalUser = parseUser(user);
+
+                    // Sign JWT and set HttpOnly cookie for session persistence
+                    try {
+                        const jwtSecret = process.env.JWT_SECRET || 'dev_secret_change_me';
+                        const token = jwt.sign({ id: finalUser.id, roles: finalUser.roles }, jwtSecret, { expiresIn: '7d' });
+                        // Set cookie (HttpOnly) so browser includes it automatically
+                        res.cookie('token', token, {
+                            httpOnly: true,
+                            secure: process.env.NODE_ENV === 'production',
+                            sameSite: 'lax',
+                            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+                        });
+                    } catch (cookieError) {
+                        console.error('Failed to sign JWT or set cookie:', cookieError);
+                    }
+
                     console.log('🚀 Sending user data:', finalUser.name, finalUser.roles);
                     res.json(finalUser);
                 } else {
@@ -810,9 +867,36 @@ app.get('/api/debug/users/:id', async (req, res) => {
     });
 
     // Fetch all application data
-    app.get('/api/data', async (req, res) => {
-      try {
-        const [users, shipments, clientTransactions, courierStats, courierTransactions, notifications, customRoles, inventoryItems, assets, suppliers, supplierTransactions, inAppNotifications, tierSettings] = await Promise.all([
+    // Endpoint to return current authenticated user based on JWT cookie
+    app.get('/api/me', async (req, res) => {
+        try {
+            const token = req.cookies && req.cookies.token;
+            if (!token) return res.status(401).json({ error: 'Not authenticated' });
+            const jwtSecret = process.env.JWT_SECRET || 'dev_secret_change_me';
+            let payload;
+            try {
+                payload = jwt.verify(token, jwtSecret);
+            } catch (err) {
+                return res.status(401).json({ error: 'Invalid or expired session' });
+            }
+            const user = await knex('users').where({ id: payload.id }).first();
+            if (!user) return res.status(404).json({ error: 'User not found' });
+            res.json(parseUser(user));
+        } catch (error) {
+            console.error('Error in /api/me:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    });
+        app.get('/api/data', async (req, res) => {
+            try {
+                // Serve from short-lived cache unless client forces fresh data
+                const fresh = req.query.fresh === '1' || req.query.fresh === 'true';
+                if (!fresh && apiDataCache.data && (Date.now() - apiDataCache.ts) < API_DATA_CACHE_TTL_MS) {
+                        if (process.env.NODE_ENV !== 'production') console.log('Serving /api/data from cache');
+                        return res.json(apiDataCache.data);
+                }
+
+                const [users, shipments, clientTransactions, courierStats, courierTransactions, notifications, customRoles, inventoryItems, assets, suppliers, supplierTransactions, inAppNotifications, tierSettings] = await Promise.all([
           knex('users').select(),
           knex('shipments').select(),
           knex('client_transactions').select(),
@@ -911,11 +995,83 @@ app.get('/api/debug/users/:id', async (req, res) => {
         const parsedAssets = assets.map(parseAsset);
         const parsedInventory = inventoryItems.map(parseInventoryItem);
 
-        res.json({ users: safeUsers, shipments: parsedShipments, clientTransactions, courierStats: correctedCourierStats, courierTransactions, notifications, customRoles: parsedRoles, inventoryItems: parsedInventory, assets: parsedAssets, suppliers, supplierTransactions, inAppNotifications, tierSettings });
+                const responsePayload = { users: safeUsers, shipments: parsedShipments, clientTransactions, courierStats: correctedCourierStats, courierTransactions, notifications, customRoles: parsedRoles, inventoryItems: parsedInventory, assets: parsedAssets, suppliers, supplierTransactions, inAppNotifications, tierSettings };
+                apiDataCache = { ts: Date.now(), data: responsePayload };
+                res.json(responsePayload);
       } catch (error) {
         console.error('Error fetching data:', error);
         res.status(500).json({ error: 'Failed to fetch application data' });
       }
+    });
+
+    // Paginated users endpoint (minimal by default)
+    app.get('/api/users', async (req, res) => {
+        try {
+            const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 25));
+            const offset = Math.max(0, parseInt(req.query.offset) || 0);
+            // fields param eg: fields=id,name,email
+            const fields = req.query.fields ? String(req.query.fields).split(',').map(f => f.trim()) : null;
+            const selectCols = fields && fields.length ? fields : ['id', 'publicId', 'name', 'email', 'roles', 'walletBalance'];
+
+            const [rows, totalCountResult] = await Promise.all([
+                knex('users').select(selectCols).limit(limit).offset(offset),
+                knex('users').count({ count: '*' }).first()
+            ]);
+
+            const total = totalCountResult ? Number(totalCountResult.count || totalCountResult['count(*)'] || 0) : 0;
+
+            const users = await Promise.all(rows.map(async (u) => parseUser(u)));
+
+            res.json({ total, limit, offset, users });
+        } catch (error) {
+            console.error('Error /api/users:', error);
+            res.status(500).json({ error: 'Failed to fetch users' });
+        }
+    });
+
+    // Paginated shipments endpoint (minimal by default)
+    app.get('/api/shipments', async (req, res) => {
+        try {
+            const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 25));
+            const offset = Math.max(0, parseInt(req.query.offset) || 0);
+            const fields = req.query.fields ? String(req.query.fields).split(',').map(f => f.trim()) : null;
+            const selectCols = fields && fields.length ? fields : ['id', 'clientId', 'clientName', 'recipientName', 'recipientPhone', 'status', 'creationDate', 'deliveryDate'];
+
+            const [rows, totalCountResult] = await Promise.all([
+                knex('shipments').select(selectCols).limit(limit).offset(offset),
+                knex('shipments').count({ count: '*' }).first()
+            ]);
+
+            const total = totalCountResult ? Number(totalCountResult.count || totalCountResult['count(*)'] || 0) : 0;
+
+            const shipments = rows.map(parseShipment);
+
+            res.json({ total, limit, offset, shipments });
+        } catch (error) {
+            console.error('Error /api/shipments:', error);
+            res.status(500).json({ error: 'Failed to fetch shipments' });
+        }
+    });
+
+    // Minimal summary endpoint that returns counts and recent items
+    app.get('/api/data/summary', async (req, res) => {
+        try {
+            const recentLimit = Math.min(50, Math.max(5, parseInt(req.query.recent) || 10));
+            const [counts, recentShipments, recentUsers] = await Promise.all([
+                // counts
+                knex('users').count({ users: '*' }).first()
+                    .then(u => ({ users: Number(u.users || u['count(*)'] || 0) })),
+                // recent shipments
+                knex('shipments').select('id','clientName','recipientName','status','creationDate').orderBy('creationDate','desc').limit(recentLimit),
+                // recent users
+                knex('users').select('id','publicId','name','email').orderBy('id','desc').limit(recentLimit)
+            ]);
+
+            res.json({ counts, recentShipments, recentUsers });
+        } catch (error) {
+            console.error('Error /api/data/summary:', error);
+            res.status(500).json({ error: 'Failed to fetch summary' });
+        }
     });
 
     // User Management
@@ -1657,6 +1813,13 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     shipmentId: id,
                     timestamp: new Date().toISOString()
                 });
+
+                // Ensure server-side cache and calculated summaries are refreshed
+                try {
+                    throttledDataUpdate();
+                } catch (e) {
+                    console.warn('throttledDataUpdate not available in this scope:', e && e.message);
+                }
                 
                 res.json({ 
                     success: true, 

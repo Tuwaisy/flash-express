@@ -15,14 +15,14 @@ try {
         connectionString: process.env.DATABASE_URL,
         ssl: { rejectUnauthorized: false }
       },
-      pool: { 
-        min: 1, 
-        max: 5,
-        acquireTimeoutMillis: 60000,
-        createTimeoutMillis: 30000,
-        destroyTimeoutMillis: 5000,
-        idleTimeoutMillis: 30000
-      },
+            pool: { 
+                min: Number(process.env.DB_POOL_MIN) || 2, 
+                max: Number(process.env.DB_POOL_MAX) || 20,
+                acquireTimeoutMillis: 60000,
+                createTimeoutMillis: 30000,
+                destroyTimeoutMillis: 5000,
+                idleTimeoutMillis: 30000
+            },
       acquireConnectionTimeout: 60000
     });
     
@@ -513,6 +513,26 @@ async function setupDatabase() {
     console.log('✅ Database setup complete!');
     console.log('🔗 Connection info:', process.env.DATABASE_URL ? 'PostgreSQL (Production)' : 'SQLite (Development)');
     
+    // Create indexes to speed up common queries (safe no-op if already exists)
+    try {
+        console.log('🏷️ Ensuring common DB indexes exist...');
+        await knex.schema.alterTable('shipments', table => {
+            try { table.index('status'); } catch(e) {}
+            try { table.index('clientId'); } catch(e) {}
+        });
+        await knex.schema.alterTable('client_transactions', table => {
+            try { table.index('userId'); } catch(e) {}
+        });
+        await knex.schema.alterTable('courier_transactions', table => {
+            try { table.index('courierId'); } catch(e) {}
+        });
+        await knex.schema.alterTable('in_app_notifications', table => {
+            try { table.index('userId'); } catch(e) {}
+        });
+        console.log('🏷️ Index creation attempted (existing indexes skipped)');
+    } catch (indexError) {
+        console.warn('Index creation warning:', indexError.message || indexError);
+    }
   } catch (error) {
     console.error('❌ Database setup failed:', error);
     // Re-throw the error to ensure the calling process knows about the failure

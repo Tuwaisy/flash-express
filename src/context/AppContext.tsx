@@ -81,6 +81,12 @@ export type AppContextType = {
     bulkPackageShipments: (shipmentIds: string[], materialsSummary: Record<string, number>, packagingNotes: string) => Promise<void>;
     bulkAssignShipments: (shipmentIds: string[], courierId: number) => Promise<void>;
     bulkUpdateShipmentStatus: (shipmentIds: string[], status: ShipmentStatus) => Promise<void>;
+    // Pagination and summary helpers
+    fetchSummary: () => Promise<void>;
+    fetchUsersPage: (limit?: number, offset?: number, fields?: string[]) => Promise<{ total: number; limit: number; offset: number; users: User[] }>;
+    fetchShipmentsPage: (limit?: number, offset?: number, fields?: string[]) => Promise<{ total: number; limit: number; offset: number; shipments: Shipment[] }>;
+    recentUsers: User[];
+    recentShipments: Shipment[];
     // Inventory
     addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => Promise<void>;
     updateInventoryItem: (itemId: string, data: Partial<InventoryItem>) => Promise<void>;
@@ -123,10 +129,63 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [supplierTransactions, setSupplierTransactions] = useState<SupplierTransaction[]>([]);
     const [inAppNotifications, setInAppNotifications] = useState<InAppNotification[]>([]);
     const [tierSettings, setTierSettings] = useState<TierSetting[]>([]);
+    const [recentUsers, setRecentUsers] = useState<User[]>([]);
+    const [recentShipments, setRecentShipments] = useState<Shipment[]>([]);
     const [shipmentFilter, setShipmentFilter] = useState<ShipmentFilter | null>(null);
     const [theme, setThemeState] = useState<'light' | 'dark'>(() => getFromStorage('app-theme', 'dark'));
     const [isLoading, setIsLoading] = useState(false);
     const [socket, setSocket] = useState<Socket | null>(null);
+
+    // Attempt to restore session from HttpOnly cookie on mount
+    useEffect(() => {
+        (async () => {
+            try {
+                console.log('Attempting session restore via /api/me');
+                const me = await apiFetch('/api/me');
+                if (me && me.id) {
+                    // fetch roles as well
+                    const rolesData: CustomRole[] = await apiFetch('/api/roles');
+                    setCustomRoles(rolesData);
+                    // compute permissions similar to login
+                    const userRoleNames = Array.isArray(me.roles) ? me.roles : [];
+                    const permissions = userRoleNames.reduce((acc: Permission[], roleName: string) => {
+                        const role = rolesData.find(r => r.name === roleName);
+                        if (role?.permissions) return [...acc, ...role.permissions];
+                        return acc;
+                    }, [] as Permission[]);
+                    const uniquePermissions = [...new Set(permissions)].sort();
+                    setCurrentUser({ ...me, permissions: uniquePermissions });
+                    console.log('Session restored for user', me.id);
+                    // CRITICAL FIX: Fetch full app data after session restore
+                    // This ensures dashboard shows shipments, completed orders, balances, etc.
+                    try {
+                        console.log('Fetching full application data after session restore');
+                        setIsLoading(true);
+                        const data = await apiFetch('/api/data');
+                        setUsers(data.users || []);
+                        setShipments(data.shipments || []);
+                        setClientTransactions(data.clientTransactions || []);
+                        setNotifications(data.notifications || []);
+                        setCourierStats(data.courierStats || []);
+                        setCourierTransactions(data.courierTransactions || []);
+                        setInventoryItems(data.inventoryItems || []);
+                        setAssets(data.assets || []);
+                        setSuppliers(data.suppliers || []);
+                        setSupplierTransactions(data.supplierTransactions || []);
+                        setInAppNotifications(data.inAppNotifications || []);
+                        setTierSettings(data.tierSettings || []);
+                        console.log('✅ Full application data loaded after session restore');
+                    } catch (dataErr) {
+                        console.error('Failed to load full app data after session restore:', dataErr);
+                    } finally {
+                        setIsLoading(false);
+                    }
+                }
+            } catch (err) {
+                console.log('No active session found');
+            }
+        })();
+    }, []);
 
     const setTheme = (newTheme: 'light' | 'dark') => {
         setThemeState(newTheme);
@@ -235,6 +294,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     }, [currentUser, addToast]);
 
+    // Lightweight summary fetch used for dashboard / initial load
+    const fetchSummary = useCallback(async () => {
+        try {
+            const summary = await apiFetch('/api/data/summary');
+            if (summary) {
+                setRecentShipments(summary.recentShipments || []);
+                setRecentUsers(summary.recentUsers || []);
+                // store counts in tierSettings for quick access, or use a dedicated state if needed
+            }
+        } catch (err) {
+            console.warn('fetchSummary failed:', err);
+        }
+    }, []);
+
+    const fetchUsersPage = useCallback(async (limit = 25, offset = 0, fields?: string[]) => {
+        const qs = new URLSearchParams();
+        qs.set('limit', String(limit));
+        qs.set('offset', String(offset));
+        if (fields && fields.length) qs.set('fields', fields.join(','));
+        const resp = await apiFetch(`/api/users?${qs.toString()}`);
+        // parse roles field if needed
+        const usersPage = (resp.users || []).map((u: any) => ({ ...u, roles: Array.isArray(u.roles) ? u.roles : JSON.parse(u.roles || '[]') }));
+        return { total: resp.total || 0, limit: resp.limit || limit, offset: resp.offset || offset, users: usersPage };
+    }, []);
+
+    const fetchShipmentsPage = useCallback(async (limit = 25, offset = 0, fields?: string[]) => {
+        const qs = new URLSearchParams();
+        qs.set('limit', String(limit));
+        qs.set('offset', String(offset));
+        if (fields && fields.length) qs.set('fields', fields.join(','));
+            const resp = await apiFetch(`/api/shipments?${qs.toString()}`);
+            const shipmentsPage = (resp.shipments || []) as Shipment[];
+        return { total: resp.total || 0, limit: resp.limit || limit, offset: resp.offset || offset, shipments: shipmentsPage };
+    }, []);
+
     // Socket connection setup and initial data fetching
     useEffect(() => {
         if (currentUser && !socket) {
@@ -267,6 +361,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 console.log('WebSocket connected successfully to:', socketUrl || 'default URL');
                 console.log('Socket transport:', newSocket.io.engine.transport.name);
                 addToast('Real-time updates connected', 'success', 3000);
+                // CRITICAL FIX: Fetch full app data after socket connects
+                // This ensures dashboard and all views get populated with shipments, users, etc.
+                setTimeout(() => {
+                    console.log('Socket connected - fetching full application data');
+                    fetchAppData(true);
+                }, 100);
             });
 
             // Debounce socket events to prevent excessive calls
@@ -304,17 +404,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             newSocket.on('reconnect', (attemptNumber) => {
                 console.log(`WebSocket reconnected after ${attemptNumber} attempts`);
-                // Fetch data after reconnection with a delay
+                // CRITICAL FIX: Fetch full data after reconnection, not just summary
+                // Clients may have missed updates while offline; need complete state refresh
                 setTimeout(() => {
-                    fetchAppData(true);
+                    console.log('Fetching full data after reconnection');
+                    fetchAppData(true); // Force refresh, bypass throttle
                 }, 1000);
             });
 
             setSocket(newSocket);
             
-            // Fetch initial data after setting up socket (force fetch)
+            // Fetch initial lightweight summary after setting up socket
             setTimeout(() => {
-                fetchAppData(true);
+                fetchSummary();
             }, 500);
             
             return () => {
@@ -345,6 +447,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, [users, currentUser]);
 
     const logout = useCallback(() => {
+        // Inform server to clear cookie
+        apiFetch('/api/logout', { method: 'POST' }).catch(err => console.warn('Server logout failed:', err));
         // Clear any pending fetch timeout
         if (fetchTimeout.current) {
             clearTimeout(fetchTimeout.current);
@@ -580,7 +684,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const inTransitCOD = shipments.filter(s => [ShipmentStatus.OUT_FOR_DELIVERY].includes(s.status) && s.paymentMethod === PaymentMethod.COD);
         const deliveredCOD = shipments.filter(s => s.status === ShipmentStatus.DELIVERED && s.paymentMethod === PaymentMethod.COD);
     
-        const totalCollectedMoney = deliveredShipments.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+        // CRITICAL FIX: Use clientFlatRateFee for admin revenue (shipping fees earned from clients)
+        const totalCollectedMoney = deliveredShipments.reduce((sum, s) => sum + (Number(s.clientFlatRateFee) || 0), 0);
         const undeliveredPackagesValue = undeliveredShipments.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
         
         const uncollectedTransferFees = undeliveredShipments
@@ -622,11 +727,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const deliveredShipments = clientShipments.filter(s => s.status === ShipmentStatus.DELIVERED);
             const totalOrders = clientShipments.length; // Total orders placed
             const deliveredOrders = deliveredShipments.length; // Delivered orders count
-            // Client revenue = package value minus shipping fees
+            // CRITICAL FIX: Client total collections = sum of packageValue (total money collected from recipients)
+            // Not net revenue after fees; that's a separate calculation for profitability
             const orderSum = deliveredShipments.reduce((sum, s) => {
                 const packageValue = Number(s.packageValue) || 0;
-                const shippingFee = Number(s.clientFlatRateFee) || 0;
-                return sum + Math.max(0, packageValue - shippingFee); // Net revenue for client
+                return sum + packageValue; // Total collections from clients
             }, 0);
             return {
                 clientId: client.id,
@@ -962,6 +1067,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteSupplier,
         addSupplierTransaction,
         deleteSupplierTransaction,
+        // Pagination helpers and summary
+        fetchSummary,
+        fetchUsersPage,
+        fetchShipmentsPage,
+        recentUsers,
+        recentShipments,
     };
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

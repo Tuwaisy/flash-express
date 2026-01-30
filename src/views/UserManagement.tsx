@@ -1,7 +1,7 @@
 // src/views/UserManagement.tsx
 
 // FIX: Added React and hooks import
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { User, UserRole, ZONES, ShipmentPriority, Permission, CustomRole, PartnerTier, Address } from '../types';
 import { Modal } from '../components/common/Modal';
@@ -10,7 +10,11 @@ import { PlusCircleIcon, PencilIcon, KeyIcon, TrashIcon, DocumentDownloadIcon, W
 import { exportToCsv } from '../utils/pdf';
 
 const UserManagement = () => {
-    const { users, addUser, updateUser, removeUser, resetPassword, currentUser, hasPermission, updateClientTaxCard, getTaxCardNumber, addToast, customRoles, updateClientTier } = useAppContext();
+    const { fetchUsersPage, addUser, updateUser, removeUser, resetPassword, currentUser, hasPermission, updateClientTaxCard, getTaxCardNumber, addToast, customRoles, updateClientTier } = useAppContext();
+    const [pageUsers, setPageUsers] = useState<User[]>([]);
+    const [pageTotal, setPageTotal] = useState(0);
+    const [pageLimit, setPageLimit] = useState(25);
+    const [pageOffset, setPageOffset] = useState(0);
     const [mode, setMode] = useState<'add' | 'edit' | 'reset' | 'delete' | 'taxCard' | 'clientEdit' | null>(null);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [formData, setFormData] = useState<Partial<User>>({});
@@ -32,7 +36,7 @@ const UserManagement = () => {
 
     const filteredUsers = useMemo(() => {
         // FIX: Added explicit type to user parameter and role parameter
-        return users.filter((user: User) => {
+        return pageUsers.filter((user: User) => {
             const matchesSearch = searchTerm.trim() === '' ||
                 user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -42,7 +46,7 @@ const UserManagement = () => {
             
             return matchesSearch && matchesRole;
         });
-    }, [users, searchTerm, filterRole]);
+    }, [pageUsers, searchTerm, filterRole]);
     
 
     if (!currentUser || !hasPermission(Permission.MANAGE_USERS)) {
@@ -481,8 +485,8 @@ const UserManagement = () => {
                                    <label htmlFor="user-referrer" className="block text-sm font-medium text-muted-foreground mb-1">Referred By (Optional)</label>
                                    <select id="user-referrer" name="referrerId" value={formData.referrerId || ''} onChange={handleFormChange} className="w-full px-4 py-2 border border-border rounded-lg bg-background">
                                        <option value="">No Referrer</option>
-                                       {/* FIX: Added explicit type for parameter */}
-                                       {users.filter((u: User) => (u.roles || []).includes(UserRole.COURIER)).map((c: User) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                       {/* FIX: Use paginated pageUsers for selection */}
+                                       {pageUsers.filter((u: User) => (u.roles || []).includes(UserRole.COURIER)).map((c: User) => <option key={c.id} value={c.id}>{c.name}</option>)}
                                    </select>
                                </div>
                            )}
@@ -518,6 +522,22 @@ const UserManagement = () => {
         return null;
     };
 
+
+    useEffect(() => {
+        let mounted = true;
+        (async () => {
+            try {
+                const resp = await fetchUsersPage(pageLimit, pageOffset, ['id','publicId','name','email','roles','walletBalance']);
+                if (!mounted) return;
+                setPageUsers(resp.users || []);
+                setPageTotal(resp.total || 0);
+            } catch (err) {
+                console.error('Failed to load users page:', err);
+                addToast('Failed to load users list', 'error');
+            }
+        })();
+        return () => { mounted = false; };
+    }, [pageLimit, pageOffset, fetchUsersPage]);
 
     return (
         <div className="card">

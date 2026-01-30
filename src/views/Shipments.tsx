@@ -1,7 +1,7 @@
 // src/views/Shipments.tsx
 
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import { UserRole, Shipment, ShipmentStatus, Permission } from '../types';
@@ -26,7 +26,12 @@ const isShipmentOverdue = (shipment: Shipment) => {
 
 
 const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
-    const { currentUser, shipments, users, updateShipmentFees, getCourierName, hasPermission } = useAppContext();
+    const { currentUser, updateShipmentFees, getCourierName, hasPermission, fetchShipmentsPage, fetchUsersPage } = useAppContext();
+    const [pageShipments, setPageShipments] = useState<Shipment[]>([]);
+    const [pageTotal, setPageTotal] = useState(0);
+    const [pageLimit, setPageLimit] = useState(25);
+    const [pageOffset, setPageOffset] = useState(0);
+    const [clients, setClients] = useState<any[]>([]);
     const { t } = useLanguage();
     
     // Filters
@@ -36,7 +41,35 @@ const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
     const [selectedDate, setSelectedDate] = useState<string>('');
     const [showOverdueOnly, setShowOverdueOnly] = useState(false);
     
-    const clients = users.filter(u => (u.roles || []).includes(UserRole.CLIENT));
+    useEffect(() => {
+        let mounted = true;
+        (async () => {
+            try {
+                // Load clients for the client select (fetch up to 1000 minimal)
+                const usersResp = await fetchUsersPage(1000, 0, ['id','name','roles']);
+                if (!mounted) return;
+                setClients((usersResp.users || []).filter((u: any) => (u.roles || []).includes('Client')));
+            } catch (err) {
+                console.warn('Failed to fetch clients for filter', err);
+            }
+        })();
+        return () => { mounted = false; };
+    }, [fetchUsersPage]);
+
+    useEffect(() => {
+        let mounted = true;
+        (async () => {
+            try {
+                const resp = await fetchShipmentsPage(pageLimit, pageOffset);
+                if (!mounted) return;
+                setPageShipments(resp.shipments || []);
+                setPageTotal(resp.total || 0);
+            } catch (err) {
+                console.error('Failed to load shipments page:', err);
+            }
+        })();
+        return () => { mounted = false; };
+    }, [pageLimit, pageOffset, fetchShipmentsPage]);
 
     const canViewAll = hasPermission(Permission.VIEW_ALL_SHIPMENTS);
     const canViewOwn = hasPermission(Permission.VIEW_OWN_SHIPMENTS);
@@ -49,7 +82,7 @@ const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
     }
 
     const visibleShipments = useMemo(() => {
-        let filtered = canViewAll ? shipments : shipments.filter(s => s.clientId === currentUser.id);
+        let filtered = canViewAll ? pageShipments : pageShipments.filter(s => s.clientId === currentUser.id);
 
         // Apply filters
         if (selectedDate) {
@@ -78,7 +111,7 @@ const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
         }
         
         return filtered.sort((a, b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime());
-    }, [currentUser, shipments, selectedDate, searchTerm, selectedClientId, selectedStatus, canViewAll, showOverdueOnly]);
+    }, [currentUser, pageShipments, selectedDate, searchTerm, selectedClientId, selectedStatus, canViewAll, showOverdueOnly]);
 
     const handleExport = () => {
         if (!currentUser) return;
@@ -202,6 +235,15 @@ const ShipmentsView: React.FC<ShipmentsViewProps> = ({ onSelectShipment }) => {
                    </button>
                 </div>
             </div>
+            <div className="flex items-center justify-between mb-4">
+                <div className="text-sm text-muted-foreground">Total shipments: {pageTotal}</div>
+                <div className="flex items-center gap-2">
+                    <button disabled={pageOffset === 0} onClick={() => setPageOffset(Math.max(0, pageOffset - pageLimit))} className="px-3 py-1 bg-secondary rounded disabled:opacity-50">Prev</button>
+                    <div className="text-sm">Page: {Math.floor(pageOffset / pageLimit) + 1}</div>
+                    <button disabled={pageOffset + pageLimit >= pageTotal} onClick={() => setPageOffset(pageOffset + pageLimit)} className="px-3 py-1 bg-secondary rounded disabled:opacity-50">Next</button>
+                </div>
+            </div>
+
             <div className="card overflow-hidden">
                 <ShipmentList 
                     shipments={visibleShipments} 

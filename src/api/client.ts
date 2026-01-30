@@ -45,6 +45,8 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     const requestPromise = (async () => {
         try {
             const response = await fetch(url, {
+                // Ensure cookies (HttpOnly JWT) are sent automatically
+                credentials: 'include',
                 ...options,
                 headers: {
                     'Content-Type': 'application/json',

@@ -314,7 +314,7 @@ class VerificationService {
                 };
             }
 
-            // Use transaction to update delivery verification and shipment status
+            // Use transaction to update delivery verification, shipment status, and process financials
             await knex.transaction(async (trx) => {
                 // Mark verification as verified
                 await trx('delivery_verifications')
@@ -324,20 +324,121 @@ class VerificationService {
                         verified_at: new Date()
                     });
 
-                // Update shipment status to Delivered
+                // Update shipment status to Delivered and append history
                 const newStatus = 'Delivered';
                 const updatePayload = { 
                     status: newStatus, 
                     deliveryDate: new Date().toISOString()
                 };
-                
                 const currentHistory = safeJsonParse(shipment.statusHistory, []);
                 currentHistory.push({ status: newStatus, timestamp: updatePayload.deliveryDate });
                 updatePayload.statusHistory = JSON.stringify(currentHistory);
-
                 await trx('shipments').where({ id: shipmentId }).update(updatePayload);
 
-                console.log(`✅ Delivery code verified and shipment ${shipmentId} marked as Delivered`);
+                // --- Courier processing: commission + referral + notifications + recalc balances ---
+                // CRITICAL FIX: Validate courier exists before creating transactions
+                const deliveryingCourier = shipment.courierId ? await trx('users').where({ id: shipment.courierId }).first() : null;
+                if (shipment.courierId && deliveryingCourier) {
+                    const commissionAmount = Number(shipment.courierCommission) || 0;
+                    if (commissionAmount > 0) {
+                        await trx('courier_transactions').insert({
+                            id: this.generateId('TRN'),
+                            courierId: shipment.courierId,
+                            type: 'Commission',
+                            amount: commissionAmount,
+                            description: `Commission for shipment ${shipment.id}`,
+                            shipmentId: shipment.id,
+                            timestamp: new Date().toISOString(),
+                            status: 'Processed'
+                        });
+
+                        await trx('courier_stats').where({ courierId: shipment.courierId }).update({ consecutiveFailures: 0 });
+                        await trx('in_app_notifications').insert({
+                            id: this.generateId('INAPP'),
+                            userId: shipment.courierId,
+                            message: `You earned ${commissionAmount.toFixed(2)} EGP for delivering shipment ${shipment.id}.`,
+                            link: '/courier-financials',
+                            isRead: false,
+                            timestamp: new Date().toISOString()
+                        });
+                    } else {
+                        await trx('courier_stats').where({ courierId: shipment.courierId }).update({ consecutiveFailures: 0 });
+                    }
+
+                    const deliveringCourier = await trx('users').where({ id: shipment.courierId }).first();
+                    if (deliveringCourier && deliveringCourier.referrerId) {
+                        const referrer = await trx('users').where({ id: deliveringCourier.referrerId }).first();
+                        const standardReferralBonus = 15;
+                        // CRITICAL FIX: Validate referrer exists before creating bonus transaction
+                        if (referrer && Number(deliveringCourier.referrerId) > 0) {
+                            await trx('courier_transactions').insert({
+                                id: this.generateId('TRN_REF'),
+                                courierId: referrer.id,
+                                type: 'Referral Bonus',
+                                amount: standardReferralBonus,
+                                description: `Company referral bonus for shipment ${shipment.id} delivered by ${deliveringCourier.name}`,
+                                shipmentId: shipment.id,
+                                timestamp: new Date().toISOString(),
+                                status: 'Processed'
+                            });
+
+                            await trx('in_app_notifications').insert({
+                                id: this.generateId('INAPP'),
+                                userId: referrer.id,
+                                message: `You earned ${standardReferralBonus} EGP referral bonus for ${deliveringCourier.name}'s delivery.`,
+                                link: '/courier-financials',
+                                isRead: false,
+                                timestamp: new Date().toISOString()
+                            });
+                        } else if (deliveringCourier.referrerId) {
+                            console.warn(`⚠️ Referrer ${deliveringCourier.referrerId} not found for courier ${shipment.courierId}, skipping referral bonus`);
+                        }
+                    }
+
+                    // Recalculate courier balance from processed transactions
+                    const courierTransactions = await trx('courier_transactions').where({ courierId: shipment.courierId });
+                    const includedCourierTx = courierTransactions.filter(t => t.status === 'Processed' && !['Withdrawal Request','Withdrawal Declined'].includes(t.type));
+                    const calculatedCourierBalance = includedCourierTx.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+                    const totalEarnings = courierTransactions.filter(t => t.status === 'Processed' && Number(t.amount) > 0).reduce((s, t) => s + (Number(t.amount) || 0), 0);
+                    await trx('courier_stats').where({ courierId: shipment.courierId }).update({ currentBalance: calculatedCourierBalance, totalEarnings });
+                    await trx('users').where({ id: shipment.courierId }).update({ walletBalance: calculatedCourierBalance });
+                }
+
+                // --- Client wallet transactions and balance update ---
+                const client = await trx('users').where({ id: shipment.clientId }).first();
+                if (client) {
+                    const shippingFee = Number(shipment.clientFlatRateFee) || 0;
+                    let walletChange = 0;
+                    if (shipment.paymentMethod === 'COD') {
+                        const packageValue = Number(shipment.packageValue) || 0;
+                        const transactions = [
+                            { id: this.generateId('TRN'), userId: client.id, type: 'Deposit', amount: packageValue, date: new Date().toISOString(), description: `Package value collected for delivered shipment ${shipment.id}`, status: 'Processed' },
+                            { id: this.generateId('TRN'), userId: client.id, type: 'Payment', amount: -shippingFee, date: new Date().toISOString(), description: `Shipping fee for delivered shipment ${shipment.id}`, status: 'Processed' }
+                        ];
+                        await trx('client_transactions').insert(transactions);
+                        walletChange = packageValue - shippingFee;
+                    } else if (shipment.paymentMethod === 'Transfer') {
+                        const amountToCollect = Number(shipment.amountToCollect) || 0;
+                        if (amountToCollect > 0) {
+                            await trx('client_transactions').insert({ id: this.generateId('TRN'), userId: client.id, type: 'Deposit', amount: amountToCollect, date: new Date().toISOString(), description: `Amount collected from recipient for delivered shipment ${shipment.id}`, status: 'Processed' });
+                            walletChange = amountToCollect;
+                        }
+                    } else if (shipment.paymentMethod === 'Wallet') {
+                        const packageValue = Number(shipment.packageValue) || 0;
+                        if (packageValue > 0) {
+                            await trx('client_transactions').insert({ id: this.generateId('TRN'), userId: client.id, type: 'Deposit', amount: packageValue, date: new Date().toISOString(), description: `Package value collected for delivered shipment ${shipment.id}`, status: 'Processed' });
+                            walletChange = packageValue;
+                        }
+                    }
+
+                    // Recalculate and persist client wallet balance
+                    const clientTransactions = await trx('client_transactions').where({ userId: client.id });
+                    const newClientBalance = clientTransactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+                    await trx('users').where({ id: client.id }).update({ walletBalance: newClientBalance });
+                    console.log(`💰 Updated client ${client.id} wallet balance: ${newClientBalance.toFixed(2)} EGP`);
+                }
+
+                console.log(`✅ Delivery code verified, shipment ${shipmentId} marked as Delivered and wallets updated`);
             });
 
             return {

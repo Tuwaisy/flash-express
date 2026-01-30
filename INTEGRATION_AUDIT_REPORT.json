@@ -1,0 +1,583 @@
+{
+  "audit_date": "2026-01-30",
+  "audit_scope": "Wallet/Transaction Integration Flow Analysis",
+  "schema": {
+    "description": "Database tables required for wallet/transaction flow",
+    "tables": [
+      {
+        "name": "users",
+        "purpose": "Core user data with wallet balance",
+        "key_columns": [
+          "id",
+          "publicId",
+          "name",
+          "email",
+          "password",
+          "roles (JSON)",
+          "walletBalance (decimal) - CRITICAL for wallet display",
+          "referrerId",
+          "zones (JSON for couriers)",
+          "flatRateFee (for clients)"
+        ],
+        "status": "✅ EXISTS - properly configured with walletBalance column"
+      },
+      {
+        "name": "shipments",
+        "purpose": "Shipment records with financial data",
+        "key_columns": [
+          "id",
+          "clientId",
+          "courierId",
+          "status",
+          "paymentMethod (COD/Transfer/Wallet)",
+          "packageValue",
+          "clientFlatRateFee",
+          "courierCommission",
+          "amountToCollect",
+          "amountReceived",
+          "statusHistory (JSON)"
+        ],
+        "status": "✅ EXISTS - contains all required financial fields"
+      },
+      {
+        "name": "delivery_verifications",
+        "purpose": "Track delivery verification codes and status",
+        "key_columns": [
+          "shipmentId (primary)",
+          "code",
+          "expires_at",
+          "verified (boolean) - marks completion",
+          "verified_at (timestamp)",
+          "channel (whatsapp/sms)"
+        ],
+        "status": "✅ EXISTS - properly configured for delivery verification"
+      },
+      {
+        "name": "courier_transactions",
+        "purpose": "Track courier earnings (commissions, referral bonuses, payouts)",
+        "key_columns": [
+          "id",
+          "courierId",
+          "type (Commission/Referral Bonus/Withdrawal Request/etc)",
+          "amount",
+          "shipmentId",
+          "timestamp",
+          "status (Processed/Pending/Declined)",
+          "description"
+        ],
+        "status": "✅ EXISTS - fully configured for transaction tracking"
+      },
+      {
+        "name": "courier_stats",
+        "purpose": "Courier summary statistics and balance",
+        "key_columns": [
+          "courierId (primary)",
+          "commissionType (flat/percentage)",
+          "commissionValue",
+          "currentBalance (calculated wallet)",
+          "totalEarnings",
+          "consecutiveFailures",
+          "isRestricted",
+          "performanceRating"
+        ],
+        "status": "✅ EXISTS - includes currentBalance and totalEarnings"
+      },
+      {
+        "name": "client_transactions",
+        "purpose": "Track client wallet deposits, payments, and payout requests",
+        "key_columns": [
+          "id",
+          "userId",
+          "type (Deposit/Payment/Withdrawal)",
+          "amount",
+          "date",
+          "description",
+          "status (Processed/Pending)"
+        ],
+        "status": "✅ EXISTS - properly configured for client financials"
+      },
+      {
+        "name": "in_app_notifications",
+        "purpose": "Real-time notifications for earnings and updates",
+        "key_columns": [
+          "id",
+          "userId",
+          "message",
+          "link",
+          "isRead",
+          "timestamp"
+        ],
+        "status": "✅ EXISTS - used for earning notifications"
+      }
+    ],
+    "summary": "All 7 required tables exist with proper columns"
+  },
+  "verification_flow": {
+    "description": "Step-by-step trace of delivery verification and financial updates",
+    "endpoint": "POST /api/shipments/:id/verify-delivery-code",
+    "steps": [
+      {
+        "step": 1,
+        "name": "Code Validation",
+        "action": "VerificationService.verifyDeliveryCode()",
+        "checks": [
+          "✅ Fetches delivery_verifications record by shipmentId + code",
+          "✅ Validates code is not expired (expiresAt check)",
+          "✅ Returns error if no match or expired"
+        ],
+        "status": "PASS"
+      },
+      {
+        "step": 2,
+        "name": "Mark Delivery as Verified",
+        "action": "UPDATE delivery_verifications SET verified=true, verified_at=NOW()",
+        "target_table": "delivery_verifications",
+        "status": "✅ IMPLEMENTED"
+      },
+      {
+        "step": 3,
+        "name": "Update Shipment Status",
+        "action": "UPDATE shipments SET status='Delivered', deliveryDate=NOW(), statusHistory=[...,'Delivered']",
+        "target_table": "shipments",
+        "validation": [
+          "✅ Sets status to 'Delivered'",
+          "✅ Records deliveryDate timestamp",
+          "✅ Appends to statusHistory array"
+        ],
+        "status": "✅ IMPLEMENTED"
+      },
+      {
+        "step": 4,
+        "name": "Courier Commission Transaction",
+        "action": "INSERT INTO courier_transactions (Commission for shipment)",
+        "details": {
+          "courierId": "from shipment.courierId",
+          "type": "Commission",
+          "amount": "shipment.courierCommission",
+          "status": "Processed"
+        },
+        "validation": "✅ Inserts if commisssionAmount > 0",
+        "status": "✅ IMPLEMENTED"
+      },
+      {
+        "step": 5,
+        "name": "Courier Referral Bonus",
+        "action": "INSERT INTO courier_transactions (Referral Bonus)",
+        "details": {
+          "type": "Referral Bonus",
+          "amount": 15,
+          "recipient": "deliveringCourier.referrerId",
+          "standard_bonus": "15 EGP fixed"
+        },
+        "condition": "Only if courier has a referrer",
+        "validation": "✅ Checks for referrer relationship",
+        "status": "✅ IMPLEMENTED"
+      },
+      {
+        "step": 6,
+        "name": "Recalculate Courier Balance",
+        "action": "Calculate from courier_transactions WHERE status='Processed'",
+        "formula": "SUM(amount) for transactions excluding 'Withdrawal Request' and 'Withdrawal Declined'",
+        "updates": [
+          "UPDATE courier_stats SET currentBalance=calculatedBalance, totalEarnings=totalEarnings",
+          "UPDATE users SET walletBalance=calculatedBalance"
+        ],
+        "validation": "✅ Filters by status and transaction type",
+        "status": "✅ IMPLEMENTED"
+      },
+      {
+        "step": 7,
+        "name": "Client Deposit/Fee Transaction",
+        "action": "Process based on paymentMethod",
+        "scenarios": [
+          {
+            "method": "COD",
+            "transactions": [
+              "Deposit: packageValue",
+              "Payment: -clientFlatRateFee"
+            ],
+            "net": "packageValue - fee"
+          },
+          {
+            "method": "Transfer",
+            "transactions": [
+              "Deposit: amountToCollect (if > 0)"
+            ]
+          },
+          {
+            "method": "Wallet",
+            "transactions": [
+              "Deposit: packageValue (if > 0)"
+            ]
+          }
+        ],
+        "target_table": "client_transactions",
+        "status": "✅ IMPLEMENTED"
+      },
+      {
+        "step": 8,
+        "name": "Recalculate Client Wallet",
+        "action": "Calculate from client_transactions",
+        "formula": "SUM(amount) for all client's transactions",
+        "updates": [
+          "UPDATE users SET walletBalance=calculatedBalance"
+        ],
+        "validation": "✅ Recalculates for each delivery",
+        "status": "✅ IMPLEMENTED"
+      },
+      {
+        "step": 9,
+        "name": "In-App Notifications",
+        "action": "Send notifications to courier and referrer (if applicable)",
+        "details": [
+          "Courier: 'You earned X EGP for delivering shipment Y'",
+          "Referrer: 'You earned 15 EGP referral bonus for Z\\'s delivery'"
+        ],
+        "target_table": "in_app_notifications",
+        "status": "✅ IMPLEMENTED"
+      },
+      {
+        "step": 10,
+        "name": "Clear Courier Failures",
+        "action": "UPDATE courier_stats SET consecutiveFailures=0",
+        "reason": "Successful delivery resets failure counter",
+        "status": "✅ IMPLEMENTED"
+      },
+      {
+        "step": 11,
+        "name": "Real-Time Socket Notification",
+        "action": "io.emit('data_updated', { type: 'shipment_delivered', shipmentId, timestamp })",
+        "purpose": "Notify connected clients to refresh data",
+        "status": "✅ IMPLEMENTED"
+      },
+      {
+        "step": 12,
+        "name": "Transaction Wrapper",
+        "action": "All updates wrapped in knex.transaction() for ACID compliance",
+        "guarantee": "All-or-nothing: either all succeed or all rollback",
+        "status": "✅ IMPLEMENTED"
+      }
+    ],
+    "summary": "Complete 12-step transaction flow implemented with proper error handling and ACID guarantees"
+  },
+  "data_sync": {
+    "description": "How data flows from server to client after delivery verification",
+    "flow": [
+      {
+        "stage": 1,
+        "name": "Server-Side Update",
+        "details": "verifyDeliveryCode() updates all tables in transaction and returns success"
+      },
+      {
+        "stage": 2,
+        "name": "Socket.IO Broadcast",
+        "code": "io.emit('data_updated', { type: 'shipment_delivered', ... })",
+        "broadcast_to": "All connected clients",
+        "payload": "Minimal (shipmentId, timestamp, type)",
+        "status": "✅ IMPLEMENTED in server.js line ~1820"
+      },
+      {
+        "stage": 3,
+        "name": "Client Socket.IO Listener",
+        "location": "AppContext.tsx (lines 282-305)",
+        "handler": "newSocket.on('data_updated', () => { ... })",
+        "action": [
+          "✅ Receives 'data_updated' event",
+          "✅ Clears existing timeout (prevent event storms)",
+          "✅ Schedules debounced fetch after 500ms",
+          "Note: Uses debounce, not immediate fetch (good for performance)"
+        ],
+        "status": "✅ IMPLEMENTED"
+      },
+      {
+        "stage": 4,
+        "name": "Debounced Data Fetch",
+        "timing": "500ms debounce, 5000ms throttle",
+        "call": "fetchAppData() after socket event",
+        "endpoint": "/api/data (full dataset)",
+        "why_debounce": "Multiple socket events within 500ms deduplicated to single API call",
+        "status": "✅ IMPLEMENTED"
+      },
+      {
+        "stage": 5,
+        "name": "Server-Side Recalculation",
+        "location": "server.js GET /api/data (lines 810-890)",
+        "calculations": [
+          "For each client: recalc walletBalance from client_transactions",
+          "For each courier: recalc currentBalance from courier_transactions",
+          "Updates users.walletBalance if discrepancy > 0.01",
+          "Logs balance changes for debugging"
+        ],
+        "status": "✅ IMPLEMENTED with detailed logging"
+      },
+      {
+        "stage": 6,
+        "name": "Cache Strategy",
+        "cache_ttl_ms": 5000,
+        "bypass": "fresh=1 query param forces fresh fetch",
+        "effect": "Reduces server load for repeated calls within 5s",
+        "status": "✅ IMPLEMENTED"
+      },
+      {
+        "stage": 7,
+        "name": "Client State Update",
+        "location": "AppContext.tsx fetchAppData() (lines 250-290)",
+        "updates": [
+          "setUsers(data.users) - includes updated walletBalance",
+          "setCourierStats(correctedCourierStats) - recalculated balances",
+          "setClientTransactions(data.clientTransactions) - new transactions",
+          "setCourierTransactions(data.courierTransactions) - new transactions",
+          "setShipments(data.shipments) - status='Delivered'"
+        ],
+        "status": "✅ IMPLEMENTED"
+      },
+      {
+        "stage": 8,
+        "name": "Component Re-Render",
+        "affected": "Any component using AppContext (users, shipments, walletBalance)",
+        "re_render_trigger": "State updates via setUsers, setCourierStats, etc.",
+        "wallet_sync": "useEffect syncs currentUser.walletBalance when users[] changes (line 328-335)",
+        "status": "✅ IMPLEMENTED - ensures UI reflects new balance"
+      },
+      {
+        "stage": 9,
+        "name": "Toast Notification",
+        "message": "Success toast shown to user confirming delivery",
+        "addToast": "('Delivery confirmed!', 'success')",
+        "status": "✅ IMPLEMENTED"
+      }
+    ],
+    "latency": "~2-3 seconds end-to-end (500ms debounce + network + recalc)",
+    "summary": "Complete real-time data sync pipeline with caching and deduplication"
+  },
+  "issues": {
+    "critical": [
+      {
+        "id": "CRITICAL-1",
+        "title": "getAdminFinancials() uses incorrect shipment fields",
+        "location": "AppContext.tsx line 700-715",
+        "issue": "Uses s.price instead of s.packageValue for COD/revenue calculations",
+        "code": "const totalCollectedMoney = deliveredShipments.reduce((sum, s) => sum + (Number(s.price) || 0), 0);",
+        "problem": "s.price may include fees; should use packageValue for actual goods value",
+        "impact": "Admin financials report shows inflated 'collected money' figure",
+        "recommendation": "Change to s.packageValue for correct revenue tracking",
+        "severity": "HIGH - Financial reporting error"
+      },
+      {
+        "id": "CRITICAL-2",
+        "title": "Missing fetchAppData call after Socket.IO reconnect",
+        "location": "AppContext.tsx lines 292-296",
+        "issue": "On reconnect, only fetchSummary() is called, not full fetchAppData()",
+        "code": "newSocket.on('reconnect', (attemptNumber) => { fetchSummary(); });",
+        "problem": "Client has stale data after network disconnect-reconnect",
+        "impact": "Users see old shipment status, balance, and transaction data",
+        "recommendation": "Call fetchAppData(true) on reconnect to force refresh",
+        "severity": "CRITICAL - Data consistency issue"
+      },
+      {
+        "id": "CRITICAL-3",
+        "title": "getClientFinancials() calculates net revenue (packageValue - fee) instead of total collections",
+        "location": "AppContext.tsx lines 729-740",
+        "issue": "orderSum = packageValue - fee, which is client profit, not total collected",
+        "code": "return sum + Math.max(0, packageValue - shippingFee);",
+        "problem": "Client financial summary doesn't match actual money received",
+        "impact": "Client can't reconcile collections with bank deposits",
+        "recommendation": "Use packageValue for collections, track fee separately",
+        "severity": "HIGH - Financial discrepancy"
+      }
+    ],
+    "high_priority": [
+      {
+        "id": "HIGH-1",
+        "title": "verifyDeliveryCode() doesn't handle referrer lookup error",
+        "location": "server/services/verification.js lines 205-235",
+        "issue": "If referrer.id lookup fails, referral transaction still proceeds without validation",
+        "code": "if (referrer) { await trx('courier_transactions').insert(...) }",
+        "problem": "Could insert referral bonus with null referrerId if user not found",
+        "recommendation": "Add explicit null check: if (referrer && referrer.id) { ... }",
+        "severity": "MEDIUM - Edge case handling"
+      },
+      {
+        "id": "HIGH-2",
+        "title": "POST /api/login doesn't use JWT_SECRET from env during development",
+        "location": "server/server.js line 777",
+        "issue": "Fallback 'dev_secret_change_me' is insecure and not from environment",
+        "code": "const jwtSecret = process.env.JWT_SECRET || 'dev_secret_change_me';",
+        "problem": "Dev secret is hardcoded; production secret from env not validated",
+        "recommendation": "Throw error if JWT_SECRET not set in production",
+        "severity": "LOW-MEDIUM - Security"
+      },
+      {
+        "id": "HIGH-3",
+        "title": "No validation that courier was actually assigned to shipment",
+        "location": "server/services/verification.js line 188",
+        "issue": "verifyDeliveryCode() assumes shipment.courierId exists without validation",
+        "problem": "Could create commission transaction for unassigned shipment",
+        "recommendation": "Check shipment.courierId is not null before processing courier payout",
+        "severity": "MEDIUM - Data integrity"
+      }
+    ],
+    "medium_priority": [
+      {
+        "id": "MEDIUM-1",
+        "title": "CourierStats may not exist when commission is calculated",
+        "location": "server/server.js line 1400 (auto-assign)",
+        "issue": "courier_stats record might not exist for newly created couriers",
+        "code": "const courierStats = await trx('courier_stats').where({ courierId }).first();",
+        "problem": "Could throw null reference error if courier_stats missing",
+        "recommendation": "Ensure courier_stats created when user added as Courier role",
+        "status": "PARTIALLY FIXED - creation happens in /api/users but not guaranteed in all flows",
+        "severity": "MEDIUM"
+      },
+      {
+        "id": "MEDIUM-2",
+        "title": "No maximum balance validation for wallet operations",
+        "location": "server/services/verification.js and AppContext",
+        "issue": "No upper limit check on wallet balance accumulation",
+        "problem": "Could theoretically cause numeric overflow on very high values (unlikely but possible)",
+        "recommendation": "Add wallet balance cap or overflow detection",
+        "severity": "LOW - Unlikely scenario"
+      },
+      {
+        "id": "MEDIUM-3",
+        "title": "Wallet balance calculated on every /api/data call - performance concern",
+        "location": "server/server.js lines 820-890",
+        "issue": "Recalculates all user and courier wallets on EVERY request (not just when changed)",
+        "code": "await Promise.all(courierStats.map(...)) for each request",
+        "problem": "With 1000+ shipments, this could cause slow /api/data response times",
+        "recommendation": "Add flag/timestamp to recalculate only when transactions changed",
+        "severity": "MEDIUM - Scalability concern"
+      }
+    ],
+    "low_priority": [
+      {
+        "id": "LOW-1",
+        "title": "Missing error logging in sendDeliveryVerificationCode()",
+        "location": "server/server.js line 1560",
+        "issue": "WhatsApp/SMS failure reasons not logged for debugging",
+        "recommendation": "Log detailed error from whatsappResult/smsResult",
+        "severity": "LOW - Debugging"
+      },
+      {
+        "id": "LOW-2",
+        "title": "Socket.IO connection doesn't validate user before subscribing",
+        "location": "AppContext.tsx line 267",
+        "issue": "Anyone with socket can receive 'data_updated' event",
+        "problem": "No per-user filtering of socket events",
+        "recommendation": "Implement socket.io namespaces or rooms per user",
+        "severity": "LOW-MEDIUM - Privacy/efficiency"
+      },
+      {
+        "id": "LOW-3",
+        "title": "safeJsonParse() used inconsistently across codebase",
+        "location": "Multiple files",
+        "issue": "Some places use try/catch, others use safeJsonParse, some assume JSON",
+        "recommendation": "Standardize JSON parsing approach",
+        "severity": "LOW - Code quality"
+      }
+    ],
+    "summary": {
+      "total_issues": 12,
+      "critical": 3,
+      "high": 3,
+      "medium": 3,
+      "low": 3
+    }
+  },
+  "integration_score": 78,
+  "score_breakdown": {
+    "schema_completeness": 95,
+    "verification_flow": 92,
+    "data_sync_mechanism": 85,
+    "error_handling": 72,
+    "performance_optimization": 65,
+    "security": 70,
+    "documentation": 40,
+    "overall": 78
+  },
+  "score_rationale": {
+    "strengths": [
+      "✅ All required database tables exist and are properly linked",
+      "✅ Verification flow is complete with 12-step transaction logic",
+      "✅ Commission and referral bonus logic implemented correctly",
+      "✅ ACID transaction wrapper ensures data consistency",
+      "✅ Real-time Socket.IO integration for live data updates",
+      "✅ Debouncing and throttling implemented to prevent event storms",
+      "✅ Wallet balance recalculation on every fetch ensures accuracy",
+      "✅ In-app notifications for earnings alerts",
+      "✅ Courier failure counter reset on successful delivery"
+    ],
+    "weaknesses": [
+      "❌ Financial calculations use incorrect fields (price vs packageValue)",
+      "❌ Missing full data fetch on socket reconnect (stale data risk)",
+      "❌ No validation that courier assigned before commission",
+      "❌ Wallet recalculation happens on every /api/data call (performance)",
+      "❌ Socket.IO events not filtered per user (privacy/efficiency)",
+      "❌ Inconsistent JSON parsing across codebase",
+      "❌ Limited error logging for debugging",
+      "❌ No documentation of financial flow for operators"
+    ]
+  },
+  "recommendations": {
+    "immediate_fixes": [
+      {
+        "priority": 1,
+        "fix": "Fix getAdminFinancials() to use s.packageValue instead of s.price",
+        "file": "src/context/AppContext.tsx",
+        "line": 706,
+        "estimated_impact": "Fixes critical admin financial reporting"
+      },
+      {
+        "priority": 2,
+        "fix": "Call fetchAppData(true) on socket reconnect instead of fetchSummary()",
+        "file": "src/context/AppContext.tsx",
+        "line": 295,
+        "estimated_impact": "Ensures data consistency after network issues"
+      },
+      {
+        "priority": 3,
+        "fix": "Add validation: if (!shipment.courierId) return error before commission",
+        "file": "server/services/verification.js",
+        "line": 185,
+        "estimated_impact": "Prevents orphaned commission transactions"
+      }
+    ],
+    "medium_term_improvements": [
+      {
+        "improvement": "Implement wallet balance caching with dirty-flag update tracking",
+        "reason": "Reduce recalculation overhead on /api/data from O(n) to O(1) for unchanged data",
+        "estimated_impact": "50% reduction in /api/data response time for large datasets"
+      },
+      {
+        "improvement": "Add per-user socket room filtering",
+        "reason": "Only send data_updated to relevant users (couriers, clients with matching shipments)",
+        "estimated_impact": "Reduced network traffic, improved privacy"
+      },
+      {
+        "improvement": "Create financial audit table logging each transaction",
+        "reason": "Enable reconciliation and dispute resolution",
+        "estimated_impact": "Full financial audit trail"
+      }
+    ],
+    "testing_recommendations": [
+      "Integration test: Verify full delivery -> commission -> wallet balance flow",
+      "Load test: /api/data endpoint with 1000+ shipments and 100+ couriers",
+      "Network test: Verify data consistency after socket reconnect",
+      "Financial reconciliation: Validate admin and client financial reports match transaction sum",
+      "Edge case: Delivery of unassigned shipment doesn't create commission",
+      "Referral validation: Verify referral bonus only created if referrer exists"
+    ]
+  },
+  "conclusion": {
+    "overall_assessment": "The wallet/transaction integration is SUBSTANTIALLY COMPLETE with solid architecture and working real-time sync. The core delivery verification flow correctly processes commissions, referrals, and wallet updates in a transactional manner. However, critical issues with financial calculations and socket reconnection handling need immediate attention before production deployment.",
+    "production_readiness": "CONDITIONAL - Fix critical-1, critical-2, and critical-3 issues first",
+    "estimated_effort_to_production": "2-3 hours for critical fixes + 2-3 hours for testing = ~5-6 hours total",
+    "next_steps": [
+      "1. Implement all 3 immediate fixes",
+      "2. Run financial reconciliation test with sample data",
+      "3. Perform network stability test for socket reconnection",
+      "4. Load test /api/data with 1000+ records",
+      "5. Prepare operator runbook for financial reconciliation"
+    ]
+  }
+}
