@@ -149,7 +149,7 @@ const Wallet = () => {
                             value={payoutAmount}
                             onChange={e => setPayoutAmount(e.target.value)}
                             placeholder={`Max ${(Number(availableBalance) || 0).toFixed(2)}`}
-                            className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground"
+                            className="w-full px-4 py-2 border border-border rounded-lg bg-background text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                             min="0.01"
                             step="0.01"
                             max={availableBalance}
