@@ -2677,10 +2677,178 @@ app.get('/api/debug/users/:id', async (req, res) => {
         }
     });
 
+    // --- BACKUP & RESTORE SYSTEM ---
+    const fs = require('fs');
+    const path = require('path');
+    const BACKUP_DIR = path.join(__dirname, '../backups');
+    
+    // Ensure backup directory exists
+    if (!fs.existsSync(BACKUP_DIR)) {
+        fs.mkdirSync(BACKUP_DIR, { recursive: true });
+    }
+
+    // Helper function to backup database tables
+    async function backupDatabase() {
+        try {
+            console.log('💾 Starting database backup...');
+            const backupTimestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const backupFileName = `backup_${backupTimestamp}.json`;
+            const backupPath = path.join(BACKUP_DIR, backupFileName);
+
+            const tables = ['users', 'shipments', 'courier_transactions', 'client_transactions', 'courier_stats', 'notifications', 'in_app_notifications', 'inventory_items', 'assets', 'suppliers', 'supplier_transactions', 'custom_roles'];
+            const backup = {
+                timestamp: new Date().toISOString(),
+                tables: {}
+            };
+
+            for (const table of tables) {
+                try {
+                    const hasTable = await knex.schema.hasTable(table);
+                    if (hasTable) {
+                        backup.tables[table] = await knex(table).select('*');
+                        console.log(`✅ Backed up ${table}: ${backup.tables[table].length} rows`);
+                    } else {
+                        backup.tables[table] = [];
+                        console.log(`⏭️ Table ${table} does not exist, skipping`);
+                    }
+                } catch (e) {
+                    console.log(`⚠️ Error backing up ${table}:`, e.message);
+                    backup.tables[table] = [];
+                }
+            }
+
+            fs.writeFileSync(backupPath, JSON.stringify(backup, null, 2));
+            console.log(`💾 Database backup saved to: ${backupFileName}`);
+            return backupFileName;
+        } catch (error) {
+            console.error('❌ Backup failed:', error);
+            throw error;
+        }
+    }
+
+    // List available backups
+    app.get('/api/admin/backups', async (req, res) => {
+        try {
+            if (!req.headers['x-admin-secret'] || req.headers['x-admin-secret'] !== process.env.ADMIN_SECRET) {
+                return res.status(401).json({ error: 'Unauthorized' });
+            }
+
+            const files = fs.readdirSync(BACKUP_DIR).filter(f => f.startsWith('backup_') && f.endsWith('.json'));
+            const backups = files.map(file => {
+                const filePath = path.join(BACKUP_DIR, file);
+                const stats = fs.statSync(filePath);
+                const content = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+                return {
+                    filename: file,
+                    timestamp: content.timestamp,
+                    created: stats.mtime,
+                    size: stats.size
+                };
+            }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            res.json({ success: true, backups });
+        } catch (error) {
+            console.error('❌ Failed to list backups:', error);
+            res.status(500).json({ error: 'Failed to list backups', details: error.message });
+        }
+    });
+
+    // Restore from backup
+    app.post('/api/admin/restore-backup', async (req, res) => {
+        try {
+            if (!req.headers['x-admin-secret'] || req.headers['x-admin-secret'] !== process.env.ADMIN_SECRET) {
+                return res.status(401).json({ error: 'Unauthorized' });
+            }
+
+            const { filename } = req.body;
+            if (!filename) {
+                return res.status(400).json({ error: 'Backup filename required' });
+            }
+
+            const backupPath = path.join(BACKUP_DIR, filename);
+            if (!fs.existsSync(backupPath)) {
+                return res.status(404).json({ error: 'Backup file not found' });
+            }
+
+            console.log(`🔄 Restoring from backup: ${filename}`);
+            const backup = JSON.parse(fs.readFileSync(backupPath, 'utf8'));
+
+            const results = {
+                restored: {},
+                errors: []
+            };
+
+            // Restore each table
+            for (const [tableName, data] of Object.entries(backup.tables)) {
+                try {
+                    const hasTable = await knex.schema.hasTable(tableName);
+                    if (!hasTable) {
+                        console.log(`⏭️ Table ${tableName} does not exist in current schema, skipping`);
+                        continue;
+                    }
+
+                    // Clear existing data
+                    await knex(tableName).del();
+
+                    // Restore data if any exists
+                    if (data && data.length > 0) {
+                        await knex(tableName).insert(data);
+                        results.restored[tableName] = data.length;
+                        console.log(`✅ Restored ${tableName}: ${data.length} rows`);
+                    } else {
+                        results.restored[tableName] = 0;
+                        console.log(`✅ Cleared ${tableName}`);
+                    }
+                } catch (e) {
+                    console.error(`❌ Error restoring ${tableName}:`, e.message);
+                    results.errors.push({ table: tableName, error: e.message });
+                }
+            }
+
+            console.log('✅ Database restore completed');
+            throttledDataUpdate();
+            res.json({ 
+                success: true, 
+                message: 'Database restored successfully',
+                results,
+                restoredFrom: filename,
+                backupTimestamp: backup.timestamp
+            });
+        } catch (error) {
+            console.error('❌ Restore failed:', error);
+            res.status(500).json({ error: 'Restore failed', details: error.message });
+        }
+    });
+
+    // Manual backup endpoint
+    app.post('/api/admin/backup', async (req, res) => {
+        try {
+            if (!req.headers['x-admin-secret'] || req.headers['x-admin-secret'] !== process.env.ADMIN_SECRET) {
+                return res.status(401).json({ error: 'Unauthorized' });
+            }
+
+            const backupFileName = await backupDatabase();
+            res.json({ success: true, message: 'Database backed up successfully', backupFile: backupFileName });
+        } catch (error) {
+            console.error('❌ Backup endpoint failed:', error);
+            res.status(500).json({ error: 'Backup failed', details: error.message });
+        }
+    });
+
     // Complete Database Reset Endpoint - Admin Only with Full Cleanup
     app.post('/api/admin/reset-database-complete', async (req, res) => {
         try {
             console.log('🚨 COMPLETE DATABASE RESET INITIATED by Admin');
+            
+            // STEP 0: Backup before reset
+            console.log('💾 Creating backup before reset...');
+            let backupFileName = 'unknown';
+            try {
+                backupFileName = await backupDatabase();
+                console.log(`✅ Backup created: ${backupFileName}`);
+            } catch (backupError) {
+                console.error('⚠️ Backup failed, but continuing with reset:', backupError.message);
+            }
             
             // Remove transaction wrapper to avoid PostgreSQL foreign key constraint abort issues
             const results = {
@@ -2688,7 +2856,8 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     deleted: {},
                     reset: {},
                     recreated: {},
-                    final: {}
+                    final: {},
+                    backupFile: backupFileName
                 };
                 
                 // STEP 1: Backup current counts for reporting

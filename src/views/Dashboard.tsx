@@ -4,16 +4,28 @@ import { useLanguage } from '../context/LanguageContext';
 import { UserRole, ShipmentStatus, PaymentMethod, Permission, Shipment } from '../types';
 import { StatCard } from '../components/common/StatCard';
 import { PackageIcon, TruckIcon, WalletIcon, ClipboardListIcon, UsersIcon, ChartBarIcon, CurrencyDollarIcon, CheckCircleIcon, SwitchHorizontalIcon, UserCircleIcon, ArchiveBoxIcon, ClockIcon, DatabaseResetIcon } from '../components/Icons';
+import { Modal } from '../components/common/Modal';
 
 interface DashboardProps {
     setActiveView: (view: string) => void;
+}
+
+interface Backup {
+    filename: string;
+    timestamp: string;
+    created: string;
+    size: number;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
     const { currentUser, shipments, users, courierStats, hasPermission, setShipmentFilter, resetDatabaseComplete, addToast } = useAppContext();
     const { t } = useLanguage();
     const [showResetConfirm, setShowResetConfirm] = React.useState(false);
+    const [showRestoreModal, setShowRestoreModal] = React.useState(false);
     const [isResetting, setIsResetting] = React.useState(false);
+    const [isRestoring, setIsRestoring] = React.useState(false);
+    const [backups, setBackups] = React.useState<Backup[]>([]);
+    const [selectedBackup, setSelectedBackup] = React.useState<string | null>(null);
     
     if (!currentUser) return null;
     
@@ -25,7 +37,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
     };
 
     const handleDatabaseReset = async () => {
-        if (!confirm('⚠️ WARNING: This will permanently delete ALL data except Admin, Test Courier, and Test Client!\n\nThis action cannot be undone. Are you absolutely sure?')) {
+        if (!confirm('⚠️ WARNING: This will permanently delete ALL data except Admin!\n\nA backup will be created automatically before deletion.\n\nThis action cannot be undone. Are you absolutely sure?')) {
             return;
         }
         
@@ -33,13 +45,68 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
         try {
             const success = await resetDatabaseComplete();
             if (success) {
-                setActiveView('dashboard'); // Return to dashboard
+                addToast('Database reset successful. Backup created automatically.', 'success');
+                setActiveView('dashboard');
             }
         } catch (error) {
             console.error('Reset failed:', error);
+            addToast('Database reset failed', 'error');
         } finally {
             setIsResetting(false);
             setShowResetConfirm(false);
+        }
+    };
+
+    const handleOpenRestore = async () => {
+        try {
+            setIsRestoring(true);
+            const response = await fetch('/api/admin/backups', {
+                headers: { 'x-admin-secret': process.env.REACT_APP_ADMIN_SECRET || '' }
+            });
+            if (!response.ok) throw new Error('Failed to fetch backups');
+            const data = await response.json();
+            setBackups(data.backups || []);
+            setShowRestoreModal(true);
+        } catch (error) {
+            console.error('Failed to load backups:', error);
+            addToast('Failed to load backups', 'error');
+        } finally {
+            setIsRestoring(false);
+        }
+    };
+
+    const handleRestoreBackup = async () => {
+        if (!selectedBackup) {
+            addToast('Please select a backup to restore', 'error');
+            return;
+        }
+
+        if (!confirm(`⚠️ WARNING: Restoring from backup will overwrite ALL current data!\n\nBackup: ${selectedBackup}\n\nThis action cannot be undone. Are you absolutely sure?`)) {
+            return;
+        }
+
+        setIsRestoring(true);
+        try {
+            const response = await fetch('/api/admin/restore-backup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-admin-secret': process.env.REACT_APP_ADMIN_SECRET || ''
+                },
+                body: JSON.stringify({ filename: selectedBackup })
+            });
+            
+            if (!response.ok) throw new Error('Failed to restore backup');
+            
+            addToast('Database restored successfully from backup', 'success');
+            setShowRestoreModal(false);
+            setSelectedBackup(null);
+            setTimeout(() => window.location.reload(), 1000);
+        } catch (error) {
+            console.error('Restore failed:', error);
+            addToast('Database restore failed', 'error');
+        } finally {
+            setIsRestoring(false);
         }
     };
 
@@ -195,6 +262,16 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
                                 {isResetting ? 'Resetting...' : 'Reset Database'}
                             </span>
                         </button>
+                        <button 
+                            onClick={handleOpenRestore}
+                            disabled={isRestoring}
+                            className="p-4 bg-blue-50 hover:bg-blue-100 border-blue-200 hover:border-blue-300 rounded-lg border transition-colors text-center group disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <ArchiveBoxIcon className={`w-8 h-8 text-blue-600 mx-auto mb-2 group-hover:scale-110 transition-transform ${isRestoring ? 'animate-spin' : ''}`}/>
+                            <span className="text-sm font-semibold text-blue-700">
+                                {isRestoring ? 'Loading...' : 'Restore Backup'}
+                            </span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -283,11 +360,66 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
            </div>
        )
    };
+    
+    // Restore modal
+    const renderRestoreModal = () => (
+        <Modal isOpen={showRestoreModal} onClose={() => setShowRestoreModal(false)} title="Restore from Backup">
+            <div className="space-y-4">
+                <p className="text-muted-foreground">Select a backup to restore:</p>
+                
+                {backups.length === 0 ? (
+                    <div className="p-4 bg-secondary rounded-lg text-center text-muted-foreground">
+                        No backups available
+                    </div>
+                ) : (
+                    <div className="max-h-96 overflow-y-auto space-y-2">
+                        {backups.map((backup) => (
+                            <label key={backup.filename} className="flex items-center gap-3 p-3 border border-border rounded-lg hover:bg-secondary cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="backup"
+                                    value={backup.filename}
+                                    checked={selectedBackup === backup.filename}
+                                    onChange={(e) => setSelectedBackup(e.target.value)}
+                                    className="rounded"
+                                />
+                                <div className="flex-1 text-left">
+                                    <div className="font-semibold text-foreground">{new Date(backup.timestamp).toLocaleString()}</div>
+                                    <div className="text-xs text-muted-foreground">{(backup.size / 1024).toFixed(2)} KB</div>
+                                </div>
+                            </label>
+                        ))}
+                    </div>
+                )}
+                
+                <div className="flex gap-3 pt-4">
+                    <button
+                        onClick={() => setShowRestoreModal(false)}
+                        className="flex-1 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg font-semibold hover:bg-secondary/80"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleRestoreBackup}
+                        disabled={!selectedBackup || isRestoring}
+                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isRestoring ? 'Restoring...' : 'Restore'}
+                    </button>
+                </div>
+            </div>
+        </Modal>
+    );
 
     const safeRoles = Array.isArray(currentUser.roles) ? currentUser.roles : [];
 
     if (safeRoles.includes(UserRole.ADMIN)) {
-        return renderAdminDashboard();
+        return (
+            <>
+                {renderAdminDashboard()}
+                {renderRestoreModal()}
+            </>
+        );
     }
     if (safeRoles.includes(UserRole.SUPER_USER)) {
         return renderSuperUserDashboard();
