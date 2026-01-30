@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, PackagePlus, Crown, Zap } from 'lucide-react';
+import { Box, Crown, Zap } from 'lucide-react';
 import ScrollFloat from '../common/ScrollFloat';
 
 interface PricingSectionProps {
@@ -54,25 +54,15 @@ const PricingSection: React.FC<PricingSectionProps> = ({ t }) => {
       ],
       color: 'from-purple-500 to-purple-700',
       popular: true
-    },
-    {
-      id: 'enterprise',
-      title: t('largeOrdersTitle'),
-      price: t('customPrice'),
-      description: t('largeOrdersDesc'),
-      icon: <PackagePlus className="h-12 w-12" />,
-      features: [
-        t('enterpriseFeature1'),
-        t('enterpriseFeature2'),
-        t('enterpriseFeature3'),
-        t('enterpriseFeature4'),
-        t('enterpriseFeature5'),
-        t('enterpriseFeature6')
-      ],
-      color: 'from-green-500 to-green-700',
-      popular: false
     }
   ];
+
+  // Ensure activeTab stays within bounds when tiers change
+  useEffect(() => {
+    if (activeTab >= tiers.length) {
+      setActiveTab(0);
+    }
+  }, [activeTab, tiers.length]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -118,8 +108,8 @@ const PricingSection: React.FC<PricingSectionProps> = ({ t }) => {
             </p>
           </div>
           
-          <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
               {tiers.map((tier, index) => (
                 <div
                   key={tier.id}
@@ -173,7 +163,7 @@ const PricingSection: React.FC<PricingSectionProps> = ({ t }) => {
                     onClick={() => scrollToSection('contact')}
                     className="w-full mt-auto py-3 px-6 font-bold transition-all duration-300 bg-[#FFD000] text-[#061A40] hover:bg-[#e6bb00] rounded-lg hover:shadow-lg"
                   >
-                    {tier.id === 'enterprise' ? t('largeOrdersCTA') : t('getStarted')}
+                    {t('getStarted')}
                   </button>
                 </div>
               ))}

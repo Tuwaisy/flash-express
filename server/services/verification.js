@@ -2,6 +2,23 @@ const whatsAppService = require('./whatsapp');
 const smsService = require('./sms');
 const { knex } = require('../db');
 
+/**
+ * Safely parse JSON values with fallback to default
+ */
+const safeJsonParse = (value, defaultValue = null) => {
+    if (value === null || value === undefined) return defaultValue;
+    if (typeof value === 'object') return value; // Already parsed
+    if (typeof value === 'string') {
+        try {
+            return JSON.parse(value);
+        } catch (e) {
+            console.warn('safeJsonParse: Failed to parse string, returning default. Value:', value);
+            return defaultValue;
+        }
+    }
+    return defaultValue;
+};
+
 class VerificationService {
     constructor() {
         this.codeExpiry = 10 * 60 * 1000; // 10 minutes
@@ -211,19 +228,19 @@ class VerificationService {
             const success = whatsappResult.success || smsResult.success;
             const channel = whatsappResult.success ? 'whatsapp' : (smsResult.success ? 'sms' : 'failed');
 
-            // Store in delivery_verifications table
-            await knex('delivery_verifications')
-                .insert({ 
-                    shipmentId, 
-                    code, 
-                    expires_at: expiresAt,
-                    channel,
-                    created_at: new Date()
-                })
-                .onConflict('shipmentId')
-                .merge();
+            // Store in delivery_verifications table - delete old one first to ensure fresh code
+            await knex('delivery_verifications').where({ shipmentId }).del();
+            
+            await knex('delivery_verifications').insert({ 
+                shipmentId, 
+                code, 
+                expires_at: expiresAt.toISOString(),
+                channel,
+                verified: false,
+                created_at: new Date()
+            });
 
-            console.log(`🚚 Delivery verification code ${code} sent to ${formattedPhone} via ${channel} for shipment ${shipmentId}`);
+            console.log(`🚚 Delivery verification code ${code} sent to ${formattedPhone} via ${channel} for shipment ${shipmentId}, expires at ${expiresAt.toISOString()}`);
 
             return {
                 success,
@@ -251,27 +268,77 @@ class VerificationService {
      */
     async verifyDeliveryCode(shipmentId, code) {
         try {
+            console.log(`🔍 Looking for delivery verification: shipmentId=${shipmentId}, code=${code}`);
+            
+            // Fetch the verification record
             const verification = await knex('delivery_verifications')
                 .where({ shipmentId, code })
-                .where('expires_at', '>', new Date())
                 .first();
 
             if (!verification) {
+                console.warn(`⚠️ No valid verification found for shipment ${shipmentId} with code ${code}`);
+                
+                // Debug: Check if record exists at all
+                const allVerifications = await knex('delivery_verifications')
+                    .where({ shipmentId })
+                    .select('*');
+                console.log(`📋 All verifications for shipment ${shipmentId}:`, allVerifications);
+                
                 return {
                     success: false,
                     error: 'Invalid or expired delivery verification code'
                 };
             }
 
-            // Mark as verified by updating the shipment or verification record
-            await knex('delivery_verifications')
-                .where({ shipmentId })
-                .update({ 
-                    verified: true,
-                    verified_at: new Date()
-                });
+            // Check if code is expired (handle both Date objects and ISO strings)
+            const expiresAt = new Date(verification.expires_at);
+            const now = new Date();
+            
+            if (now > expiresAt) {
+                console.warn(`⚠️ Delivery code for shipment ${shipmentId} has expired (expires: ${expiresAt.toISOString()}, now: ${now.toISOString()})`);
+                return {
+                    success: false,
+                    error: 'Delivery verification code has expired'
+                };
+            }
 
-            console.log(`✅ Delivery code verified for shipment ${shipmentId}`);
+            console.log(`✅ Found valid verification for shipment ${shipmentId}`);
+
+
+            // Get the shipment to verify it exists
+            const shipment = await knex('shipments').where({ id: shipmentId }).first();
+            if (!shipment) {
+                return {
+                    success: false,
+                    error: 'Shipment not found'
+                };
+            }
+
+            // Use transaction to update delivery verification and shipment status
+            await knex.transaction(async (trx) => {
+                // Mark verification as verified
+                await trx('delivery_verifications')
+                    .where({ shipmentId })
+                    .update({ 
+                        verified: true,
+                        verified_at: new Date()
+                    });
+
+                // Update shipment status to Delivered
+                const newStatus = 'Delivered';
+                const updatePayload = { 
+                    status: newStatus, 
+                    deliveryDate: new Date().toISOString()
+                };
+                
+                const currentHistory = safeJsonParse(shipment.statusHistory, []);
+                currentHistory.push({ status: newStatus, timestamp: updatePayload.deliveryDate });
+                updatePayload.statusHistory = JSON.stringify(currentHistory);
+
+                await trx('shipments').where({ id: shipmentId }).update(updatePayload);
+
+                console.log(`✅ Delivery code verified and shipment ${shipmentId} marked as Delivered`);
+            });
 
             return {
                 success: true,

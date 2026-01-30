@@ -311,13 +311,13 @@ const TrackShipment: React.FC = () => {
               </p>
               <div className="space-y-3">
                 <a
-                  href="tel:+201116306013"
+                  href="tel:+201032674447"
                   className="flex items-center text-[#061A40] hover:text-[#FFD000] hover:bg-[#061A40] p-3 rounded-lg transition-all border border-gray-200 hover:border-[#061A40] font-medium"
                 >
                   <div className={`flex-shrink-0 ${language === 'ar' ? 'ml-3' : 'mr-3'}`}>
                     <Phone className="h-5 w-5" />
                   </div>
-                  <span>+201116306013</span>
+                  <span>+201032674447</span>
                 </a>
                 <a
                   href="mailto:info@shuhna.net"
@@ -329,7 +329,7 @@ const TrackShipment: React.FC = () => {
                   <span>info@shuhna.net</span>
                 </a>
                 <a
-                  href={`https://wa.me/201116306013?text=${encodeURIComponent(
+                  href={`https://wa.me/201032674447?text=${encodeURIComponent(
                     language === 'ar' 
                       ? `مرحباً، أحتاج مساعدة بخصوص شحنتي ${shipment.id}`
                       : `Hello, I need help with my shipment ${shipment.id}`

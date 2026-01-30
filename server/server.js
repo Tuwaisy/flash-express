@@ -657,7 +657,7 @@ async function main() {
                 whatsappStatus = {
                     enabled: whatsAppService.isAvailable(),
                     provider: 'unknown',
-                    businessPhone: process.env.BUSINESS_PHONE_NUMBER || '+201116306013'
+                    businessPhone: process.env.BUSINESS_PHONE_NUMBER || '+201032674447'
                 };
             }
         } catch (error) {
@@ -665,7 +665,7 @@ async function main() {
             whatsappStatus = { 
                 enabled: false, 
                 provider: 'error', 
-                businessPhone: process.env.BUSINESS_PHONE_NUMBER || '+201116306013',
+                businessPhone: process.env.BUSINESS_PHONE_NUMBER || '+201032674447',
                 error: error.message 
             };
         }
@@ -1640,15 +1640,30 @@ app.get('/api/debug/users/:id', async (req, res) => {
     app.post('/api/shipments/:id/verify-delivery-code', async (req, res) => {
         const { id } = req.params;
         const { code } = req.body;
+        
+        if (!id || !code) {
+            return res.status(400).json({ error: 'Shipment ID and code are required' });
+        }
+        
         try {
+            console.log(`🔍 Verifying delivery code for shipment ${id}`);
             const result = await verificationService.verifyDeliveryCode(id, code);
             
             if (result.success) {
+                console.log(`✅ Delivery code verified successfully for shipment ${id}`);
+                // Emit real-time update to notify clients of shipment status change
+                io.emit('data_updated', {
+                    type: 'shipment_delivered',
+                    shipmentId: id,
+                    timestamp: new Date().toISOString()
+                });
+                
                 res.json({ 
                     success: true, 
                     message: result.message 
                 });
             } else {
+                console.warn(`❌ Delivery code verification failed for shipment ${id}: ${result.error}`);
                 res.status(400).json({ 
                     error: result.error 
                 });
@@ -1772,7 +1787,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 res.json({
                     enabled: false,
                     provider: 'unavailable',
-                    businessPhone: process.env.BUSINESS_PHONE_NUMBER || '+201116306013',
+                    businessPhone: process.env.BUSINESS_PHONE_NUMBER || '+201032674447',
                     error: 'WhatsApp service not properly initialized'
                 });
             }
@@ -1780,7 +1795,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             res.status(500).json({
                 enabled: false,
                 provider: 'error',
-                businessPhone: process.env.BUSINESS_PHONE_NUMBER || '+201116306013',
+                businessPhone: process.env.BUSINESS_PHONE_NUMBER || '+201032674447',
                 error: error.message
             });
         }

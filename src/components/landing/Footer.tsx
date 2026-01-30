@@ -40,7 +40,7 @@ const Footer: React.FC<FooterProps> = ({ t }) => {
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
                   <Phone className="h-5 w-5 text-[#FFD000]" />
-                  <span className="text-gray-300">+201116306013</span>
+                  <span className="text-gray-300">+201032674447</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <Mail className="h-5 w-5 text-[#FFD000]" />

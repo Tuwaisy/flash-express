@@ -16,7 +16,7 @@ class WhatsAppService {
             businessId: process.env.WHATSAPP_BUSINESS_ID,
             verifyToken: process.env.WHATSAPP_VERIFY_TOKEN
         };
-        this.businessPhone = process.env.BUSINESS_PHONE_NUMBER || '+201116306013';
+        this.businessPhone = process.env.BUSINESS_PHONE_NUMBER || '+201032674447';
         this.isEnabled = process.env.ENABLE_WHATSAPP_NOTIFICATIONS === 'true' && 
                         (!!this.twilioClient || (this.businessApi.phoneId && this.businessApi.accessToken));
         
