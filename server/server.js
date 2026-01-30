@@ -2762,7 +2762,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 
                 // STEP 3: Handle user deletions carefully with foreign key constraints
                 console.log('👥 Removing non-essential users...');
-                const essentialEmails = ['admin@shuhna.net', 'testcourier@flash.com', 'testclient@flash.com'];
+                const essentialEmails = ['admin@shuhna.net'];
                 const essentialUsers = await knex('users').whereIn('email', essentialEmails).select('id', 'email');
                 const essentialUserIds = essentialUsers.map(u => u.id);
                 
@@ -2820,30 +2820,6 @@ app.get('/api/debug/users/:id', async (req, res) => {
                         password: 'password123', // Will be hashed by the system
                         phone: '+201000000000',
                         roles: '["Administrator"]',
-                        walletBalance: 0,
-                        partnerTier: 'Bronze'  // Fixed: should be partnerTier, not currentTier
-                    });
-                }
-                
-                if (!existingEmails.includes('testcourier@flash.com')) {
-                    missingUsers.push({
-                        name: 'Test Courier',
-                        email: 'testcourier@flash.com',
-                        password: 'password123',
-                        phone: '+201000000001',
-                        roles: '["Courier"]',
-                        walletBalance: 0,
-                        partnerTier: 'Bronze'  // Fixed: should be partnerTier, not currentTier
-                    });
-                }
-                
-                if (!existingEmails.includes('testclient@flash.com')) {
-                    missingUsers.push({
-                        name: 'Test Client',
-                        email: 'testclient@flash.com',
-                        password: 'password123',
-                        phone: '+201000000002',
-                        roles: '["Client"]',
                         walletBalance: 0,
                         partnerTier: 'Bronze'  // Fixed: should be partnerTier, not currentTier
                     });
@@ -2958,7 +2934,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     success: true, 
                     message: 'Complete database reset successful - Ready for fresh start',
                     results: results,
-                    preserved: 'Only Admin, Test Courier, Test Client + Inventory + Tiers',
+                    preserved: 'Only Admin + Inventory + Tiers',
                     cleared: 'ALL shipments, transactions, notifications, non-essential users',
                     nextOrderNumber: '0000'
                 });

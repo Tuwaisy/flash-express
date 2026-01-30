@@ -178,52 +178,6 @@ async function setupDatabase() {
         console.log('Admin user with admin@shuhna.net already exists, skipping...');
     }
 
-    // Seeding: test client user
-    if (!(await knex('users').where({ email: 'client@test.com' }).first())) {
-        console.log('Seeding test client user...');
-        const hashedPassword = await bcrypt.hash('password123', saltRounds);
-        
-        // Let database auto-generate ID and then get it
-        const [insertedUser] = await knex('users').insert({
-          name: 'Test Client',
-          email: 'client@test.com',
-          password: hashedPassword,
-          roles: safeStringify(['Client']),
-          flatRateFee: 75.0,
-          priorityMultipliers: safeStringify({ Standard: 1.0, Urgent: 1.5, Express: 2.0 }),
-          address: safeStringify({ street: "123 Test Street", details: "Building A", city: "Cairo", zone: "Downtown" })
-        }).returning(['id']);
-        
-        const userId = insertedUser.id;
-        
-        // Update with proper publicId after getting the auto-generated ID
-        await knex('users').where({ id: userId }).update({
-          publicId: `CL-${userId}`
-        });
-    }
-
-    // Seeding: test courier user
-    if (!(await knex('users').where({ email: 'courier@test.com' }).first())) {
-        console.log('Seeding test courier user...');
-        const hashedPassword = await bcrypt.hash('password123', saltRounds);
-        
-        // Let database auto-generate ID and then get it
-        const [insertedUser] = await knex('users').insert({
-          name: 'Test Courier',
-          email: 'courier@test.com',
-          password: hashedPassword,
-          roles: safeStringify(['Courier']),
-          zones: safeStringify(['Downtown', 'Heliopolis', 'Nasr City'])
-        }).returning(['id']);
-        
-        const userId = insertedUser.id;
-        
-        // Update with proper publicId after getting the auto-generated ID
-        await knex('users').where({ id: userId }).update({
-          publicId: `CO-${userId}`
-        });
-    }
-
     // Table: shipments
     if (!(await knex.schema.hasTable('shipments'))) {
         console.log('Creating "shipments" table...');
