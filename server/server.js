@@ -3044,21 +3044,13 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     results.recreated.courier_stats = [];
                 }
                 
-                // STEP 6: Reset sequences for clean numbering starting from 1
-                console.log('🔢 Resetting all sequences to start from 1...');
+                // STEP 6: Reset sequences based on existing data
+                console.log('🔢 Resetting sequences based on current data...');
                 try {
-                    const sequences = await knex.raw(`
-                        SELECT sequence_name 
-                        FROM information_schema.sequences 
-                        WHERE sequence_schema = 'public'
-                    `);
-                    
-                    results.reset.sequences = [];
-                    for (const seq of sequences.rows) {
-                        await knex.raw(`ALTER SEQUENCE ${seq.sequence_name} RESTART WITH 1`);
-                        results.reset.sequences.push(seq.sequence_name);
-                        console.log(`🔢 Reset sequence: ${seq.sequence_name} → 1`);
-                    }
+                    // Reset users sequence to current max + 1
+                    await knex.raw(`SELECT setval(pg_get_serial_sequence('users', 'id'), COALESCE((SELECT MAX(id) FROM users), 1), true);`);
+                    results.reset.sequences = ['users_id_seq'];
+                    console.log(`🔢 Reset sequence: users_id_seq → MAX(id) + 1`);
                 } catch (error) {
                     console.log('⚠️ Sequence reset skipped:', error.message);
                     results.reset.sequences = ['Error: ' + error.message];
