@@ -2964,8 +2964,26 @@ app.get('/api/debug/users/:id', async (req, res) => {
 
             const results = {
                 restored: {},
-                errors: []
+                errors: [],
+                adminPreserved: false,
+                adminRestored: false
             };
+
+            // CRITICAL: Save current admin user before restoration
+            console.log('🔐 Preserving current admin user before restore...');
+            let currentAdmin = null;
+            try {
+                currentAdmin = await knex('users')
+                    .where({ email: 'admin@shuhna.net' })
+                    .orWhere({ email: 'admin@flash.com' })
+                    .first();
+                if (currentAdmin) {
+                    console.log('✅ Current admin user saved:', currentAdmin.email);
+                    results.adminPreserved = true;
+                }
+            } catch (e) {
+                console.warn('⚠️ Could not save current admin:', e.message);
+            }
 
             // Restore each table
             for (const [tableName, data] of Object.entries(backup.tables)) {
@@ -2976,6 +2994,65 @@ app.get('/api/debug/users/:id', async (req, res) => {
                         continue;
                     }
 
+                    // SPECIAL HANDLING FOR USERS TABLE
+                    if (tableName === 'users') {
+                        console.log('👥 Processing users table with admin preservation...');
+                        
+                        // Clear non-admin users only
+                        await knex(tableName)
+                            .where({ email: '!=', value: 'admin@shuhna.net' })
+                            .andWhere({ email: '!=', value: 'admin@flash.com' })
+                            .del();
+                        
+                        // Insert backup data
+                        if (data && data.length > 0) {
+                            // Filter out any admin users from backup to avoid conflicts
+                            const nonAdminData = data.filter(u => 
+                                u.email !== 'admin@shuhna.net' && 
+                                u.email !== 'admin@flash.com'
+                            );
+                            
+                            if (nonAdminData.length > 0) {
+                                await knex(tableName).insert(nonAdminData);
+                                results.restored[tableName] = nonAdminData.length;
+                                console.log(`✅ Restored ${tableName}: ${nonAdminData.length} non-admin rows (${data.length - nonAdminData.length} admin users filtered)`);
+                            } else {
+                                console.log(`✅ Restored ${tableName}: 0 rows (all were admin users)`);
+                                results.restored[tableName] = 0;
+                            }
+                        } else {
+                            results.restored[tableName] = 0;
+                            console.log(`✅ Cleared non-admin users in ${tableName}`);
+                        }
+
+                        // RESTORE current admin if it was preserved
+                        if (currentAdmin) {
+                            try {
+                                // Ensure admin user exists with correct data
+                                const adminExists = await knex(tableName)
+                                    .where({ email: currentAdmin.email })
+                                    .first();
+                                
+                                if (!adminExists) {
+                                    await knex(tableName).insert({
+                                        ...currentAdmin,
+                                        updated_at: new Date()
+                                    });
+                                    console.log(`✅ Restored current admin user: ${currentAdmin.email}`);
+                                    results.adminRestored = true;
+                                } else {
+                                    console.log(`✅ Admin user already exists: ${currentAdmin.email}`);
+                                    results.adminRestored = true;
+                                }
+                            } catch (e) {
+                                console.error(`❌ Failed to restore admin user:`, e.message);
+                                results.errors.push({ table: 'users_admin', error: e.message });
+                            }
+                        }
+                        continue;
+                    }
+
+                    // NORMAL HANDLING FOR OTHER TABLES
                     // Clear existing data
                     await knex(tableName).del();
 
@@ -2994,18 +3071,67 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 }
             }
 
-            console.log('✅ Database restore completed');
+            console.log('✅ Database restore completed with admin preservation');
             throttledDataUpdate();
             res.json({ 
                 success: true, 
                 message: 'Database restored successfully',
                 results,
                 restoredFrom: filename,
-                backupTimestamp: backup.timestamp
+                backupTimestamp: backup.timestamp,
+                adminStatus: {
+                    preserved: results.adminPreserved,
+                    restored: results.adminRestored
+                }
             });
         } catch (error) {
             console.error('❌ Restore failed:', error);
             res.status(500).json({ error: 'Restore failed', details: error.message });
+        }
+    });
+
+    // Emergency admin password reset endpoint
+    app.post('/api/admin/reset-password', async (req, res) => {
+        try {
+            const { adminSecret, email = 'admin@shuhna.net', newPassword } = req.body;
+
+            // Verify admin secret
+            const expectedSecret = process.env.ADMIN_SECRET || 'admin-secret-key';
+            if (adminSecret !== expectedSecret) {
+                console.warn('⚠️ Unauthorized admin reset attempt');
+                return res.status(403).json({ error: 'Unauthorized' });
+            }
+
+            if (!newPassword || newPassword.length < 6) {
+                return res.status(400).json({ error: 'Password must be at least 6 characters' });
+            }
+
+            // Hash the new password
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+            // Update admin password
+            const result = await knex('users')
+                .where('email', email.toLowerCase())
+                .update({
+                    password: hashedPassword,
+                    updated_at: new Date()
+                });
+
+            if (result === 0) {
+                return res.status(404).json({ error: 'Admin user not found' });
+            }
+
+            console.log(`✅ Admin password reset for: ${email}`);
+            res.json({
+                success: true,
+                message: 'Admin password reset successfully',
+                email: email,
+                newPassword: newPassword,
+                note: 'Please change this password immediately after logging in'
+            });
+        } catch (error) {
+            console.error('❌ Admin password reset failed:', error);
+            res.status(500).json({ error: 'Password reset failed', details: error.message });
         }
     });
 
