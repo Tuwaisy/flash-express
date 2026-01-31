@@ -2892,7 +2892,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
             const backupFileName = `backup_${backupTimestamp}.json`;
             const backupPath = path.join(BACKUP_DIR, backupFileName);
 
-            const tables = ['users', 'shipments', 'courier_transactions', 'client_transactions', 'courier_stats', 'notifications', 'in_app_notifications', 'inventory_items', 'assets', 'suppliers', 'supplier_transactions', 'custom_roles'];
+            const tables = ['users', 'shipments', 'courier_transactions', 'client_transactions', 'courier_stats', 'notifications', 'in_app_notifications', 'inventory_items', 'assets', 'suppliers', 'supplier_transactions', 'custom_roles', 'delivery_verification_attempts', 'tier_settings'];
             const backup = {
                 timestamp: new Date().toISOString(),
                 tables: {}
@@ -2966,7 +2966,8 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 restored: {},
                 errors: [],
                 adminPreserved: false,
-                adminRestored: false
+                adminRestored: false,
+                warnings: []
             };
 
             // CRITICAL: Save current admin user before restoration
@@ -2980,9 +2981,13 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 if (currentAdmin) {
                     console.log('✅ Current admin user saved:', currentAdmin.email);
                     results.adminPreserved = true;
+                } else {
+                    console.warn('⚠️ No current admin user found');
+                    results.warnings.push('No admin user found to preserve');
                 }
             } catch (e) {
                 console.warn('⚠️ Could not save current admin:', e.message);
+                results.warnings.push(`Failed to preserve admin: ${e.message}`);
             }
 
             // Restore each table
@@ -2991,6 +2996,7 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     const hasTable = await knex.schema.hasTable(tableName);
                     if (!hasTable) {
                         console.log(`⏭️ Table ${tableName} does not exist in current schema, skipping`);
+                        results.warnings.push(`Table ${tableName} does not exist in schema`);
                         continue;
                     }
 
@@ -2998,31 +3004,47 @@ app.get('/api/debug/users/:id', async (req, res) => {
                     if (tableName === 'users') {
                         console.log('👥 Processing users table with admin preservation...');
                         
-                        // Clear non-admin users only
-                        await knex(tableName)
-                            .where({ email: '!=', value: 'admin@shuhna.net' })
-                            .andWhere({ email: '!=', value: 'admin@flash.com' })
-                            .del();
+                        try {
+                            // Clear non-admin users only (keeps admin if it exists)
+                            await knex(tableName)
+                                .whereNotIn('email', ['admin@shuhna.net', 'admin@flash.com'])
+                                .del();
+                            console.log('✅ Cleared non-admin users');
+                        } catch (e) {
+                            console.error('❌ Error clearing non-admin users:', e.message);
+                            results.errors.push({ table: 'users', operation: 'delete', error: e.message });
+                        }
                         
                         // Insert backup data
                         if (data && data.length > 0) {
-                            // Filter out any admin users from backup to avoid conflicts
-                            const nonAdminData = data.filter(u => 
-                                u.email !== 'admin@shuhna.net' && 
-                                u.email !== 'admin@flash.com'
-                            );
-                            
-                            if (nonAdminData.length > 0) {
-                                await knex(tableName).insert(nonAdminData);
-                                results.restored[tableName] = nonAdminData.length;
-                                console.log(`✅ Restored ${tableName}: ${nonAdminData.length} non-admin rows (${data.length - nonAdminData.length} admin users filtered)`);
-                            } else {
-                                console.log(`✅ Restored ${tableName}: 0 rows (all were admin users)`);
+                            try {
+                                // Filter out any admin users from backup to avoid conflicts
+                                const nonAdminData = data.filter(u => 
+                                    u.email !== 'admin@shuhna.net' && 
+                                    u.email !== 'admin@flash.com'
+                                );
+                                
+                                if (nonAdminData.length > 0) {
+                                    // Insert in batches to avoid issues with large datasets
+                                    const batchSize = 100;
+                                    for (let i = 0; i < nonAdminData.length; i += batchSize) {
+                                        const batch = nonAdminData.slice(i, i + batchSize);
+                                        await knex(tableName).insert(batch);
+                                    }
+                                    results.restored[tableName] = nonAdminData.length;
+                                    console.log(`✅ Restored ${tableName}: ${nonAdminData.length} non-admin rows (${data.length - nonAdminData.length} admin users filtered)`);
+                                } else {
+                                    console.log(`✅ Restored ${tableName}: 0 rows (all were admin users)`);
+                                    results.restored[tableName] = 0;
+                                }
+                            } catch (e) {
+                                console.error('❌ Error inserting user data:', e.message);
+                                results.errors.push({ table: 'users', operation: 'insert', error: e.message });
                                 results.restored[tableName] = 0;
                             }
                         } else {
                             results.restored[tableName] = 0;
-                            console.log(`✅ Cleared non-admin users in ${tableName}`);
+                            console.log(`✅ No user data in backup, keeping non-admin users`);
                         }
 
                         // RESTORE current admin if it was preserved
@@ -3046,36 +3068,65 @@ app.get('/api/debug/users/:id', async (req, res) => {
                                 }
                             } catch (e) {
                                 console.error(`❌ Failed to restore admin user:`, e.message);
-                                results.errors.push({ table: 'users_admin', error: e.message });
+                                results.errors.push({ table: 'users', operation: 'admin_restore', error: e.message });
                             }
                         }
                         continue;
                     }
 
                     // NORMAL HANDLING FOR OTHER TABLES
-                    // Clear existing data
-                    await knex(tableName).del();
-
-                    // Restore data if any exists
-                    if (data && data.length > 0) {
-                        await knex(tableName).insert(data);
-                        results.restored[tableName] = data.length;
-                        console.log(`✅ Restored ${tableName}: ${data.length} rows`);
-                    } else {
-                        results.restored[tableName] = 0;
+                    try {
+                        // Clear existing data
+                        await knex(tableName).del();
                         console.log(`✅ Cleared ${tableName}`);
+
+                        // Restore data if any exists
+                        if (data && data.length > 0) {
+                            // Insert in batches for large datasets
+                            const batchSize = 500;
+                            for (let i = 0; i < data.length; i += batchSize) {
+                                const batch = data.slice(i, i + batchSize);
+                                await knex(tableName).insert(batch);
+                            }
+                            results.restored[tableName] = data.length;
+                            console.log(`✅ Restored ${tableName}: ${data.length} rows`);
+                        } else {
+                            results.restored[tableName] = 0;
+                            console.log(`✅ Table ${tableName} has no data in backup`);
+                        }
+                    } catch (e) {
+                        console.error(`❌ Error with ${tableName}:`, e.message);
+                        results.errors.push({ table: tableName, error: e.message });
+                        results.restored[tableName] = 0;
                     }
                 } catch (e) {
-                    console.error(`❌ Error restoring ${tableName}:`, e.message);
-                    results.errors.push({ table: tableName, error: e.message });
+                    console.error(`❌ Unexpected error restoring ${tableName}:`, e.message);
+                    results.errors.push({ table: tableName, error: `Unexpected: ${e.message}` });
                 }
             }
 
             console.log('✅ Database restore completed with admin preservation');
+            
+            // Verify admin exists before completing
+            if (!results.adminRestored && currentAdmin) {
+                console.warn('⚠️ Admin restoration may have failed, attempting verification...');
+                try {
+                    const adminCheck = await knex('users')
+                        .where({ email: currentAdmin.email })
+                        .first();
+                    if (adminCheck) {
+                        results.adminRestored = true;
+                        console.log('✅ Admin verified in database');
+                    }
+                } catch (e) {
+                    console.error('❌ Failed to verify admin:', e.message);
+                }
+            }
+
             throttledDataUpdate();
             res.json({ 
-                success: true, 
-                message: 'Database restored successfully',
+                success: results.errors.length === 0,
+                message: 'Database restore completed',
                 results,
                 restoredFrom: filename,
                 backupTimestamp: backup.timestamp,
