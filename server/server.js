@@ -2946,6 +2946,39 @@ app.get('/api/debug/users/:id', async (req, res) => {
         }
     });
 
+    // Helper: Define JSON field columns for each table
+    const jsonFieldsMap = {
+        'users': ['roles', 'address', 'priorityMultipliers'],
+        'custom_roles': ['permissions'],
+        'notifications': ['data'],
+        'in_app_notifications': ['metadata'],
+        'tier_settings': ['data']
+    };
+
+    /**
+     * Serialize JSON fields in a row for database insertion
+     * Converts objects to JSON strings as needed
+     */
+    function serializeJsonFields(tableName, row) {
+        if (!jsonFieldsMap[tableName]) {
+            return row;
+        }
+
+        const serialized = { ...row };
+        const jsonFields = jsonFieldsMap[tableName];
+
+        for (const field of jsonFields) {
+            if (field in serialized && serialized[field] !== null && serialized[field] !== undefined) {
+                // If it's an object, stringify it; if it's already a string, leave it
+                if (typeof serialized[field] === 'object') {
+                    serialized[field] = JSON.stringify(serialized[field]);
+                }
+            }
+        }
+
+        return serialized;
+    }
+
     // Restore from backup
     app.post('/api/admin/restore-backup', async (req, res) => {
         try {
@@ -3029,7 +3062,9 @@ app.get('/api/debug/users/:id', async (req, res) => {
                                     const batchSize = 100;
                                     for (let i = 0; i < nonAdminData.length; i += batchSize) {
                                         const batch = nonAdminData.slice(i, i + batchSize);
-                                        await knex(tableName).insert(batch);
+                                        // Serialize JSON fields before inserting
+                                        const serializedBatch = batch.map(row => serializeJsonFields(tableName, row));
+                                        await knex(tableName).insert(serializedBatch);
                                     }
                                     results.restored[tableName] = nonAdminData.length;
                                     console.log(`✅ Restored ${tableName}: ${nonAdminData.length} non-admin rows (${data.length - nonAdminData.length} admin users filtered)`);
@@ -3086,7 +3121,9 @@ app.get('/api/debug/users/:id', async (req, res) => {
                             const batchSize = 500;
                             for (let i = 0; i < data.length; i += batchSize) {
                                 const batch = data.slice(i, i + batchSize);
-                                await knex(tableName).insert(batch);
+                                // Serialize JSON fields before inserting
+                                const serializedBatch = batch.map(row => serializeJsonFields(tableName, row));
+                                await knex(tableName).insert(serializedBatch);
                             }
                             results.restored[tableName] = data.length;
                             console.log(`✅ Restored ${tableName}: ${data.length} rows`);
