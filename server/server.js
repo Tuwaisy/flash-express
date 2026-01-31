@@ -3160,6 +3160,100 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 }
             }
 
+            // CRITICAL: Reset database sequences after restore
+            console.log('🔄 Resetting database sequences...');
+            try {
+                // Get the maximum ID for each table and reset sequences
+                const tablesToReset = ['users', 'shipments', 'courier_transactions', 'client_transactions', 
+                                       'courier_stats', 'notifications', 'in_app_notifications', 
+                                       'inventory_items', 'assets', 'suppliers', 'supplier_transactions', 
+                                       'custom_roles', 'delivery_verification_attempts', 'tier_settings'];
+
+                for (const table of tablesToReset) {
+                    try {
+                        const hasTable = await knex.schema.hasTable(table);
+                        if (!hasTable) continue;
+
+                        // Get max ID
+                        const maxIdResult = await knex(table).max('id as maxId').first();
+                        const maxId = maxIdResult?.maxId || 0;
+                        
+                        // Reset sequence for PostgreSQL
+                        if (process.env.DATABASE_URL) {
+                            const sequenceName = `${table}_id_seq`;
+                            const newSequenceValue = Math.max(maxId + 1, 1);
+                            await knex.raw(`SELECT setval('${sequenceName}', ${newSequenceValue}, false);`);
+                            console.log(`✅ Reset ${sequenceName} to ${newSequenceValue}`);
+                        }
+                    } catch (e) {
+                        // Ignore if sequence doesn't exist (SQLite or other DB)
+                        if (!e.message.includes('does not exist')) {
+                            console.warn(`⚠️ Could not reset sequence for ${table}:`, e.message);
+                        }
+                    }
+                }
+                console.log('✅ Sequence reset completed');
+                results.sequencesReset = true;
+            } catch (e) {
+                console.warn('⚠️ Failed to reset sequences:', e.message);
+                results.warnings.push(`Sequence reset failed: ${e.message}`);
+            }
+
+            // ADMIN: Ensure admin is ID 0 (first user)
+            console.log('👤 Checking admin user ID...');
+            try {
+                const adminUser = await knex('users')
+                    .where({ email: 'admin@shuhna.net' })
+                    .orWhere({ email: 'admin@flash.com' })
+                    .first();
+
+                if (adminUser && adminUser.id !== 0) {
+                    console.warn(`⚠️ Admin user ID is ${adminUser.id}, should be 0. Attempting to fix...`);
+                    
+                    // Check if ID 0 exists
+                    const existingId0 = await knex('users').where({ id: 0 }).first();
+                    
+                    if (!existingId0) {
+                        // ID 0 is free, move admin there
+                        try {
+                            // In PostgreSQL, we need to handle this carefully
+                            if (process.env.DATABASE_URL) {
+                                // Disable the sequence temporarily and insert directly
+                                await knex.raw(`ALTER SEQUENCE users_id_seq START WITH 0;`);
+                            }
+                            
+                            // Copy admin data to ID 0
+                            const adminData = { ...adminUser, id: 0 };
+                            
+                            // Insert at ID 0
+                            try {
+                                await knex('users').where({ id: 0 }).del();
+                                await knex('users').insert(adminData);
+                                
+                                // Delete the old admin record
+                                await knex('users').where({ email: adminData.email }).whereNot({ id: 0 }).del();
+                                
+                                console.log('✅ Admin user moved to ID 0');
+                                results.adminResetToId0 = true;
+                            } catch (e) {
+                                console.warn(`⚠️ Could not move admin to ID 0:`, e.message);
+                            }
+                        } catch (e) {
+                            console.warn(`⚠️ Failed to reset admin ID:`, e.message);
+                        }
+                    } else {
+                        console.warn('⚠️ ID 0 already exists, cannot move admin there');
+                        results.warnings.push('ID 0 already in use, admin ID not changed');
+                    }
+                } else if (adminUser && adminUser.id === 0) {
+                    console.log('✅ Admin user already at ID 0');
+                    results.adminResetToId0 = true;
+                }
+            } catch (e) {
+                console.warn('⚠️ Failed to check/fix admin ID:', e.message);
+                results.warnings.push(`Admin ID check failed: ${e.message}`);
+            }
+
             throttledDataUpdate();
             res.json({ 
                 success: results.errors.length === 0,
@@ -3169,7 +3263,8 @@ app.get('/api/debug/users/:id', async (req, res) => {
                 backupTimestamp: backup.timestamp,
                 adminStatus: {
                     preserved: results.adminPreserved,
-                    restored: results.adminRestored
+                    restored: results.adminRestored,
+                    isId0: results.adminResetToId0
                 }
             });
         } catch (error) {
@@ -3220,6 +3315,69 @@ app.get('/api/debug/users/:id', async (req, res) => {
         } catch (error) {
             console.error('❌ Admin password reset failed:', error);
             res.status(500).json({ error: 'Password reset failed', details: error.message });
+        }
+    });
+
+    // Fix database sequences endpoint (for sequence out of sync issues)
+    app.post('/api/admin/fix-sequences', async (req, res) => {
+        try {
+            const { adminSecret } = req.body;
+
+            // Verify admin secret
+            const expectedSecret = process.env.ADMIN_SECRET || 'admin-secret-key';
+            if (adminSecret !== expectedSecret) {
+                console.warn('⚠️ Unauthorized sequence fix attempt');
+                return res.status(403).json({ error: 'Unauthorized' });
+            }
+
+            console.log('🔧 Attempting to fix database sequences...');
+            const results = { fixed: {}, errors: [] };
+
+            const tablesToReset = ['users', 'shipments', 'courier_transactions', 'client_transactions', 
+                                   'courier_stats', 'notifications', 'in_app_notifications', 
+                                   'inventory_items', 'assets', 'suppliers', 'supplier_transactions', 
+                                   'custom_roles', 'delivery_verification_attempts', 'tier_settings'];
+
+            for (const table of tablesToReset) {
+                try {
+                    const hasTable = await knex.schema.hasTable(table);
+                    if (!hasTable) continue;
+
+                    // Get max ID
+                    const maxIdResult = await knex(table).max('id as maxId').first();
+                    const maxId = maxIdResult?.maxId || 0;
+                    
+                    // Reset sequence for PostgreSQL
+                    if (process.env.DATABASE_URL) {
+                        const sequenceName = `${table}_id_seq`;
+                        const newSequenceValue = Math.max(maxId + 1, 1);
+                        try {
+                            await knex.raw(`SELECT setval('${sequenceName}', ${newSequenceValue}, false);`);
+                            results.fixed[table] = { sequenceName, newValue: newSequenceValue };
+                            console.log(`✅ Reset ${sequenceName} to ${newSequenceValue}`);
+                        } catch (e) {
+                            if (e.message.includes('does not exist')) {
+                                console.log(`⏭️ Sequence ${sequenceName} does not exist`);
+                            } else {
+                                throw e;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error(`❌ Error fixing ${table}:`, e.message);
+                    results.errors.push({ table, error: e.message });
+                }
+            }
+
+            console.log('✅ Sequence fix completed');
+            res.json({
+                success: results.errors.length === 0,
+                message: 'Database sequences fixed',
+                results
+            });
+        } catch (error) {
+            console.error('❌ Sequence fix failed:', error);
+            res.status(500).json({ error: 'Sequence fix failed', details: error.message });
         }
     });
 
